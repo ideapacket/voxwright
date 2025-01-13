@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "voxwright"
+dynamic = ["version"]
+description = "面向端到端语音模型应用集成的离线可复现工具箱"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Li Xilai", email = "250554415+ideapacket@users.noreply.github.com" },
+]
+dependencies = ["numpy>=1.26,<3"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
+[project.optional-dependencies]
+dev = [
+  "build==1.2.2.post1",
+  "hatchling==1.27.0",
+  "mypy==1.18.2",
+  "pytest==8.4.2",
+  "ruff==0.14.2",
+]
+torch = ["torch>=2.5,<3"]
+
+[project.scripts]
+voxwright = "voxwright.cli:main"
+
+[tool.hatch.version]
+path = "src/voxwright/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/voxwright"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+markers = [
+  "slow: integration or training checks excluded from the per-commit suite",
+  "model: checks that require the optional CPU torch dependency",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+strict = true
+packages = ["voxwright"]
+
