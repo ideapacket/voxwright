@@ -14,8 +14,8 @@ format-check:
 	.venv/bin/ruff check src tests examples scripts
 
 format:
-	.venv/bin/ruff format src tests examples scripts
 	.venv/bin/ruff check --fix src tests examples scripts
+	.venv/bin/ruff format src tests examples scripts
 
 lint:
 	.venv/bin/ruff check src tests examples scripts
@@ -24,4 +24,3 @@ typecheck:
 	.venv/bin/mypy src
 
 release: test-all format-check lint typecheck build
-
