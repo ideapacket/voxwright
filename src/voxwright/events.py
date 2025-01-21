@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 from dataclasses import dataclass
 from enum import Enum
 
@@ -106,4 +108,52 @@ class EventEnvelope:
             kind,
             _object(data["payload"], "$.payload"),
             version,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AudioBlock:
+    """A transport-neutral PCM16 audio block encoded for JSON artifacts."""
+
+    block_id: Identifier
+    pcm16_base64: str
+    sample_rate_hz: int
+    channels: int
+    duration_ms: int
+
+    def __post_init__(self) -> None:
+        if not 8_000 <= self.sample_rate_hz <= 192_000:
+            raise ValueError("sample rate must be between 8000 and 192000 Hz")
+        if self.channels not in (1, 2):
+            raise ValueError("audio channels must be 1 or 2")
+        if self.duration_ms <= 0:
+            raise ValueError("audio duration must be positive")
+        try:
+            base64.b64decode(self.pcm16_base64, validate=True)
+        except (binascii.Error, ValueError) as error:
+            raise ValueError("pcm16_base64 is not valid base64") from error
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        return {
+            "block_id": str(self.block_id),
+            "pcm16_base64": self.pcm16_base64,
+            "sample_rate_hz": self.sample_rate_hz,
+            "channels": self.channels,
+            "duration_ms": self.duration_ms,
+        }
+
+    @classmethod
+    def from_payload(cls, value: object) -> AudioBlock:
+        data = _object(value, "$.payload")
+        _exact(
+            data,
+            {"block_id", "pcm16_base64", "sample_rate_hz", "channels", "duration_ms"},
+            "$.payload",
+        )
+        return cls(
+            Identifier(_text(data["block_id"], "$.payload.block_id")),
+            _text(data["pcm16_base64"], "$.payload.pcm16_base64"),
+            _integer(data["sample_rate_hz"], "$.payload.sample_rate_hz"),
+            _integer(data["channels"], "$.payload.channels"),
+            _integer(data["duration_ms"], "$.payload.duration_ms"),
         )
