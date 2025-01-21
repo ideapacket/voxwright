@@ -77,3 +77,44 @@ def test_audio_block_rejects_invalid_transport_metadata(
     values.update(kwargs)
     with pytest.raises(ValueError, match=message):
         AudioBlock(**values)  # type: ignore[arg-type]
+
+
+def _valid_event_object() -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "session_id": "session-1",
+        "sequence": 0,
+        "at_ms": 0,
+        "kind": "handoff",
+        "payload": {},
+    }
+
+
+@pytest.mark.parametrize("field", sorted(_valid_event_object()))
+def test_event_decoder_names_missing_fields(field: str) -> None:
+    data = _valid_event_object()
+    del data[field]
+    with pytest.raises(ValueError, match=f"missing field '{field}'"):
+        EventEnvelope.from_dict(data)
+
+
+def test_event_decoder_rejects_unknown_fields() -> None:
+    data = _valid_event_object()
+    data["future"] = True
+    with pytest.raises(ValueError, match="unexpected field 'future'"):
+        EventEnvelope.from_dict(data)
+
+
+@pytest.mark.parametrize("field", ["schema_version", "sequence", "at_ms"])
+def test_event_integer_fields_do_not_accept_booleans(field: str) -> None:
+    data = _valid_event_object()
+    data[field] = True
+    with pytest.raises(TypeError, match=f"{field}: expected integer"):
+        EventEnvelope.from_dict(data)
+
+
+def test_event_decoder_reports_unknown_kind_at_path() -> None:
+    data = _valid_event_object()
+    data["kind"] = "voice-thought"
+    with pytest.raises(ValueError, match=r"\$\.kind: unknown event kind"):
+        EventEnvelope.from_dict(data)
