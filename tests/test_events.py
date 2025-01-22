@@ -181,3 +181,37 @@ def test_tool_result_supports_scalar_and_object_results() -> None:
 def test_tool_result_requires_boolean_status() -> None:
     with pytest.raises(TypeError, match="expected boolean"):
         ToolResultEvent.from_payload({"call_id": "call-1", "ok": 1, "result": None})
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"call_id": "call-1", "tool_name": "timer.start"}, "missing field 'arguments'"),
+        (
+            {"call_id": "call-1", "tool_name": "timer.start", "arguments": {}, "text": "x"},
+            "unexpected field 'text'",
+        ),
+        ({"call_id": 7, "tool_name": "timer.start", "arguments": {}}, "expected string"),
+        ({"call_id": "call-1", "tool_name": "timer.start", "arguments": []}, "expected object"),
+    ],
+)
+def test_tool_call_payload_reports_structural_errors(
+    payload: dict[str, object], message: str
+) -> None:
+    with pytest.raises((TypeError, ValueError), match=message):
+        ToolCallEvent.from_payload(payload)
+
+
+def test_tool_event_payloads_have_stable_golden_objects() -> None:
+    call = ToolCallEvent(Identifier("call-3"), Identifier("notes.add"), {"text": "买牛奶"})
+    result = ToolResultEvent(Identifier("call-3"), True, {"note_id": "note-1"})
+    assert call.to_payload() == {
+        "call_id": "call-3",
+        "tool_name": "notes.add",
+        "arguments": {"text": "买牛奶"},
+    }
+    assert result.to_payload() == {
+        "call_id": "call-3",
+        "ok": True,
+        "result": {"note_id": "note-1"},
+    }
