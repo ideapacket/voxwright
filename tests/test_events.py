@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.events import EVENT_SCHEMA_VERSION, AudioBlock, EventEnvelope, EventKind, Transcript
+from voxwright.events import (
+    EVENT_SCHEMA_VERSION,
+    AudioBlock,
+    EventEnvelope,
+    EventKind,
+    Intent,
+    Transcript,
+)
 from voxwright.identifiers import Identifier
 
 
@@ -137,3 +144,18 @@ def test_transcript_requires_distinct_nonempty_alternatives() -> None:
         Transcript("light", 0.5, ("night", "night"))
     with pytest.raises(ValueError, match="empty"):
         Transcript("light", 0.5, ("",))
+
+
+def test_intent_preserves_typed_slot_values() -> None:
+    intent = Intent(
+        Identifier("calendar.create"),
+        0.9,
+        {"title": "复习", "hour": 19, "notify": True},
+    )
+    assert Intent.from_payload(intent.to_payload()) == intent
+    assert intent.to_payload()["name"] == "calendar.create"
+
+
+def test_intent_rejects_slot_names_unsafe_for_artifacts() -> None:
+    with pytest.raises(ValueError, match="invalid identifier"):
+        Intent(Identifier("notes.add"), 1.0, {"bad slot": "value"})

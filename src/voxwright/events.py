@@ -205,3 +205,31 @@ class Transcript:
                 for index, item in enumerate(alternatives)
             ),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class Intent:
+    """An application intent and grounded JSON slot candidates."""
+
+    name: Identifier
+    confidence: float
+    slots: dict[str, JSONValue]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "confidence", _confidence(self.confidence, "$.confidence"))
+        object.__setattr__(self, "slots", _object(self.slots, "$.slots"))
+        for name in self.slots:
+            Identifier(name)
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        return {"name": str(self.name), "confidence": self.confidence, "slots": self.slots}
+
+    @classmethod
+    def from_payload(cls, value: object) -> Intent:
+        data = _object(value, "$.payload")
+        _exact(data, {"name", "confidence", "slots"}, "$.payload")
+        return cls(
+            Identifier(_text(data["name"], "$.payload.name")),
+            _confidence(data["confidence"], "$.payload.confidence"),
+            _object(data["slots"], "$.payload.slots"),
+        )
