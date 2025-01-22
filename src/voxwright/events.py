@@ -56,6 +56,15 @@ def _text(value: JSONValue, path: str) -> str:
     return value
 
 
+def _confidence(value: JSONValue, path: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(f"{path}: expected number")
+    number = float(value)
+    if not 0.0 <= number <= 1.0:
+        raise ValueError(f"{path}: confidence must be between 0 and 1")
+    return round(number, 6)
+
+
 @dataclass(frozen=True, slots=True)
 class EventEnvelope:
     """One ordered, logically timed event with a strict JSON payload."""
@@ -156,4 +165,43 @@ class AudioBlock:
             _integer(data["sample_rate_hz"], "$.payload.sample_rate_hz"),
             _integer(data["channels"], "$.payload.channels"),
             _integer(data["duration_ms"], "$.payload.duration_ms"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Transcript:
+    """A partial or final transcript hypothesis with optional alternatives."""
+
+    text: str
+    confidence: float
+    alternatives: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "confidence", _confidence(self.confidence, "$.confidence"))
+        if any(not item for item in self.alternatives):
+            raise ValueError("transcript alternatives cannot be empty")
+        if len(set(self.alternatives)) != len(self.alternatives):
+            raise ValueError("transcript alternatives must be unique")
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        return {
+            "text": self.text,
+            "confidence": self.confidence,
+            "alternatives": list(self.alternatives),
+        }
+
+    @classmethod
+    def from_payload(cls, value: object) -> Transcript:
+        data = _object(value, "$.payload")
+        _exact(data, {"text", "confidence", "alternatives"}, "$.payload")
+        alternatives = data["alternatives"]
+        if not isinstance(alternatives, list):
+            raise TypeError("$.payload.alternatives: expected array")
+        return cls(
+            _text(data["text"], "$.payload.text"),
+            _confidence(data["confidence"], "$.payload.confidence"),
+            tuple(
+                _text(item, f"$.payload.alternatives[{index}]")
+                for index, item in enumerate(alternatives)
+            ),
         )

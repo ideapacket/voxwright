@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.events import EVENT_SCHEMA_VERSION, AudioBlock, EventEnvelope, EventKind
+from voxwright.events import EVENT_SCHEMA_VERSION, AudioBlock, EventEnvelope, EventKind, Transcript
 from voxwright.identifiers import Identifier
 
 
@@ -118,3 +118,22 @@ def test_event_decoder_reports_unknown_kind_at_path() -> None:
     data["kind"] = "voice-thought"
     with pytest.raises(ValueError, match=r"\$\.kind: unknown event kind"):
         EventEnvelope.from_dict(data)
+
+
+def test_transcript_roundtrips_alternatives() -> None:
+    transcript = Transcript("播放周杰伦", 0.81234567, ("播放周杰轮", "播放音乐"))
+    assert transcript.confidence == 0.812346
+    assert Transcript.from_payload(transcript.to_payload()) == transcript
+
+
+@pytest.mark.parametrize("confidence", [-0.01, 1.01, True])
+def test_transcript_rejects_invalid_confidence(confidence: object) -> None:
+    with pytest.raises((TypeError, ValueError), match=r"confidence|number"):
+        Transcript("hello", confidence)  # type: ignore[arg-type]
+
+
+def test_transcript_requires_distinct_nonempty_alternatives() -> None:
+    with pytest.raises(ValueError, match="unique"):
+        Transcript("light", 0.5, ("night", "night"))
+    with pytest.raises(ValueError, match="empty"):
+        Transcript("light", 0.5, ("",))
