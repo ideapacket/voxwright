@@ -10,6 +10,8 @@ from voxwright.events import (
     EventEnvelope,
     EventKind,
     Intent,
+    ToolCallEvent,
+    ToolResultEvent,
     Transcript,
 )
 from voxwright.identifiers import Identifier
@@ -159,3 +161,23 @@ def test_intent_preserves_typed_slot_values() -> None:
 def test_intent_rejects_slot_names_unsafe_for_artifacts() -> None:
     with pytest.raises(ValueError, match="invalid identifier"):
         Intent(Identifier("notes.add"), 1.0, {"bad slot": "value"})
+
+
+def test_tool_call_keeps_arguments_on_structured_channel() -> None:
+    call = ToolCallEvent(
+        Identifier("call-7"), Identifier("home.set-light"), {"room": "study", "on": True}
+    )
+    assert ToolCallEvent.from_payload(call.to_payload()) == call
+    assert call.to_payload()["tool_name"] == "home.set-light"
+
+
+def test_tool_result_supports_scalar_and_object_results() -> None:
+    success = ToolResultEvent(Identifier("call-7"), True, {"changed": 1})
+    failure = ToolResultEvent(Identifier("call-8"), False, "permission denied")
+    assert ToolResultEvent.from_payload(success.to_payload()) == success
+    assert ToolResultEvent.from_payload(failure.to_payload()) == failure
+
+
+def test_tool_result_requires_boolean_status() -> None:
+    with pytest.raises(TypeError, match="expected boolean"):
+        ToolResultEvent.from_payload({"call_id": "call-1", "ok": 1, "result": None})

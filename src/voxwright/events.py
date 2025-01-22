@@ -233,3 +233,60 @@ class Intent:
             _confidence(data["confidence"], "$.payload.confidence"),
             _object(data["slots"], "$.payload.slots"),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class ToolCallEvent:
+    """A validated call proposal emitted on the dedicated tool channel."""
+
+    call_id: Identifier
+    tool_name: Identifier
+    arguments: dict[str, JSONValue]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "arguments", _object(self.arguments, "$.arguments"))
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        return {
+            "call_id": str(self.call_id),
+            "tool_name": str(self.tool_name),
+            "arguments": self.arguments,
+        }
+
+    @classmethod
+    def from_payload(cls, value: object) -> ToolCallEvent:
+        data = _object(value, "$.payload")
+        _exact(data, {"call_id", "tool_name", "arguments"}, "$.payload")
+        return cls(
+            Identifier(_text(data["call_id"], "$.payload.call_id")),
+            Identifier(_text(data["tool_name"], "$.payload.tool_name")),
+            _object(data["arguments"], "$.payload.arguments"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ToolResultEvent:
+    """The success or failure returned for a particular tool call."""
+
+    call_id: Identifier
+    ok: bool
+    result: JSONValue
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "result", ensure_json_value(self.result, "$.result"))
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        return {"call_id": str(self.call_id), "ok": self.ok, "result": self.result}
+
+    @classmethod
+    def from_payload(cls, value: object) -> ToolResultEvent:
+        data = _object(value, "$.payload")
+        _exact(data, {"call_id", "ok", "result"}, "$.payload")
+        ok = data["ok"]
+        if not isinstance(ok, bool):
+            raise TypeError("$.payload.ok: expected boolean")
+        return cls(
+            Identifier(_text(data["call_id"], "$.payload.call_id")),
+            ok,
+            data["result"],
+        )
