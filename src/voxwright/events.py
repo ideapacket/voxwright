@@ -290,3 +290,84 @@ class ToolResultEvent:
             ok,
             data["result"],
         )
+
+
+@dataclass(frozen=True, slots=True)
+class AgentUtterance:
+    """Text selected for application playback and its response revision."""
+
+    text: str
+    response_id: Identifier
+    revision: int = 0
+    final: bool = True
+
+    def __post_init__(self) -> None:
+        if not self.text:
+            raise ValueError("agent utterance text cannot be empty")
+        if isinstance(self.revision, bool) or self.revision < 0:
+            raise ValueError("utterance revision must be non-negative")
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        return {
+            "text": self.text,
+            "response_id": str(self.response_id),
+            "revision": self.revision,
+            "final": self.final,
+        }
+
+    @classmethod
+    def from_payload(cls, value: object) -> AgentUtterance:
+        data = _object(value, "$.payload")
+        _exact(data, {"text", "response_id", "revision", "final"}, "$.payload")
+        final = data["final"]
+        if not isinstance(final, bool):
+            raise TypeError("$.payload.final: expected boolean")
+        return cls(
+            _text(data["text"], "$.payload.text"),
+            Identifier(_text(data["response_id"], "$.payload.response_id")),
+            _integer(data["revision"], "$.payload.revision"),
+            final,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class RepairRequest:
+    """A bounded request for evidence needed to repair a misunderstanding."""
+
+    strategy: Identifier
+    prompt: str
+    attempt: int
+    candidates: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.prompt:
+            raise ValueError("repair prompt cannot be empty")
+        if self.attempt <= 0:
+            raise ValueError("repair attempt must be positive")
+        if any(not candidate for candidate in self.candidates):
+            raise ValueError("repair candidates cannot be empty")
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        return {
+            "strategy": str(self.strategy),
+            "prompt": self.prompt,
+            "attempt": self.attempt,
+            "candidates": list(self.candidates),
+        }
+
+    @classmethod
+    def from_payload(cls, value: object) -> RepairRequest:
+        data = _object(value, "$.payload")
+        _exact(data, {"strategy", "prompt", "attempt", "candidates"}, "$.payload")
+        candidates = data["candidates"]
+        if not isinstance(candidates, list):
+            raise TypeError("$.payload.candidates: expected array")
+        return cls(
+            Identifier(_text(data["strategy"], "$.payload.strategy")),
+            _text(data["prompt"], "$.payload.prompt"),
+            _integer(data["attempt"], "$.payload.attempt"),
+            tuple(
+                _text(item, f"$.payload.candidates[{index}]")
+                for index, item in enumerate(candidates)
+            ),
+        )

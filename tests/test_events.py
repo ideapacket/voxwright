@@ -6,10 +6,12 @@ import pytest
 
 from voxwright.events import (
     EVENT_SCHEMA_VERSION,
+    AgentUtterance,
     AudioBlock,
     EventEnvelope,
     EventKind,
     Intent,
+    RepairRequest,
     ToolCallEvent,
     ToolResultEvent,
     Transcript,
@@ -215,3 +217,26 @@ def test_tool_event_payloads_have_stable_golden_objects() -> None:
         "ok": True,
         "result": {"note_id": "note-1"},
     }
+
+
+def test_agent_utterance_tracks_streaming_revisions() -> None:
+    partial = AgentUtterance("正在查询", Identifier("response-1"), revision=2, final=False)
+    assert AgentUtterance.from_payload(partial.to_payload()) == partial
+    assert partial.to_payload()["final"] is False
+
+
+def test_agent_utterance_rejects_empty_or_negative_revision() -> None:
+    with pytest.raises(ValueError, match="cannot be empty"):
+        AgentUtterance("", Identifier("response-1"))
+    with pytest.raises(ValueError, match="non-negative"):
+        AgentUtterance("完成", Identifier("response-1"), revision=-1)
+
+
+def test_repair_request_roundtrips_disambiguation_menu() -> None:
+    repair = RepairRequest(Identifier("n-best"), "你是指哪个房间?", 1, ("书房", "卧室"))
+    assert RepairRequest.from_payload(repair.to_payload()) == repair
+
+
+def test_repair_attempts_start_at_one() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        RepairRequest(Identifier("reask"), "请再说一次", 0)
