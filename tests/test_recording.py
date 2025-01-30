@@ -90,3 +90,26 @@ def test_recorder_uses_exclusive_creation(tmp_path: object) -> None:
     path.write_text("existing", encoding="utf-8")
     with pytest.raises(FileExistsError):
         recording.SessionRecorder(path)
+
+
+def test_loader_verifies_complete_chain(tmp_path: object) -> None:
+    path = tmp_path / "session.jsonl"  # type: ignore[operator]
+    writer = recording.SessionRecorder(path)
+    expected = [writer.append(event()), writer.append(event(1, 40))]
+    assert recording.load_session(path) == expected
+
+
+def test_loader_reports_physical_line_for_invalid_json(tmp_path: object) -> None:
+    path = tmp_path / "broken.jsonl"  # type: ignore[operator]
+    first = recording.SessionRecord.create([], event())
+    path.write_text(recording.encode_record(first) + "not-json\n", encoding="utf-8")
+    with pytest.raises(recording.RecordingError, match="line 2"):
+        recording.load_session(path)
+
+
+def test_loader_rejects_truncated_tail(tmp_path: object) -> None:
+    path = tmp_path / "truncated.jsonl"  # type: ignore[operator]
+    line = recording.encode_record(recording.SessionRecord.create([], event())).rstrip()
+    path.write_text(line, encoding="utf-8")
+    with pytest.raises(recording.RecordingError, match="incomplete line"):
+        recording.load_session(path)

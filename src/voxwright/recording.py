@@ -124,3 +124,26 @@ class SessionRecorder:
             stream.flush()
         self._records.append(record)
         return record
+
+
+def load_session(path: str | Path) -> list[SessionRecord]:
+    """Load a complete recording and validate line, digest, and chain order."""
+    content = Path(path).read_text(encoding="utf-8")
+    if not content:
+        return []
+    if not content.endswith("\n"):
+        raise RecordingError("recording ends with an incomplete line")
+    records: list[SessionRecord] = []
+    previous = EMPTY_DIGEST
+    for line_number, line in enumerate(content.splitlines(keepends=True), start=1):
+        try:
+            record = decode_record(line)
+        except (TypeError, ValueError) as error:
+            raise RecordingError(f"line {line_number}: {error}") from error
+        if record.index != len(records):
+            raise RecordingError(f"line {line_number}: expected record index {len(records)}")
+        if record.previous != previous:
+            raise RecordingError(f"line {line_number}: previous digest mismatch")
+        records.append(record)
+        previous = record.digest
+    return records
