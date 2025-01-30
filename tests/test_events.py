@@ -8,8 +8,10 @@ from voxwright.events import (
     EVENT_SCHEMA_VERSION,
     AgentUtterance,
     AudioBlock,
+    ErrorEvent,
     EventEnvelope,
     EventKind,
+    HandoffEvent,
     Intent,
     RepairRequest,
     ToolCallEvent,
@@ -240,3 +242,25 @@ def test_repair_request_roundtrips_disambiguation_menu() -> None:
 def test_repair_attempts_start_at_one() -> None:
     with pytest.raises(ValueError, match="positive"):
         RepairRequest(Identifier("reask"), "请再说一次", 0)
+
+
+def test_error_event_roundtrips_retry_context() -> None:
+    error = ErrorEvent(Identifier("adapter.timeout"), "local mock timed out", True, {"attempt": 2})
+    assert ErrorEvent.from_payload(error.to_payload()) == error
+
+
+def test_error_event_accepts_absent_details_but_not_empty_message() -> None:
+    assert ErrorEvent(Identifier("runtime.failed"), "failed").details is None
+    with pytest.raises(ValueError, match="cannot be empty"):
+        ErrorEvent(Identifier("runtime.failed"), "")
+
+
+def test_handoff_event_carries_optional_destination() -> None:
+    handoff = HandoffEvent(Identifier("repair.exhausted"), "三次修复未成功", "support")
+    assert HandoffEvent.from_payload(handoff.to_payload()) == handoff
+    assert HandoffEvent(Identifier("user.requested"), "用户请求人工").queue is None
+
+
+def test_handoff_queue_cannot_be_blank() -> None:
+    with pytest.raises(ValueError, match="queue cannot be empty"):
+        HandoffEvent(Identifier("policy"), "transfer", "")

@@ -371,3 +371,73 @@ class RepairRequest:
                 for index, item in enumerate(candidates)
             ),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class ErrorEvent:
+    """A machine-readable application failure safe for session artifacts."""
+
+    code: Identifier
+    message: str
+    retryable: bool = False
+    details: dict[str, JSONValue] | None = None
+
+    def __post_init__(self) -> None:
+        if not self.message:
+            raise ValueError("error message cannot be empty")
+        if self.details is not None:
+            object.__setattr__(self, "details", _object(self.details, "$.details"))
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        return {
+            "code": str(self.code),
+            "message": self.message,
+            "retryable": self.retryable,
+            "details": self.details,
+        }
+
+    @classmethod
+    def from_payload(cls, value: object) -> ErrorEvent:
+        data = _object(value, "$.payload")
+        _exact(data, {"code", "message", "retryable", "details"}, "$.payload")
+        retryable = data["retryable"]
+        if not isinstance(retryable, bool):
+            raise TypeError("$.payload.retryable: expected boolean")
+        details = data["details"]
+        return cls(
+            Identifier(_text(data["code"], "$.payload.code")),
+            _text(data["message"], "$.payload.message"),
+            retryable,
+            None if details is None else _object(details, "$.payload.details"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class HandoffEvent:
+    """An explicit transfer from the offline application policy to a person."""
+
+    reason: Identifier
+    summary: str
+    queue: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.summary:
+            raise ValueError("handoff summary cannot be empty")
+        if self.queue == "":
+            raise ValueError("handoff queue cannot be empty")
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        return {"reason": str(self.reason), "summary": self.summary, "queue": self.queue}
+
+    @classmethod
+    def from_payload(cls, value: object) -> HandoffEvent:
+        data = _object(value, "$.payload")
+        _exact(data, {"reason", "summary", "queue"}, "$.payload")
+        queue = data["queue"]
+        if queue is not None and not isinstance(queue, str):
+            raise TypeError("$.payload.queue: expected string or null")
+        return cls(
+            Identifier(_text(data["reason"], "$.payload.reason")),
+            _text(data["summary"], "$.payload.summary"),
+            queue,
+        )
