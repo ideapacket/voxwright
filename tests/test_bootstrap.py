@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 import voxwright
+from voxwright.events import EventEnvelope
 
 
 def test_version_is_semantic_patch_version() -> None:
@@ -23,3 +24,8 @@ def test_module_cli_reports_help() -> None:
     )
     assert result.returncode == 0
     assert "voxwright" in result.stdout
+
+
+def test_public_event_exports_are_deliberate() -> None:
+    assert voxwright.__all__ == ["EventEnvelope", "EventKind", "__version__", "envelope_for"]
+    assert voxwright.EventEnvelope is EventEnvelope
