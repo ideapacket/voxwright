@@ -72,3 +72,21 @@ def test_record_schema_rejects_forward_version() -> None:
     value["digest"] = recording.object_digest(unsigned)
     with pytest.raises(recording.RecordingError, match="unsupported record schema version"):
         recording.SessionRecord.from_dict(value)
+
+
+def test_recorder_appends_one_line_per_event(tmp_path: object) -> None:
+    path = tmp_path / "session.jsonl"  # type: ignore[operator]
+    recorder = recording.SessionRecorder(path)
+    first = recorder.append(event())
+    second = recorder.append(event(1, 20))
+    assert path.read_text(encoding="utf-8") == (
+        recording.encode_record(first) + recording.encode_record(second)
+    )
+    assert recorder.records == (first, second)
+
+
+def test_recorder_uses_exclusive_creation(tmp_path: object) -> None:
+    path = tmp_path / "session.jsonl"  # type: ignore[operator]
+    path.write_text("existing", encoding="utf-8")
+    with pytest.raises(FileExistsError):
+        recording.SessionRecorder(path)

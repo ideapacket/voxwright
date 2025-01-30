@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
 from voxwright.events import EventEnvelope
@@ -101,3 +102,25 @@ def decode_record(line: str) -> SessionRecord:
     if not text or "\n" in text or "\r" in text:
         raise RecordingError("record must occupy exactly one non-empty line")
     return SessionRecord.from_dict(parse_json(text))
+
+
+class SessionRecorder:
+    """A writer that appends each verified event as one durable JSONL line."""
+
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
+        self._records: list[SessionRecord] = []
+        with self.path.open("x", encoding="utf-8", newline="\n"):
+            pass
+
+    @property
+    def records(self) -> tuple[SessionRecord, ...]:
+        return tuple(self._records)
+
+    def append(self, event: EventEnvelope) -> SessionRecord:
+        record = SessionRecord.create(self._records, event)
+        with self.path.open("a", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_record(record))
+            stream.flush()
+        self._records.append(record)
+        return record
