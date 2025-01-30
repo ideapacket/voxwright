@@ -17,6 +17,8 @@ from voxwright.events import (
     ToolCallEvent,
     ToolResultEvent,
     Transcript,
+    decode_payload,
+    envelope_for,
 )
 from voxwright.identifiers import Identifier
 
@@ -264,3 +266,43 @@ def test_handoff_event_carries_optional_destination() -> None:
 def test_handoff_queue_cannot_be_blank() -> None:
     with pytest.raises(ValueError, match="queue cannot be empty"):
         HandoffEvent(Identifier("policy"), "transfer", "")
+
+
+@pytest.mark.parametrize(
+    ("kind", "payload"),
+    [
+        (EventKind.AUDIO_BLOCK, AudioBlock(Identifier("audio-1"), "AAA=", 16_000, 1, 10)),
+        (EventKind.PARTIAL_TRANSCRIPT, Transcript("打开", 0.7)),
+        (EventKind.FINAL_TRANSCRIPT, Transcript("打开灯", 0.9)),
+        (EventKind.INTENT, Intent(Identifier("home.light"), 0.8, {"on": True})),
+        (
+            EventKind.TOOL_CALL,
+            ToolCallEvent(Identifier("call-1"), Identifier("home.light"), {"on": True}),
+        ),
+        (EventKind.TOOL_RESULT, ToolResultEvent(Identifier("call-1"), True, None)),
+        (EventKind.AGENT_UTTERANCE, AgentUtterance("已打开", Identifier("response-1"))),
+        (EventKind.REPAIR_REQUEST, RepairRequest(Identifier("reask"), "请重复", 1)),
+        (EventKind.ERROR, ErrorEvent(Identifier("runtime.error"), "failed")),
+        (EventKind.HANDOFF, HandoffEvent(Identifier("policy"), "transfer")),
+    ],
+)
+def test_payload_registry_roundtrips_every_event_kind(kind: EventKind, payload: object) -> None:
+    event = envelope_for(
+        Identifier("session-1"),
+        0,
+        0,
+        kind,
+        payload,  # type: ignore[arg-type]
+    )
+    assert decode_payload(event) == payload
+
+
+def test_payload_registry_rejects_kind_mismatch() -> None:
+    with pytest.raises(TypeError, match="audio-block requires AudioBlock"):
+        envelope_for(
+            Identifier("session-1"),
+            0,
+            0,
+            EventKind.AUDIO_BLOCK,
+            Transcript("not audio", 1.0),
+        )

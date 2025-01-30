@@ -6,6 +6,7 @@ import base64
 import binascii
 from dataclasses import dataclass
 from enum import Enum
+from typing import Protocol, TypeAlias, cast
 
 from voxwright.core import JSONValue, ensure_json_value
 from voxwright.identifiers import Identifier
@@ -441,3 +442,56 @@ class HandoffEvent:
             _text(data["summary"], "$.payload.summary"),
             queue,
         )
+
+
+class PayloadCodec(Protocol):
+    """Structural contract shared by typed event payload classes."""
+
+    def to_payload(self) -> dict[str, JSONValue]: ...
+
+
+EventPayload: TypeAlias = (
+    AudioBlock
+    | Transcript
+    | Intent
+    | ToolCallEvent
+    | ToolResultEvent
+    | AgentUtterance
+    | RepairRequest
+    | ErrorEvent
+    | HandoffEvent
+)
+
+PAYLOAD_TYPES: dict[EventKind, type[EventPayload]] = {
+    EventKind.AUDIO_BLOCK: AudioBlock,
+    EventKind.PARTIAL_TRANSCRIPT: Transcript,
+    EventKind.FINAL_TRANSCRIPT: Transcript,
+    EventKind.INTENT: Intent,
+    EventKind.TOOL_CALL: ToolCallEvent,
+    EventKind.TOOL_RESULT: ToolResultEvent,
+    EventKind.AGENT_UTTERANCE: AgentUtterance,
+    EventKind.REPAIR_REQUEST: RepairRequest,
+    EventKind.ERROR: ErrorEvent,
+    EventKind.HANDOFF: HandoffEvent,
+}
+
+
+def decode_payload(event: EventEnvelope) -> EventPayload:
+    """Decode the envelope payload according to its registered kind."""
+    payload_type = PAYLOAD_TYPES[event.kind]
+    decoder = cast(object, payload_type.from_payload)
+    return cast(EventPayload, decoder(event.payload))  # type: ignore[operator]
+
+
+def envelope_for(
+    session_id: Identifier,
+    sequence: int,
+    at_ms: int,
+    kind: EventKind,
+    payload: EventPayload,
+) -> EventEnvelope:
+    """Wrap a typed payload, rejecting mismatched event kinds."""
+    expected = PAYLOAD_TYPES[kind]
+    if not isinstance(payload, expected):
+        raise TypeError(f"{kind.value} requires {expected.__name__}, got {type(payload).__name__}")
+    return EventEnvelope(session_id, sequence, at_ms, kind, payload.to_payload())
