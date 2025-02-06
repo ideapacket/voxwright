@@ -135,6 +135,16 @@ class SessionRecorder:
         self._records.append(record)
         return record
 
+    @classmethod
+    def resume(cls, path: str | Path) -> SessionRecorder:
+        """Resume a verified recording without rewriting any existing bytes."""
+        resolved = Path(path)
+        records = load_session(resolved)
+        recorder = cls.__new__(cls)
+        recorder.path = resolved
+        recorder._records = records
+        return recorder
+
 
 def load_session(path: str | Path) -> list[SessionRecord]:
     """Load a complete recording and validate line, digest, and chain order."""

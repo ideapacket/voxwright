@@ -135,3 +135,21 @@ def test_recorder_never_mixes_sessions_or_reverses_time(tmp_path: object) -> Non
     with pytest.raises(recording.RecordingError, match="moved backwards"):
         writer.append(event(1, 9))
     assert len(writer.records) == 1
+
+
+def test_verified_recording_can_resume_by_appending_only(tmp_path: object) -> None:
+    path = tmp_path / "session.jsonl"  # type: ignore[operator]
+    writer = recording.SessionRecorder(path)
+    writer.append(event())
+    prefix = path.read_bytes()
+    resumed = recording.SessionRecorder.resume(path)
+    second = resumed.append(event(1, 20))
+    assert path.read_bytes().startswith(prefix)
+    assert recording.load_session(path)[-1] == second
+
+
+def test_resume_refuses_tampered_history(tmp_path: object) -> None:
+    path = tmp_path / "session.jsonl"  # type: ignore[operator]
+    path.write_text('{"bad":true}\n', encoding="utf-8")
+    with pytest.raises(recording.RecordingError, match="line 1"):
+        recording.SessionRecorder.resume(path)
