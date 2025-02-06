@@ -118,6 +118,16 @@ class SessionRecorder:
         return tuple(self._records)
 
     def append(self, event: EventEnvelope) -> SessionRecord:
+        if self._records:
+            prior = self._records[-1].event
+            if event.session_id != prior.session_id:
+                raise RecordingError("cannot mix session identifiers")
+            if event.sequence != prior.sequence + 1:
+                raise RecordingError(f"expected event sequence {prior.sequence + 1}")
+            if event.at_ms < prior.at_ms:
+                raise RecordingError("event logical time moved backwards")
+        elif event.sequence != 0:
+            raise RecordingError("first event sequence must be zero")
         record = SessionRecord.create(self._records, event)
         with self.path.open("a", encoding="utf-8", newline="\n") as stream:
             stream.write(encode_record(record))

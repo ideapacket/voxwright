@@ -113,3 +113,25 @@ def test_loader_rejects_truncated_tail(tmp_path: object) -> None:
     path.write_text(line, encoding="utf-8")
     with pytest.raises(recording.RecordingError, match="incomplete line"):
         recording.load_session(path)
+
+
+def test_recorder_enforces_contiguous_sequence_before_writing(tmp_path: object) -> None:
+    path = tmp_path / "session.jsonl"  # type: ignore[operator]
+    writer = recording.SessionRecorder(path)
+    writer.append(event())
+    before = path.read_bytes()
+    with pytest.raises(recording.RecordingError, match="expected event sequence 1"):
+        writer.append(event(2, 10))
+    assert path.read_bytes() == before
+
+
+def test_recorder_never_mixes_sessions_or_reverses_time(tmp_path: object) -> None:
+    path = tmp_path / "session.jsonl"  # type: ignore[operator]
+    writer = recording.SessionRecorder(path)
+    writer.append(event(at_ms=10))
+    other = replace(event(1, 20), session_id=Identifier("session-2"))
+    with pytest.raises(recording.RecordingError, match="mix session"):
+        writer.append(other)
+    with pytest.raises(recording.RecordingError, match="moved backwards"):
+        writer.append(event(1, 9))
+    assert len(writer.records) == 1
