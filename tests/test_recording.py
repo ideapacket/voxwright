@@ -153,3 +153,17 @@ def test_resume_refuses_tampered_history(tmp_path: object) -> None:
     path.write_text('{"bad":true}\n', encoding="utf-8")
     with pytest.raises(recording.RecordingError, match="line 1"):
         recording.SessionRecorder.resume(path)
+
+
+def test_recording_summary_is_derived_from_verified_events() -> None:
+    first = recording.SessionRecord.create([], event(at_ms=10))
+    second = recording.SessionRecord.create([first], event(1, 35))
+    summary = recording.summarize([first, second])
+    assert summary.event_count == 2
+    assert summary.duration_ms == 25
+    assert summary.kind_counts == {"final-transcript": 2}
+    assert summary.final_digest == second.digest
+
+
+def test_empty_recording_has_identity_summary() -> None:
+    assert recording.summarize([]) == recording.RecordingSummary(0, 0, {}, recording.EMPTY_DIGEST)

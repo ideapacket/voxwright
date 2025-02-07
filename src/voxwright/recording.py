@@ -167,3 +167,25 @@ def load_session(path: str | Path) -> list[SessionRecord]:
         records.append(record)
         previous = record.digest
     return records
+
+
+@dataclass(frozen=True, slots=True)
+class RecordingSummary:
+    """Content-derived facts about a verified session recording."""
+
+    event_count: int
+    duration_ms: int
+    kind_counts: dict[str, int]
+    final_digest: str
+
+
+def summarize(records: list[SessionRecord]) -> RecordingSummary:
+    """Summarize verified records without reading wall-clock state."""
+    if not records:
+        return RecordingSummary(0, 0, {}, EMPTY_DIGEST)
+    counts: dict[str, int] = {}
+    for record in records:
+        name = record.event.kind.value
+        counts[name] = counts.get(name, 0) + 1
+    duration = records[-1].event.at_ms - records[0].event.at_ms
+    return RecordingSummary(len(records), duration, counts, records[-1].digest)
