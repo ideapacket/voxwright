@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 import voxwright.replay as replaying
@@ -42,3 +44,28 @@ def test_replay_seed_is_part_of_deterministic_artifact() -> None:
 def test_replay_requires_records_to_infer_session() -> None:
     with pytest.raises(RecordingError, match="empty recording"):
         replaying.replay([], 0)
+
+
+def test_replayer_cursor_peeks_takes_and_resets() -> None:
+    cursor = replaying.EventReplayer(replaying.replay(replay_records(), 3))
+    assert cursor.peek() == replay_event(0)
+    assert cursor.take() == replay_event(0)
+    assert cursor.take() == replay_event(1, 20, "world")
+    assert cursor.take() is None
+    cursor.reset()
+    assert cursor.position == 0
+
+
+def test_replayer_rejects_position_outside_trace() -> None:
+    trace = replaying.replay(replay_records(), 3)
+    with pytest.raises(ValueError, match="outside trace"):
+        replaying.EventReplayer(trace, len(trace.events) + 1)
+
+
+def test_trace_rejects_cross_session_or_sequence_drift() -> None:
+    good = replay_event(0)
+    other = replace(replay_event(1), session_id=Identifier("session-2"))
+    with pytest.raises(RecordingError, match="session identifier"):
+        replaying.ReplayTrace(Identifier("session-1"), 0, (good, other))
+    with pytest.raises(RecordingError, match="non-contiguous"):
+        replaying.ReplayTrace(Identifier("session-1"), 0, (replace(good, sequence=1),))

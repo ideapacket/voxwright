@@ -50,3 +50,29 @@ def replay(records: list[SessionRecord], seed: int) -> ReplayTrace:
         seed,
         tuple(record.event for record in records),
     )
+
+
+@dataclass(slots=True)
+class EventReplayer:
+    """A resettable cursor that never mutates its immutable source trace."""
+
+    trace: ReplayTrace
+    position: int = 0
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.position <= len(self.trace.events):
+            raise ValueError("replay position is outside trace")
+
+    def peek(self) -> EventEnvelope | None:
+        if self.position == len(self.trace.events):
+            return None
+        return self.trace.events[self.position]
+
+    def take(self) -> EventEnvelope | None:
+        event = self.peek()
+        if event is not None:
+            self.position += 1
+        return event
+
+    def reset(self) -> None:
+        self.position = 0
