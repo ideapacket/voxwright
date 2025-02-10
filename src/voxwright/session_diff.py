@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from voxwright.core import JSONValue
+from voxwright.core import JSONValue, canonical_json
 from voxwright.replay import ReplayTrace
 
 
@@ -41,3 +41,16 @@ def diff_traces(left: ReplayTrace, right: ReplayTrace) -> list[EventDifference]:
                 )
                 break
     return differences
+
+
+def format_differences(differences: list[EventDifference]) -> str:
+    """Render a stable, line-oriented diff suitable for CLI output."""
+    if not differences:
+        return "sessions are identical\n"
+    lines = []
+    for difference in differences:
+        lines.append(
+            f"event {difference.index} {difference.field}: "
+            f"{canonical_json(difference.left)} -> {canonical_json(difference.right)}"
+        )
+    return "\n".join(lines) + "\n"

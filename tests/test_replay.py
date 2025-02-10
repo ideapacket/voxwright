@@ -89,3 +89,17 @@ def test_session_diff_reports_missing_tail_event() -> None:
     assert difference.index == 1
     assert difference.field == "event"
     assert difference.right is None
+
+
+def test_formatted_diff_is_stable_and_newline_terminated() -> None:
+    differences = [
+        session_diff.EventDifference(2, "kind", "intent", "error"),
+        session_diff.EventDifference(3, "event", None, {"sequence": 3}),
+    ]
+    assert session_diff.format_differences(differences) == (
+        'event 2 kind: "intent" -> "error"\nevent 3 event: null -> {"sequence":3}\n'
+    )
+
+
+def test_empty_diff_has_explicit_identity_message() -> None:
+    assert session_diff.format_differences([]) == "sessions are identical\n"
