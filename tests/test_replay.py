@@ -103,3 +103,29 @@ def test_formatted_diff_is_stable_and_newline_terminated() -> None:
 
 def test_empty_diff_has_explicit_identity_message() -> None:
     assert session_diff.format_differences([]) == "sessions are identical\n"
+
+
+def test_identical_traces_have_no_differences_even_with_distinct_seeds() -> None:
+    left = replaying.replay(replay_records(), 1)
+    right = replaying.replay(replay_records(), 999)
+    assert session_diff.diff_traces(left, right) == []
+
+
+def test_diff_order_is_event_order_for_multiple_changes() -> None:
+    left = replaying.replay(replay_records(), 1)
+    changed = (
+        replace(left.events[0], at_ms=1),
+        replace(left.events[1], kind=EventKind.ERROR, payload={"message": "failed"}),
+    )
+    right = replaying.ReplayTrace(left.session_id, left.seed, changed)
+    differences = session_diff.diff_traces(left, right)
+    assert [(item.index, item.field) for item in differences] == [(0, "at_ms"), (1, "kind")]
+
+
+def test_diff_payload_values_remain_machine_readable() -> None:
+    left = replaying.replay(replay_records(), 1)
+    right_event = replace(left.events[0], payload={"confidence": 0.5, "alternatives": ["a"]})
+    right = replaying.ReplayTrace(left.session_id, left.seed, (right_event, left.events[1]))
+    difference = session_diff.diff_traces(left, right)[0]
+    assert difference.left == {"text": "hello"}
+    assert difference.right == {"confidence": 0.5, "alternatives": ["a"]}
