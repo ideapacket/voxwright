@@ -79,3 +79,16 @@ def test_scenario_bounds_difficulty_and_noise(difficulty: int, noise: float) -> 
             difficulty,
             noise,
         )
+
+
+def test_schedule_factory_replays_from_seed() -> None:
+    first = scenarios.schedule_scenario(41)
+    second = scenarios.schedule_scenario(41)
+    assert first == second
+    assert first.goals[0].task_type is scenarios.TaskType.SCHEDULE
+    assert first.planted_calls[0].tool_name == Identifier("calendar.create")
+
+
+def test_schedule_factory_varies_planted_values_across_seeds() -> None:
+    values = {tuple(scenarios.schedule_scenario(seed).goals[0].slots.values()) for seed in range(8)}
+    assert len(values) > 1

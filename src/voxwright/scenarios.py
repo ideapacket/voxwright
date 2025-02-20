@@ -7,6 +7,7 @@ from enum import Enum
 
 from voxwright.core import JSONValue, ensure_json_value
 from voxwright.identifiers import Identifier
+from voxwright.seeding import SeedStream
 
 
 class TaskType(str, Enum):
@@ -116,3 +117,27 @@ class SyntheticScenario:
             for name, value in goal.slots.items():
                 slots[f"{goal.goal_id}.{name}"] = value
         return slots
+
+
+def schedule_scenario(seed: int) -> SyntheticScenario:
+    """Generate a reproducible calendar task with planted title and hour."""
+    stream = SeedStream(seed, "schedule")
+    titles = ("project review", "lab meeting", "study session", "team sync")
+    hours = (9, 10, 14, 19)
+    title = stream.choose(titles)
+    hour = stream.choose(hours)
+    goal = TaskGoal(
+        Identifier("schedule-main"),
+        TaskType.SCHEDULE,
+        {"title": title, "hour": hour},
+        (ExpectedToolCall(Identifier("calendar.create"), {"title": title, "hour": hour}),),
+    )
+    persona = stream.choose(DEFAULT_PERSONAS)
+    return SyntheticScenario(
+        Identifier(f"schedule-{seed}"),
+        seed,
+        persona,
+        f"schedule {title} at {hour}",
+        (goal,),
+        difficulty=1 + stream.next_int() % 3,
+    )
