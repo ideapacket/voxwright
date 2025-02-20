@@ -141,3 +141,46 @@ def schedule_scenario(seed: int) -> SyntheticScenario:
         (goal,),
         difficulty=1 + stream.next_int() % 3,
     )
+
+
+def application_scenario(task_type: TaskType, seed: int) -> SyntheticScenario:
+    """Generate music, smart-home, or notes tasks from compact offline catalogs."""
+    if task_type is TaskType.SCHEDULE:
+        return schedule_scenario(seed)
+    stream = SeedStream(seed, task_type.value)
+    catalog: dict[TaskType, tuple[str, str, tuple[tuple[str, JSONValue], ...]]] = {
+        TaskType.MUSIC: (
+            "play",
+            "music.play",
+            (("track", stream.choose(("Blue Sky", "Night Walk", "Morning Light"))),),
+        ),
+        TaskType.SMART_HOME: (
+            "set",
+            "home.set-light",
+            (("room", stream.choose(("study", "bedroom", "kitchen"))), ("on", True)),
+        ),
+        TaskType.NOTES: (
+            "remember",
+            "notes.add",
+            (("text", stream.choose(("buy milk", "submit form", "call home"))),),
+        ),
+    }
+    if task_type not in catalog:
+        raise ValueError(f"task type requires composite generator: {task_type.value}")
+    verb, tool_name, pairs = catalog[task_type]
+    slots = dict(pairs)
+    goal = TaskGoal(
+        Identifier(f"{task_type.value}-main"),
+        task_type,
+        slots,
+        (ExpectedToolCall(Identifier(tool_name), slots),),
+    )
+    rendered = " ".join(str(value) for value in slots.values())
+    return SyntheticScenario(
+        Identifier(f"{task_type.value}-{seed}"),
+        seed,
+        stream.choose(DEFAULT_PERSONAS),
+        f"{verb} {rendered}",
+        (goal,),
+        difficulty=1 + stream.next_int() % 3,
+    )

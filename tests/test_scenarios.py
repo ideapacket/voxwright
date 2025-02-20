@@ -92,3 +92,25 @@ def test_schedule_factory_replays_from_seed() -> None:
 def test_schedule_factory_varies_planted_values_across_seeds() -> None:
     values = {tuple(scenarios.schedule_scenario(seed).goals[0].slots.values()) for seed in range(8)}
     assert len(values) > 1
+
+
+@pytest.mark.parametrize(
+    ("task_type", "tool_name"),
+    [
+        (scenarios.TaskType.MUSIC, "music.play"),
+        (scenarios.TaskType.SMART_HOME, "home.set-light"),
+        (scenarios.TaskType.NOTES, "notes.add"),
+    ],
+)
+def test_application_factory_plants_matching_tool_truth(
+    task_type: scenarios.TaskType, tool_name: str
+) -> None:
+    scenario = scenarios.application_scenario(task_type, 5)
+    assert scenario.goals[0].task_type is task_type
+    assert scenario.planted_calls[0].tool_name == Identifier(tool_name)
+    assert scenario.planted_calls[0].arguments == scenario.goals[0].slots
+
+
+def test_composite_types_require_their_dedicated_factory() -> None:
+    with pytest.raises(ValueError, match="composite generator"):
+        scenarios.application_scenario(scenarios.TaskType.NESTED, 1)
