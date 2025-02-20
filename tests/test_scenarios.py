@@ -51,3 +51,31 @@ def test_persona_rejects_unknown_pace_and_duplicate_quirks() -> None:
         scenarios.Persona(Identifier("speaker"), "zh-CN", "rushed")
     with pytest.raises(ValueError, match="quirks must be unique"):
         scenarios.Persona(Identifier("speaker"), "zh-CN", "slow", ("filler", "filler"))
+
+
+def test_scenario_flattens_planted_truth_without_losing_goal_scope() -> None:
+    goal = scenarios.TaskGoal(
+        Identifier("goal-1"), scenarios.TaskType.SCHEDULE, {"hour": 19}, (expected_call(),)
+    )
+    scenario = scenarios.SyntheticScenario(
+        Identifier("scenario-1"), 9, scenarios.DEFAULT_PERSONAS[0], "schedule review", (goal,)
+    )
+    assert scenario.planted_calls == (expected_call(),)
+    assert scenario.planted_slots == {"goal-1.hour": 19}
+
+
+@pytest.mark.parametrize(("difficulty", "noise"), [(0, 0.0), (6, 0.0), (1, -0.1), (1, 1.1)])
+def test_scenario_bounds_difficulty_and_noise(difficulty: int, noise: float) -> None:
+    goal = scenarios.TaskGoal(
+        Identifier("goal-1"), scenarios.TaskType.NOTES, {"text": "milk"}, (expected_call(),)
+    )
+    with pytest.raises(ValueError, match=r"difficulty|noise rate"):
+        scenarios.SyntheticScenario(
+            Identifier("scenario-1"),
+            0,
+            scenarios.DEFAULT_PERSONAS[0],
+            "remember milk",
+            (goal,),
+            difficulty,
+            noise,
+        )

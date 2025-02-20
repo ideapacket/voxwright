@@ -77,3 +77,42 @@ DEFAULT_PERSONAS = (
     Persona(Identifier("hesitant"), "zh-CN", "slow", ("filler", "self-correction")),
     Persona(Identifier("rapid"), "en-US", "fast", ("run-on",)),
 )
+
+
+@dataclass(frozen=True, slots=True)
+class SyntheticScenario:
+    """An offline transcript fixture and its planted application truth."""
+
+    scenario_id: Identifier
+    seed: int
+    persona: Persona
+    transcript: str
+    goals: tuple[TaskGoal, ...]
+    difficulty: int = 1
+    noise_rate: float = 0.0
+    adversarial: bool = False
+
+    def __post_init__(self) -> None:
+        if isinstance(self.seed, bool) or self.seed < 0:
+            raise ValueError("scenario seed must be non-negative")
+        if not self.transcript:
+            raise ValueError("scenario transcript cannot be empty")
+        if not self.goals:
+            raise ValueError("scenario needs at least one task goal")
+        if not 1 <= self.difficulty <= 5:
+            raise ValueError("scenario difficulty must be between 1 and 5")
+        if not 0.0 <= self.noise_rate <= 1.0:
+            raise ValueError("scenario noise rate must be between 0 and 1")
+        object.__setattr__(self, "noise_rate", round(self.noise_rate, 6))
+
+    @property
+    def planted_calls(self) -> tuple[ExpectedToolCall, ...]:
+        return tuple(call for goal in self.goals for call in goal.tool_calls)
+
+    @property
+    def planted_slots(self) -> dict[str, JSONValue]:
+        slots: dict[str, JSONValue] = {}
+        for goal in self.goals:
+            for name, value in goal.slots.items():
+                slots[f"{goal.goal_id}.{name}"] = value
+        return slots
