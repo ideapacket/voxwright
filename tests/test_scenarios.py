@@ -39,3 +39,15 @@ def test_goal_requires_safe_slot_names_and_ground_truth_calls() -> None:
         )
     with pytest.raises(ValueError, match="at least one"):
         scenarios.TaskGoal(Identifier("goal-1"), scenarios.TaskType.NOTES, {}, ())
+
+
+def test_default_personas_cover_distinct_speech_quirks() -> None:
+    assert {persona.pace for persona in scenarios.DEFAULT_PERSONAS} == {"slow", "normal", "fast"}
+    assert len({persona.persona_id for persona in scenarios.DEFAULT_PERSONAS}) == 3
+
+
+def test_persona_rejects_unknown_pace_and_duplicate_quirks() -> None:
+    with pytest.raises(ValueError, match="unsupported speaking pace"):
+        scenarios.Persona(Identifier("speaker"), "zh-CN", "rushed")
+    with pytest.raises(ValueError, match="quirks must be unique"):
+        scenarios.Persona(Identifier("speaker"), "zh-CN", "slow", ("filler", "filler"))

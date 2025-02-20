@@ -52,3 +52,28 @@ class TaskGoal:
         if not self.tool_calls:
             raise ValueError("task goal needs at least one planted tool call")
         object.__setattr__(self, "slots", checked)
+
+
+@dataclass(frozen=True, slots=True)
+class Persona:
+    """Synthetic speaking traits that influence text-only fixture generation."""
+
+    persona_id: Identifier
+    locale: str
+    pace: str
+    quirks: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.locale or not self.pace:
+            raise ValueError("persona locale and pace cannot be empty")
+        if self.pace not in {"slow", "normal", "fast"}:
+            raise ValueError(f"unsupported speaking pace: {self.pace}")
+        if len(set(self.quirks)) != len(self.quirks):
+            raise ValueError("persona quirks must be unique")
+
+
+DEFAULT_PERSONAS = (
+    Persona(Identifier("concise"), "zh-CN", "normal"),
+    Persona(Identifier("hesitant"), "zh-CN", "slow", ("filler", "self-correction")),
+    Persona(Identifier("rapid"), "en-US", "fast", ("run-on",)),
+)
