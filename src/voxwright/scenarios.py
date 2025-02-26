@@ -205,3 +205,40 @@ def composite_scenario(seed: int, nested: bool = False) -> SyntheticScenario:
         goals,
         difficulty=4 if nested else 3,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class Mishearing:
+    """A planted transcript corruption and the operations that produced it."""
+
+    source: str
+    heard: str
+    operations: tuple[str, ...]
+
+
+DEFAULT_HOMOPHONES: dict[str, str] = {
+    "light": "night",
+    "four": "for",
+    "write": "right",
+    "weather": "whether",
+}
+
+
+def swap_homophones(
+    text: str,
+    seed: int,
+    rate: float,
+    mapping: dict[str, str] | None = None,
+) -> Mishearing:
+    """Plant seeded whole-token homophone substitutions."""
+    stream = SeedStream(seed, "homophones")
+    replacements = DEFAULT_HOMOPHONES if mapping is None else mapping
+    heard: list[str] = []
+    operations: list[str] = []
+    for token in text.split():
+        if token in replacements and stream.chance(rate):
+            heard.append(replacements[token])
+            operations.append(f"swap:{token}->{replacements[token]}")
+        else:
+            heard.append(token)
+    return Mishearing(text, " ".join(heard), tuple(operations))

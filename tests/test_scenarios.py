@@ -129,3 +129,17 @@ def test_nested_scenario_marks_return_to_interrupted_task() -> None:
     assert nested.difficulty == 4
     assert " then return to " in nested.transcript
     assert nested.scenario_id.value.startswith("nested-")
+
+
+def test_homophone_swaps_are_seeded_and_auditable() -> None:
+    left = scenarios.swap_homophones("write four light", 3, 0.5)
+    right = scenarios.swap_homophones("write four light", 3, 0.5)
+    assert left == right
+    assert all(operation.startswith("swap:") for operation in left.operations)
+
+
+def test_homophone_rate_endpoints_are_exact() -> None:
+    assert scenarios.swap_homophones("write light", 1, 0.0).heard == "write light"
+    changed = scenarios.swap_homophones("write light", 1, 1.0)
+    assert changed.heard == "right night"
+    assert len(changed.operations) == 2
