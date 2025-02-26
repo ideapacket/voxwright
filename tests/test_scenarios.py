@@ -143,3 +143,26 @@ def test_homophone_rate_endpoints_are_exact() -> None:
     changed = scenarios.swap_homophones("write light", 1, 1.0)
     assert changed.heard == "right night"
     assert len(changed.operations) == 2
+
+
+def test_token_edits_record_insertions_and_deletions() -> None:
+    planted = scenarios.edit_tokens("turn on light", 8, deletion_rate=1.0, insertion_rate=1.0)
+    assert len([item for item in planted.operations if item.startswith("delete:")]) == 3
+    assert len([item for item in planted.operations if item.startswith("insert:")]) == 3
+    assert set(planted.heard.split()) <= {"uh", "please"}
+
+
+def test_noisy_scenario_preserves_ground_truth_and_measures_rate() -> None:
+    clean = scenarios.application_scenario(scenarios.TaskType.SMART_HOME, 2)
+    planted = scenarios.Mishearing(
+        clean.transcript, "set night", ("delete:1:study", "swap:light->night")
+    )
+    noisy = scenarios.with_mishearing(clean, planted)
+    assert noisy.goals == clean.goals
+    assert noisy.transcript == "set night"
+    assert noisy.noise_rate == round(2 / len(clean.transcript.split()), 6)
+
+
+def test_token_edit_rates_use_shared_probability_bounds() -> None:
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        scenarios.edit_tokens("hello", 1, deletion_rate=2.0)

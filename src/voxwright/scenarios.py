@@ -242,3 +242,44 @@ def swap_homophones(
         else:
             heard.append(token)
     return Mishearing(text, " ".join(heard), tuple(operations))
+
+
+def edit_tokens(
+    text: str,
+    seed: int,
+    deletion_rate: float = 0.0,
+    insertion_rate: float = 0.0,
+    fillers: tuple[str, ...] = ("uh", "please"),
+) -> Mishearing:
+    """Plant seeded deletions and insertions while retaining an operation log."""
+    if not fillers:
+        raise ValueError("insertion fillers cannot be empty")
+    stream = SeedStream(seed, "token-edits")
+    heard: list[str] = []
+    operations: list[str] = []
+    for index, token in enumerate(text.split()):
+        if stream.chance(insertion_rate):
+            filler = stream.choose(fillers)
+            heard.append(filler)
+            operations.append(f"insert:{index}:{filler}")
+        if stream.chance(deletion_rate):
+            operations.append(f"delete:{index}:{token}")
+        else:
+            heard.append(token)
+    return Mishearing(text, " ".join(heard), tuple(operations))
+
+
+def with_mishearing(scenario: SyntheticScenario, planted: Mishearing) -> SyntheticScenario:
+    """Return a noisy scenario while preserving all planted task truth."""
+    changed = sum(operation.startswith(("swap:", "delete:")) for operation in planted.operations)
+    source_tokens = max(1, len(planted.source.split()))
+    return SyntheticScenario(
+        scenario.scenario_id,
+        scenario.seed,
+        scenario.persona,
+        planted.heard,
+        scenario.goals,
+        min(5, scenario.difficulty + (1 if planted.operations else 0)),
+        round(changed / source_tokens, 6),
+        scenario.adversarial,
+    )
