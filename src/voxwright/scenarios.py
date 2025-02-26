@@ -184,3 +184,24 @@ def application_scenario(task_type: TaskType, seed: int) -> SyntheticScenario:
         (goal,),
         difficulty=1 + stream.next_int() % 3,
     )
+
+
+def composite_scenario(seed: int, nested: bool = False) -> SyntheticScenario:
+    """Combine two seeded goals while preserving their planted call order."""
+    stream = SeedStream(seed, "nested" if nested else "multi")
+    selected = stream.shuffled((TaskType.MUSIC, TaskType.SMART_HOME, TaskType.NOTES))[:2]
+    children = [
+        application_scenario(task_type, stream.next_int() % 10_000) for task_type in selected
+    ]
+    goals = tuple(child.goals[0] for child in children)
+    separator = " then return to " if nested else " and "
+    transcript = separator.join(child.transcript for child in children)
+    family = TaskType.NESTED if nested else TaskType.MULTI_TASK
+    return SyntheticScenario(
+        Identifier(f"{family.value}-{seed}"),
+        seed,
+        stream.choose(DEFAULT_PERSONAS),
+        transcript,
+        goals,
+        difficulty=4 if nested else 3,
+    )

@@ -114,3 +114,18 @@ def test_application_factory_plants_matching_tool_truth(
 def test_composite_types_require_their_dedicated_factory() -> None:
     with pytest.raises(ValueError, match="composite generator"):
         scenarios.application_scenario(scenarios.TaskType.NESTED, 1)
+
+
+def test_multi_task_preserves_goal_and_call_order() -> None:
+    scenario = scenarios.composite_scenario(22)
+    calls_from_goals = tuple(call for goal in scenario.goals for call in goal.tool_calls)
+    assert scenario.planted_calls == calls_from_goals
+    assert len(scenario.goals) == 2
+    assert " and " in scenario.transcript
+
+
+def test_nested_scenario_marks_return_to_interrupted_task() -> None:
+    nested = scenarios.composite_scenario(22, nested=True)
+    assert nested.difficulty == 4
+    assert " then return to " in nested.transcript
+    assert nested.scenario_id.value.startswith("nested-")
