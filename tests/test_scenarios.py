@@ -166,3 +166,18 @@ def test_noisy_scenario_preserves_ground_truth_and_measures_rate() -> None:
 def test_token_edit_rates_use_shared_probability_bounds() -> None:
     with pytest.raises(ValueError, match="between 0 and 1"):
         scenarios.edit_tokens("hello", 1, deletion_rate=2.0)
+
+
+def test_adversarial_factory_keeps_attack_out_of_tool_truth() -> None:
+    scenario = scenarios.adversarial_scenario(12)
+    assert scenario.adversarial
+    assert any(attack in scenario.transcript for attack in scenarios.INJECTION_TRANSCRIPTS)
+    assert scenario.planted_calls[0].tool_name == Identifier("notes.add")
+    assert all(call.tool_name.value not in scenario.transcript for call in scenario.planted_calls)
+
+
+def test_adversarial_corpus_is_reproducible_and_varied() -> None:
+    first = scenarios.adversarial_scenario(3)
+    assert first == scenarios.adversarial_scenario(3)
+    selected = {scenarios.adversarial_scenario(seed).transcript for seed in range(12)}
+    assert len(selected) >= 3
