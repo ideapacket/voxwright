@@ -59,3 +59,39 @@ def conformance_issues(adapter: SpokenAdapter) -> list[str]:
     if empty is not None and empty.events:
         issues.append("adapter emitted events before observation")
     return issues
+
+
+class ScriptedAdapter:
+    """Deterministically return pre-authored event batches for scenario fixtures."""
+
+    name = Identifier("scripted")
+    capabilities = AdapterCapabilities(True, True, True, False, True, "scripted offline events")
+
+    def __init__(self, turns: Sequence[AdapterTurn]) -> None:
+        self._turns = tuple(turns)
+        self._observations: list[tuple[EventEnvelope, ...]] = []
+        self._position = 0
+        self._ready = False
+
+    @property
+    def observations(self) -> tuple[tuple[EventEnvelope, ...], ...]:
+        return tuple(self._observations)
+
+    def observe(self, events: Sequence[EventEnvelope]) -> None:
+        if self._ready:
+            raise RuntimeError("act must consume the previous observation")
+        batch = tuple(events)
+        if not batch:
+            raise ValueError("scripted adapter observation cannot be empty")
+        self._observations.append(batch)
+        self._ready = True
+
+    def act(self) -> AdapterTurn:
+        if not self._ready:
+            raise RuntimeError("observe must be called before act")
+        if self._position >= len(self._turns):
+            raise RuntimeError("scripted adapter has no remaining turn")
+        turn = self._turns[self._position]
+        self._position += 1
+        self._ready = False
+        return turn

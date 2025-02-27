@@ -69,3 +69,21 @@ def test_conformance_detects_unsolicited_output() -> None:
             return adapters.AdapterTurn((input_event(),))
 
     assert adapters.conformance_issues(Eager()) == ["adapter emitted events before observation"]
+
+
+def test_scripted_adapter_replays_turns_and_records_observations() -> None:
+    output = input_event(1, "playing")
+    adapter = adapters.ScriptedAdapter([adapters.AdapterTurn((output,))])
+    observed = input_event()
+    adapter.observe([observed])
+    assert adapter.act() == adapters.AdapterTurn((output,))
+    assert adapter.observations == ((observed,),)
+
+
+def test_scripted_adapter_enforces_observe_act_alternation() -> None:
+    adapter = adapters.ScriptedAdapter([adapters.AdapterTurn(())])
+    with pytest.raises(RuntimeError, match="observe must"):
+        adapter.act()
+    adapter.observe([input_event()])
+    with pytest.raises(RuntimeError, match="consume"):
+        adapter.observe([input_event()])
