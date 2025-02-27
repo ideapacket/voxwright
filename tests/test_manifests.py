@@ -43,3 +43,35 @@ def test_manifest_rejects_truncated_last_line(tmp_path: object) -> None:
     path.write_text(manifests.encode_manifest(campaign()).rstrip(), encoding="utf-8")
     with pytest.raises(ValueError, match="incomplete line"):
         manifests.read_manifest(path)
+
+
+def test_manifest_entry_has_golden_top_level_contract() -> None:
+    entry = manifests.manifest_entry(scenarios.schedule_scenario(7))
+    assert list(entry) == ["schema_version", "scenario", "checksum"]
+    assert entry["schema_version"] == 1
+    assert str(entry["checksum"]).startswith("sha256:")
+    assert set(entry["scenario"]) == {
+        "scenario_id",
+        "seed",
+        "persona",
+        "transcript",
+        "goals",
+        "difficulty",
+        "noise_rate",
+        "adversarial",
+    }
+
+
+def test_manifest_line_order_matches_input_campaign(tmp_path: object) -> None:
+    path = tmp_path / "campaign.jsonl"  # type: ignore[operator]
+    expected = campaign()
+    manifests.write_manifest(path, expected)
+    actual = manifests.read_manifest(path)
+    assert [item.scenario_id for item in actual] == [item.scenario_id for item in expected]
+
+
+def test_empty_manifest_is_a_valid_empty_campaign(tmp_path: object) -> None:
+    path = tmp_path / "empty.jsonl"  # type: ignore[operator]
+    manifests.write_manifest(path, [])
+    assert path.read_bytes() == b""
+    assert manifests.read_manifest(path) == []
