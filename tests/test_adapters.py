@@ -41,3 +41,31 @@ def test_protocol_accepts_structural_implementation() -> None:
     implementation: adapters.SpokenAdapter = Minimal()
     implementation.observe([input_event()])
     assert implementation.act().events == ()
+
+
+def test_conformance_check_allows_explicit_no_observation_error() -> None:
+    class Strict:
+        name = Identifier("strict")
+        capabilities = adapters.AdapterCapabilities(False, False, False, False, True, "strict")
+
+        def observe(self, events: object) -> None:
+            del events
+
+        def act(self) -> adapters.AdapterTurn:
+            raise RuntimeError("observe first")
+
+    assert adapters.conformance_issues(Strict()) == []
+
+
+def test_conformance_detects_unsolicited_output() -> None:
+    class Eager:
+        name = Identifier("eager")
+        capabilities = adapters.AdapterCapabilities(False, False, False, False, True, "eager")
+
+        def observe(self, events: object) -> None:
+            del events
+
+        def act(self) -> adapters.AdapterTurn:
+            return adapters.AdapterTurn((input_event(),))
+
+    assert adapters.conformance_issues(Eager()) == ["adapter emitted events before observation"]

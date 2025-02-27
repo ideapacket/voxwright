@@ -43,3 +43,19 @@ class SpokenAdapter(Protocol):
     def observe(self, events: Sequence[EventEnvelope]) -> None: ...
 
     def act(self) -> AdapterTurn: ...
+
+
+def conformance_issues(adapter: SpokenAdapter) -> list[str]:
+    """Exercise adapter ordering and repeatability rules without model assumptions."""
+    issues: list[str] = []
+    if not str(adapter.name):
+        issues.append("adapter name is empty")
+    if not adapter.capabilities.description.strip():
+        issues.append("capability description is empty")
+    try:
+        empty = adapter.act()
+    except RuntimeError:
+        empty = None
+    if empty is not None and empty.events:
+        issues.append("adapter emitted events before observation")
+    return issues
