@@ -5,7 +5,14 @@ from __future__ import annotations
 import pytest
 
 import voxwright.adapters as adapters
-from voxwright.events import EventEnvelope, EventKind
+from voxwright.events import (
+    EventEnvelope,
+    EventKind,
+    Intent,
+    Transcript,
+    decode_payload,
+    envelope_for,
+)
 from voxwright.identifiers import Identifier
 from voxwright.replay import ReplayTrace
 
@@ -130,3 +137,34 @@ def test_recorded_adapter_requires_nonempty_observation() -> None:
     adapter = adapters.RecordedReplayAdapter(trace)
     with pytest.raises(ValueError, match="cannot be empty"):
         adapter.observe([])
+
+
+def transcript_event(text: str) -> EventEnvelope:
+    return envelope_for(
+        Identifier("session-1"), 0, 0, EventKind.FINAL_TRANSCRIPT, Transcript(text, 1.0)
+    )
+
+
+@pytest.mark.parametrize(
+    ("text", "intent_name"),
+    [
+        ("play music", "music.play"),
+        ("turn on light", "home.set-light"),
+        ("make a note", "notes.add"),
+        ("schedule review", "calendar.create"),
+    ],
+)
+def test_template_adapter_selects_planted_keyword_rule(text: str, intent_name: str) -> None:
+    adapter = adapters.TemplateAdapter()
+    adapter.observe([transcript_event(text)])
+    turn = adapter.act()
+    assert isinstance(decode_payload(turn.events[0]), Intent)
+    assert decode_payload(turn.events[0]).name == Identifier(intent_name)  # type: ignore[union-attr]
+    assert turn.events[1].kind is EventKind.AGENT_UTTERANCE
+
+
+def test_template_adapter_requests_restatement_for_unknown_task() -> None:
+    adapter = adapters.TemplateAdapter()
+    adapter.observe([transcript_event("unmapped request")])
+    turn = adapter.act()
+    assert [event.kind for event in turn.events] == [EventKind.AGENT_UTTERANCE]

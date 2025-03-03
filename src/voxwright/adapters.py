@@ -6,7 +6,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from voxwright.events import EventEnvelope
+from voxwright.events import (
+    AgentUtterance,
+    EventEnvelope,
+    EventKind,
+    Intent,
+    Transcript,
+    envelope_for,
+)
 from voxwright.identifiers import Identifier
 from voxwright.replay import EventReplayer, ReplayTrace
 
@@ -119,3 +126,64 @@ class RecordedReplayAdapter:
         emitted = self._cursor.take()
         self._ready = False
         return AdapterTurn(() if emitted is None else (emitted,), emitted is None)
+
+
+class TemplateAdapter:
+    """A small rule agent for exercising application flow without a language model."""
+
+    name = Identifier("template")
+    capabilities = AdapterCapabilities(False, False, True, False, True, "offline keyword rules")
+
+    _RULES = (
+        ("music", "music.play", "I will play the requested synthetic track"),
+        ("light", "home.set-light", "I will update the synthetic light"),
+        ("note", "notes.add", "I will add the synthetic note"),
+        ("schedule", "calendar.create", "I will create the synthetic event"),
+    )
+
+    def __init__(self) -> None:
+        self._observed: tuple[EventEnvelope, ...] = ()
+
+    def observe(self, events: Sequence[EventEnvelope]) -> None:
+        self._observed = tuple(events)
+        if not self._observed:
+            raise ValueError("template observation cannot be empty")
+
+    def act(self) -> AdapterTurn:
+        if not self._observed:
+            raise RuntimeError("observe must be called before act")
+        source = self._observed[-1]
+        transcript = Transcript.from_payload(source.payload)
+        selected = next((rule for rule in self._RULES if rule[0] in transcript.text.lower()), None)
+        base_sequence = source.sequence + 1
+        if selected is None:
+            utterance = AgentUtterance(
+                "Please restate the application task", Identifier("response-rule")
+            )
+            events = (
+                envelope_for(
+                    source.session_id,
+                    base_sequence,
+                    source.at_ms,
+                    EventKind.AGENT_UTTERANCE,
+                    utterance,
+                ),
+            )
+        else:
+            _, intent_name, response = selected
+            intent = Intent(Identifier(intent_name), 1.0, {})
+            utterance = AgentUtterance(response, Identifier("response-rule"))
+            events = (
+                envelope_for(
+                    source.session_id, base_sequence, source.at_ms, EventKind.INTENT, intent
+                ),
+                envelope_for(
+                    source.session_id,
+                    base_sequence + 1,
+                    source.at_ms,
+                    EventKind.AGENT_UTTERANCE,
+                    utterance,
+                ),
+            )
+        self._observed = ()
+        return AdapterTurn(events)
