@@ -8,6 +8,7 @@ from typing import Protocol
 
 from voxwright.events import EventEnvelope
 from voxwright.identifiers import Identifier
+from voxwright.replay import EventReplayer, ReplayTrace
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,3 +96,26 @@ class ScriptedAdapter:
         self._position += 1
         self._ready = False
         return turn
+
+
+class RecordedReplayAdapter:
+    """Emit recorded agent-side events from an immutable replay trace."""
+
+    name = Identifier("recorded-replay")
+    capabilities = AdapterCapabilities(True, True, True, True, True, "verified session replay")
+
+    def __init__(self, trace: ReplayTrace) -> None:
+        self._cursor = EventReplayer(trace)
+        self._ready = False
+
+    def observe(self, events: Sequence[EventEnvelope]) -> None:
+        if not events:
+            raise ValueError("replay observation cannot be empty")
+        self._ready = True
+
+    def act(self) -> AdapterTurn:
+        if not self._ready:
+            raise RuntimeError("observe must be called before act")
+        emitted = self._cursor.take()
+        self._ready = False
+        return AdapterTurn(() if emitted is None else (emitted,), emitted is None)

@@ -7,6 +7,7 @@ import pytest
 import voxwright.adapters as adapters
 from voxwright.events import EventEnvelope, EventKind
 from voxwright.identifiers import Identifier
+from voxwright.replay import ReplayTrace
 
 
 def input_event(sequence: int = 0, text: str = "play music") -> EventEnvelope:
@@ -111,3 +112,21 @@ def test_scripted_capabilities_distinguish_mechanics_from_intelligence() -> None
     assert capabilities.offline
     assert capabilities.structured_tool_calls
     assert "scripted" in capabilities.description
+
+
+def test_recorded_adapter_emits_trace_events_in_order() -> None:
+    trace = ReplayTrace(Identifier("session-1"), 4, (input_event(0), input_event(1)))
+    adapter = adapters.RecordedReplayAdapter(trace)
+    adapter.observe([input_event()])
+    assert adapter.act().events == (input_event(0),)
+    adapter.observe([input_event(1)])
+    assert adapter.act().events == (input_event(1),)
+    adapter.observe([input_event(2)])
+    assert adapter.act() == adapters.AdapterTurn((), finished=True)
+
+
+def test_recorded_adapter_requires_nonempty_observation() -> None:
+    trace = ReplayTrace(Identifier("session-1"), 0, ())
+    adapter = adapters.RecordedReplayAdapter(trace)
+    with pytest.raises(ValueError, match="cannot be empty"):
+        adapter.observe([])
