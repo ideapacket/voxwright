@@ -87,3 +87,27 @@ def test_scripted_adapter_enforces_observe_act_alternation() -> None:
     adapter.observe([input_event()])
     with pytest.raises(RuntimeError, match="consume"):
         adapter.observe([input_event()])
+
+
+def test_scripted_adapter_reports_exhaustion_after_valid_observation() -> None:
+    adapter = adapters.ScriptedAdapter([adapters.AdapterTurn(())])
+    adapter.observe([input_event()])
+    adapter.act()
+    adapter.observe([input_event(1)])
+    with pytest.raises(RuntimeError, match="no remaining turn"):
+        adapter.act()
+
+
+def test_scripted_adapter_snapshots_mutable_turn_input() -> None:
+    turns = [adapters.AdapterTurn((input_event(1),))]
+    adapter = adapters.ScriptedAdapter(turns)
+    turns.clear()
+    adapter.observe([input_event()])
+    assert adapter.act().events == (input_event(1),)
+
+
+def test_scripted_capabilities_distinguish_mechanics_from_intelligence() -> None:
+    capabilities = adapters.ScriptedAdapter.capabilities
+    assert capabilities.offline
+    assert capabilities.structured_tool_calls
+    assert "scripted" in capabilities.description
