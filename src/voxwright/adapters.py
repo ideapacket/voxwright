@@ -171,7 +171,8 @@ class TemplateAdapter:
             )
         else:
             _, intent_name, response = selected
-            intent = Intent(Identifier(intent_name), 1.0, {})
+            intent_id = Identifier(intent_name)
+            intent = Intent(intent_id, 1.0, extract_rule_slots(transcript.text, intent_id))
             utterance = AgentUtterance(response, Identifier("response-rule"))
             events = (
                 envelope_for(
@@ -187,3 +188,20 @@ class TemplateAdapter:
             )
         self._observed = ()
         return AdapterTurn(events)
+
+
+def extract_rule_slots(text: str, intent_name: Identifier) -> dict[str, str | bool]:
+    """Extract transparent synthetic slots for template-adapter demonstrations."""
+    words = text.lower().split()
+    if intent_name.value == "home.set-light":
+        rooms = ("study", "bedroom", "kitchen")
+        room = next((item for item in rooms if item in words), "study")
+        return {"room": room, "on": "off" not in words}
+    if intent_name.value == "music.play":
+        marker = words.index("music") + 1 if "music" in words else len(words)
+        return {"track": " ".join(words[marker:]) or "synthetic track"}
+    if intent_name.value == "notes.add":
+        return {"text": " ".join(word for word in words if word not in {"make", "a", "note"})}
+    if intent_name.value == "calendar.create":
+        return {"title": " ".join(word for word in words if word != "schedule")}
+    return {}

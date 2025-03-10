@@ -168,3 +168,18 @@ def test_template_adapter_requests_restatement_for_unknown_task() -> None:
     adapter.observe([transcript_event("unmapped request")])
     turn = adapter.act()
     assert [event.kind for event in turn.events] == [EventKind.AGENT_UTTERANCE]
+
+
+def test_template_slot_extraction_is_visible_and_deterministic() -> None:
+    light = adapters.extract_rule_slots("turn off bedroom light", Identifier("home.set-light"))
+    music = adapters.extract_rule_slots("play music Blue Sky", Identifier("music.play"))
+    assert light == {"room": "bedroom", "on": False}
+    assert music == {"track": "blue sky"}
+
+
+def test_template_adapter_places_extracted_slots_in_intent() -> None:
+    adapter = adapters.TemplateAdapter()
+    adapter.observe([transcript_event("turn on kitchen light")])
+    intent = decode_payload(adapter.act().events[0])
+    assert isinstance(intent, Intent)
+    assert intent.slots == {"room": "kitchen", "on": True}
