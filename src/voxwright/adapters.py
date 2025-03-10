@@ -205,3 +205,26 @@ def extract_rule_slots(text: str, intent_name: Identifier) -> dict[str, str | bo
     if intent_name.value == "calendar.create":
         return {"title": " ".join(word for word in words if word != "schedule")}
     return {}
+
+
+ADAPTER_CAPABILITIES: dict[str, AdapterCapabilities] = {
+    str(ScriptedAdapter.name): ScriptedAdapter.capabilities,
+    str(RecordedReplayAdapter.name): RecordedReplayAdapter.capabilities,
+    str(TemplateAdapter.name): TemplateAdapter.capabilities,
+}
+
+
+def capability_descriptor(name: str) -> dict[str, str | bool]:
+    """Return a stable public capability record without instantiating adapters."""
+    try:
+        capabilities = ADAPTER_CAPABILITIES[name]
+    except KeyError as error:
+        raise ValueError(f"unknown adapter: {name}") from error
+    return {
+        "streaming_input": capabilities.streaming_input,
+        "streaming_output": capabilities.streaming_output,
+        "structured_tool_calls": capabilities.structured_tool_calls,
+        "context_attachments": capabilities.context_attachments,
+        "offline": capabilities.offline,
+        "description": capabilities.description,
+    }

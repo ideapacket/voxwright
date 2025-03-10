@@ -209,3 +209,16 @@ def test_rule_slot_defaults_are_explicit() -> None:
         "track": "synthetic track"
     }
     assert adapters.extract_rule_slots("unknown", Identifier("unknown.intent")) == {}
+
+
+def test_capability_registry_covers_builtin_adapters() -> None:
+    assert set(adapters.ADAPTER_CAPABILITIES) == {"scripted", "recorded-replay", "template"}
+    for name in adapters.ADAPTER_CAPABILITIES:
+        descriptor = adapters.capability_descriptor(name)
+        assert descriptor["offline"] is True
+        assert descriptor["description"]
+
+
+def test_capability_registry_rejects_unknown_adapter() -> None:
+    with pytest.raises(ValueError, match="unknown adapter: remote"):
+        adapters.capability_descriptor("remote")
