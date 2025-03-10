@@ -40,3 +40,41 @@ def test_loopback_validates_bounded_config() -> None:
         loopback.LoopbackAdapter(
             lambda request, timeout: loopback.LoopbackResponse(200), timeout_ms=0
         )
+
+
+def test_loopback_retries_only_configured_statuses() -> None:
+    adapter = loopback.LoopbackAdapter(
+        transport_from(
+            [
+                loopback.LoopbackResponse(503, error="busy"),
+                loopback.LoopbackResponse(429, error="limited"),
+                loopback.LoopbackResponse(200, (event(),)),
+            ]
+        ),
+        timeout_ms=25,
+    )
+    adapter.observe([event()])
+    assert adapter.act().events == (event(),)
+    assert adapter.attempts == 3
+
+
+def test_loopback_fails_fast_on_nonretryable_status() -> None:
+    adapter = loopback.LoopbackAdapter(
+        transport_from([loopback.LoopbackResponse(400, error="bad request")]), timeout_ms=25
+    )
+    adapter.observe([event()])
+    with pytest.raises(RuntimeError, match="status 400"):
+        adapter.act()
+    assert adapter.attempts == 1
+
+
+def test_loopback_exhaustion_is_bounded() -> None:
+    adapter = loopback.LoopbackAdapter(
+        transport_from([loopback.LoopbackResponse(503), loopback.LoopbackResponse(503)]),
+        timeout_ms=25,
+        max_attempts=2,
+    )
+    adapter.observe([event()])
+    with pytest.raises(TimeoutError, match="exhausted 2 attempts"):
+        adapter.act()
+    assert adapter.attempts == 2
