@@ -183,3 +183,29 @@ def test_template_adapter_places_extracted_slots_in_intent() -> None:
     intent = decode_payload(adapter.act().events[0])
     assert isinstance(intent, Intent)
     assert intent.slots == {"room": "kitchen", "on": True}
+
+
+def test_template_adapter_rejects_non_transcript_payload() -> None:
+    adapter = adapters.TemplateAdapter()
+    adapter.observe([input_event()])
+    with pytest.raises(ValueError, match="missing field"):
+        adapter.act()
+
+
+def test_template_adapter_consumes_observation_once() -> None:
+    adapter = adapters.TemplateAdapter()
+    adapter.observe([transcript_event("play music")])
+    adapter.act()
+    with pytest.raises(RuntimeError, match="observe must"):
+        adapter.act()
+
+
+def test_rule_slot_defaults_are_explicit() -> None:
+    assert adapters.extract_rule_slots("turn on light", Identifier("home.set-light")) == {
+        "room": "study",
+        "on": True,
+    }
+    assert adapters.extract_rule_slots("play music", Identifier("music.play")) == {
+        "track": "synthetic track"
+    }
+    assert adapters.extract_rule_slots("unknown", Identifier("unknown.intent")) == {}
