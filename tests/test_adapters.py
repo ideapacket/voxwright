@@ -222,3 +222,30 @@ def test_capability_registry_covers_builtin_adapters() -> None:
 def test_capability_registry_rejects_unknown_adapter() -> None:
     with pytest.raises(ValueError, match="unknown adapter: remote"):
         adapters.capability_descriptor("remote")
+
+
+def test_builtin_descriptor_has_exact_serializable_fields() -> None:
+    assert set(adapters.capability_descriptor("template")) == {
+        "streaming_input",
+        "streaming_output",
+        "structured_tool_calls",
+        "context_attachments",
+        "offline",
+        "description",
+    }
+
+
+def test_each_builtin_adapter_uses_a_distinct_identifier() -> None:
+    identifiers = {
+        adapters.ScriptedAdapter.name,
+        adapters.RecordedReplayAdapter.name,
+        adapters.TemplateAdapter.name,
+    }
+    assert len(identifiers) == 3
+
+
+def test_descriptors_never_claim_network_model_evaluation() -> None:
+    forbidden = {"pretrained", "benchmark", "endpoint", "human evaluated"}
+    for capabilities in adapters.ADAPTER_CAPABILITIES.values():
+        lowered = capabilities.description.lower()
+        assert all(word not in lowered for word in forbidden)
