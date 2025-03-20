@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 import voxwright.call_grammar as grammar
+import voxwright.tool_schema as schemas
 from voxwright.identifiers import Identifier
 
 
@@ -54,3 +55,25 @@ def test_parser_rejects_trailing_second_call_as_invalid_json() -> None:
 def test_parser_preserves_unicode_argument_text() -> None:
     parsed = grammar.parse_call('CALL notes.add {"text":"买牛奶"}')
     assert parsed.arguments == {"text": "买牛奶"}
+
+
+def registry() -> schemas.ToolRegistry:
+    return schemas.ToolRegistry(
+        (
+            schemas.ToolSchema(
+                Identifier("timer.start"),
+                (schemas.ParameterSpec(Identifier("seconds"), schemas.ValueType.INTEGER),),
+                "start timer",
+            ),
+        )
+    )
+
+
+def test_validated_parser_resolves_and_coerces_tool_call() -> None:
+    parsed = grammar.parse_validated_call('CALL timer.start {"seconds":"30"}', registry())
+    assert parsed == grammar.ParsedCall(Identifier("timer.start"), {"seconds": 30})
+
+
+def test_validated_parser_rejects_unknown_tool_before_execution() -> None:
+    with pytest.raises(ValueError, match=r"unknown tool: timer\.stop"):
+        grammar.parse_validated_call('CALL timer.stop {"seconds":30}', registry())

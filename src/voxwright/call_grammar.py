@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from voxwright.core import JSONValue, canonical_json, parse_json
 from voxwright.identifiers import Identifier
+from voxwright.tool_schema import ToolRegistry, validate_arguments
 
 CALL_PREFIX = "CALL "
 
@@ -50,3 +51,10 @@ def parse_call(text: str) -> ParsedCall:
 
 def format_call(call: ParsedCall) -> str:
     return f"{CALL_PREFIX}{call.tool_name} {canonical_json(call.arguments)}"
+
+
+def parse_validated_call(text: str, registry: ToolRegistry) -> ParsedCall:
+    """Parse syntax, resolve the tool, then coerce and validate arguments."""
+    parsed = parse_call(text)
+    schema = registry.resolve(parsed.tool_name)
+    return ParsedCall(parsed.tool_name, validate_arguments(schema, parsed.arguments))
