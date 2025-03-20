@@ -25,3 +25,32 @@ def test_parser_requires_argument_object() -> None:
     with pytest.raises(grammar.CallParseError) as captured:
         grammar.parse_call("CALL music.play []")
     assert captured.value.code == "arguments-not-object"
+
+
+@pytest.mark.parametrize(
+    ("text", "code"),
+    [
+        ("CALL notes.add", "missing-arguments"),
+        ("CALL Bad.Tool {}", "invalid-tool"),
+        ("CALL notes.add {", "invalid-json"),
+        ("CALL notes.add null", "arguments-not-object"),
+    ],
+)
+def test_parser_reports_stable_failure_codes(text: str, code: str) -> None:
+    with pytest.raises(grammar.CallParseError) as captured:
+        grammar.parse_call(text)
+    assert captured.value.code == code
+    assert captured.value.offset >= 0
+    assert str(captured.value).startswith(f"{code} at ")
+
+
+def test_parser_rejects_trailing_second_call_as_invalid_json() -> None:
+    text = 'CALL notes.add {"text":"x"} CALL home.unlock {}'
+    with pytest.raises(grammar.CallParseError) as captured:
+        grammar.parse_call(text)
+    assert captured.value.code == "invalid-json"
+
+
+def test_parser_preserves_unicode_argument_text() -> None:
+    parsed = grammar.parse_call('CALL notes.add {"text":"买牛奶"}')
+    assert parsed.arguments == {"text": "买牛奶"}
