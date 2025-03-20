@@ -83,3 +83,25 @@ def test_registry_rejects_duplicate_and_unknown_tools() -> None:
         registry.register(schema)
     with pytest.raises(ValueError, match=r"unknown tool: timer\.stop"):
         registry.resolve("timer.stop")
+
+
+@pytest.mark.parametrize(
+    ("value", "value_type", "expected"),
+    [
+        ("42", schemas.ValueType.INTEGER, 42),
+        ("-3", schemas.ValueType.INTEGER, -3),
+        ("2.5", schemas.ValueType.NUMBER, 2.5),
+        ("TRUE", schemas.ValueType.BOOLEAN, True),
+        ({"x": 1}, schemas.ValueType.OBJECT, {"x": 1}),
+        ([1, 2], schemas.ValueType.ARRAY, [1, 2]),
+    ],
+)
+def test_argument_coercions_are_explicit(
+    value: object, value_type: schemas.ValueType, expected: object
+) -> None:
+    assert schemas.coerce_value(value, value_type, "$.value") == expected  # type: ignore[arg-type]
+
+
+def test_argument_coercion_never_treats_boolean_as_number() -> None:
+    with pytest.raises(TypeError, match=r"\$\.count: cannot coerce"):
+        schemas.coerce_value(True, schemas.ValueType.INTEGER, "$.count")

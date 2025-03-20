@@ -131,3 +131,35 @@ class ToolRegistry:
 
     def names(self) -> tuple[Identifier, ...]:
         return tuple(sorted(self._tools))
+
+
+def coerce_value(value: JSONValue, value_type: ValueType, path: str) -> JSONValue:
+    """Apply explicit, narrow coercions suitable for grammar-emitted arguments."""
+    if value is None:
+        return None
+    if value_type is ValueType.STRING:
+        if isinstance(value, str):
+            return value
+    elif value_type is ValueType.INTEGER:
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+        if isinstance(value, str) and value.lstrip("-").isdigit():
+            return int(value)
+    elif value_type is ValueType.NUMBER:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                pass
+    elif value_type is ValueType.BOOLEAN:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str) and value.lower() in {"true", "false"}:
+            return value.lower() == "true"
+    elif (value_type is ValueType.OBJECT and isinstance(value, dict)) or (
+        value_type is ValueType.ARRAY and isinstance(value, list)
+    ):
+        return value
+    raise TypeError(f"{path}: cannot coerce to {value_type.value}")
