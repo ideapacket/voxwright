@@ -107,3 +107,27 @@ class ToolSchema:
             str(checked["description"]),
             bool(checked["idempotent"]),
         )
+
+
+class ToolRegistry:
+    """An immutable-name registry that rejects ambiguous tool definitions."""
+
+    def __init__(self, tools: tuple[ToolSchema, ...] = ()) -> None:
+        self._tools: dict[Identifier, ToolSchema] = {}
+        for tool in tools:
+            self.register(tool)
+
+    def register(self, schema: ToolSchema) -> None:
+        if schema.name in self._tools:
+            raise ValueError(f"tool already registered: {schema.name}")
+        self._tools[schema.name] = schema
+
+    def resolve(self, name: str | Identifier) -> ToolSchema:
+        identifier = name if isinstance(name, Identifier) else Identifier(name)
+        try:
+            return self._tools[identifier]
+        except KeyError as error:
+            raise ValueError(f"unknown tool: {identifier}") from error
+
+    def names(self) -> tuple[Identifier, ...]:
+        return tuple(sorted(self._tools))

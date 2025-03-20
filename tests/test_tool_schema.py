@@ -64,3 +64,22 @@ def test_schema_decoder_rejects_unknown_top_level_field() -> None:
     value["future"] = True
     with pytest.raises(ValueError, match="invalid tool schema shape"):
         schemas.ToolSchema.from_dict(value)
+
+
+def test_registry_resolves_tools_in_sorted_name_order() -> None:
+    registry = schemas.ToolRegistry()
+    notes = schemas.ToolSchema(Identifier("notes.add"), (), "add note")
+    calendar = schemas.ToolSchema(Identifier("calendar.create"), (), "create event")
+    registry.register(notes)
+    registry.register(calendar)
+    assert registry.resolve("notes.add") is notes
+    assert [name.value for name in registry.names()] == ["calendar.create", "notes.add"]
+
+
+def test_registry_rejects_duplicate_and_unknown_tools() -> None:
+    schema = schemas.ToolSchema(Identifier("timer.start"), (), "start timer")
+    registry = schemas.ToolRegistry((schema,))
+    with pytest.raises(ValueError, match="already registered"):
+        registry.register(schema)
+    with pytest.raises(ValueError, match=r"unknown tool: timer\.stop"):
+        registry.resolve("timer.stop")
