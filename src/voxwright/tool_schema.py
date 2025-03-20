@@ -51,3 +51,59 @@ class ToolSchema:
         names = [parameter.name for parameter in self.parameters]
         if len(set(names)) != len(names):
             raise ValueError("tool parameter names must be unique")
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "name": str(self.name),
+            "description": self.description,
+            "idempotent": self.idempotent,
+            "parameters": [
+                {
+                    "name": str(item.name),
+                    "type": item.value_type.value,
+                    "required": item.required,
+                    "nullable": item.nullable,
+                    "default": item.default,
+                }
+                for item in self.parameters
+            ],
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> ToolSchema:
+        checked = ensure_json_value(value, "$")
+        if not isinstance(checked, dict) or set(checked) != {
+            "name",
+            "description",
+            "idempotent",
+            "parameters",
+        }:
+            raise ValueError("invalid tool schema shape")
+        parameters = checked["parameters"]
+        if not isinstance(parameters, list):
+            raise TypeError("$.parameters: expected array")
+        decoded = []
+        for index, item in enumerate(parameters):
+            if not isinstance(item, dict) or set(item) != {
+                "name",
+                "type",
+                "required",
+                "nullable",
+                "default",
+            }:
+                raise ValueError(f"$.parameters[{index}]: invalid parameter shape")
+            decoded.append(
+                ParameterSpec(
+                    Identifier(str(item["name"])),
+                    ValueType(str(item["type"])),
+                    bool(item["required"]),
+                    bool(item["nullable"]),
+                    item["default"],
+                )
+            )
+        return cls(
+            Identifier(str(checked["name"])),
+            tuple(decoded),
+            str(checked["description"]),
+            bool(checked["idempotent"]),
+        )

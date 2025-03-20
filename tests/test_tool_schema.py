@@ -36,3 +36,31 @@ def test_tool_schema_rejects_duplicate_parameters_and_empty_description() -> Non
         schemas.ToolSchema(Identifier("notes.add"), (parameter(), parameter()), "add")
     with pytest.raises(ValueError, match="description cannot be empty"):
         schemas.ToolSchema(Identifier("notes.add"), (), " ")
+
+
+def test_schema_roundtrip_has_golden_public_shape() -> None:
+    schema = schemas.ToolSchema(
+        Identifier("music.play"), (parameter("track"),), "play synthetic track", True
+    )
+    assert schema.to_dict() == {
+        "name": "music.play",
+        "description": "play synthetic track",
+        "idempotent": True,
+        "parameters": [
+            {
+                "name": "track",
+                "type": "string",
+                "required": True,
+                "nullable": False,
+                "default": None,
+            }
+        ],
+    }
+    assert schemas.ToolSchema.from_dict(schema.to_dict()) == schema
+
+
+def test_schema_decoder_rejects_unknown_top_level_field() -> None:
+    value = schemas.ToolSchema(Identifier("timer.start"), (), "start").to_dict()
+    value["future"] = True
+    with pytest.raises(ValueError, match="invalid tool schema shape"):
+        schemas.ToolSchema.from_dict(value)
