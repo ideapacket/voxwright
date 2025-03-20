@@ -163,3 +163,26 @@ def coerce_value(value: JSONValue, value_type: ValueType, path: str) -> JSONValu
     ):
         return value
     raise TypeError(f"{path}: cannot coerce to {value_type.value}")
+
+
+def validate_arguments(schema: ToolSchema, arguments: dict[str, JSONValue]) -> dict[str, JSONValue]:
+    """Reject unknowns, fill optional defaults, and return schema-ordered arguments."""
+    specs = {str(parameter.name): parameter for parameter in schema.parameters}
+    unknown = arguments.keys() - specs.keys()
+    if unknown:
+        raise ValueError(f"unknown argument: {sorted(unknown)[0]}")
+    validated: dict[str, JSONValue] = {}
+    for name, spec in specs.items():
+        if name not in arguments:
+            if spec.required:
+                raise ValueError(f"missing required argument: {name}")
+            validated[name] = spec.default
+            continue
+        value = arguments[name]
+        if value is None:
+            if not spec.nullable:
+                raise ValueError(f"argument is not nullable: {name}")
+            validated[name] = None
+        else:
+            validated[name] = coerce_value(value, spec.value_type, f"$.{name}")
+    return validated

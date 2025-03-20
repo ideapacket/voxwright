@@ -105,3 +105,25 @@ def test_argument_coercions_are_explicit(
 def test_argument_coercion_never_treats_boolean_as_number() -> None:
     with pytest.raises(TypeError, match=r"\$\.count: cannot coerce"):
         schemas.coerce_value(True, schemas.ValueType.INTEGER, "$.count")
+
+
+def test_argument_validation_fills_defaults_in_schema_order() -> None:
+    schema = schemas.ToolSchema(
+        Identifier("music.play"),
+        (
+            parameter("track"),
+            schemas.ParameterSpec(Identifier("volume"), schemas.ValueType.INTEGER, False, False, 5),
+        ),
+        "play",
+    )
+    assert schemas.validate_arguments(schema, {"track": "Blue"}) == {"track": "Blue", "volume": 5}
+
+
+def test_argument_validation_rejects_missing_unknown_and_null() -> None:
+    schema = schemas.ToolSchema(Identifier("notes.add"), (parameter("text"),), "add")
+    with pytest.raises(ValueError, match="missing required argument: text"):
+        schemas.validate_arguments(schema, {})
+    with pytest.raises(ValueError, match="unknown argument: extra"):
+        schemas.validate_arguments(schema, {"text": "x", "extra": 1})
+    with pytest.raises(ValueError, match="not nullable"):
+        schemas.validate_arguments(schema, {"text": None})
