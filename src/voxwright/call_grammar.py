@@ -71,3 +71,26 @@ class ModelChannels:
 def calls_from_channels(channels: ModelChannels, registry: ToolRegistry) -> tuple[ParsedCall, ...]:
     """Parse only the dedicated call channel; transcript contents remain inert."""
     return tuple(parse_validated_call(text, registry) for text in channels.call_texts)
+
+
+@dataclass(frozen=True, slots=True)
+class CallDiagnostic:
+    index: int
+    code: str
+    message: str
+
+
+def recover_calls(
+    call_texts: tuple[str, ...], registry: ToolRegistry
+) -> tuple[tuple[ParsedCall, ...], tuple[CallDiagnostic, ...]]:
+    """Recover valid independent calls while retaining deterministic failures."""
+    calls: list[ParsedCall] = []
+    diagnostics: list[CallDiagnostic] = []
+    for index, text in enumerate(call_texts):
+        try:
+            calls.append(parse_validated_call(text, registry))
+        except CallParseError as error:
+            diagnostics.append(CallDiagnostic(index, error.code, error.message))
+        except (TypeError, ValueError) as error:
+            diagnostics.append(CallDiagnostic(index, "validation", str(error)))
+    return tuple(calls), tuple(diagnostics)

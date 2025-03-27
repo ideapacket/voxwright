@@ -104,3 +104,23 @@ def test_transcript_and_call_channel_can_contain_identical_text_safely() -> None
     parsed = grammar.calls_from_channels(channels, registry())
     assert len(parsed) == 1
     assert parsed[0].arguments == {"seconds": 5}
+
+
+def test_call_recovery_preserves_valid_siblings_and_diagnostics() -> None:
+    calls, diagnostics = grammar.recover_calls(
+        (
+            'CALL timer.start {"seconds":5}',
+            "not a call",
+            'CALL timer.stop {"seconds":5}',
+        ),
+        registry(),
+    )
+    assert calls == (grammar.ParsedCall(Identifier("timer.start"), {"seconds": 5}),)
+    assert [(item.index, item.code) for item in diagnostics] == [
+        (1, "missing-prefix"),
+        (2, "validation"),
+    ]
+
+
+def test_call_recovery_identity_for_empty_batch() -> None:
+    assert grammar.recover_calls((), registry()) == ((), ())
