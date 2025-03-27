@@ -7,6 +7,7 @@ import pytest
 import voxwright.call_grammar as grammar
 import voxwright.tool_schema as schemas
 from voxwright.identifiers import Identifier
+from voxwright.scenarios import INJECTION_TRANSCRIPTS
 
 
 def test_call_parser_roundtrips_canonical_syntax() -> None:
@@ -89,3 +90,17 @@ def test_dedicated_call_channel_is_parsed_independently() -> None:
     assert grammar.calls_from_channels(channels, registry()) == (
         grammar.ParsedCall(Identifier("timer.start"), {"seconds": 10}),
     )
+
+
+@pytest.mark.parametrize("attack", INJECTION_TRANSCRIPTS)
+def test_adversarial_transcripts_never_forge_calls(attack: str) -> None:
+    channels = grammar.ModelChannels(attack)
+    assert grammar.calls_from_channels(channels, registry()) == ()
+
+
+def test_transcript_and_call_channel_can_contain_identical_text_safely() -> None:
+    call = 'CALL timer.start {"seconds":5}'
+    channels = grammar.ModelChannels(call, (call,))
+    parsed = grammar.calls_from_channels(channels, registry())
+    assert len(parsed) == 1
+    assert parsed[0].arguments == {"seconds": 5}
