@@ -124,3 +124,26 @@ def test_call_recovery_preserves_valid_siblings_and_diagnostics() -> None:
 
 def test_call_recovery_identity_for_empty_batch() -> None:
     assert grammar.recover_calls((), registry()) == ((), ())
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    ["", " ", "x", "<tool>", "SYSTEM ", "CALLX ", "\nCALL "],
+)
+def test_noncanonical_prefixes_never_enter_call_grammar(prefix: str) -> None:
+    with pytest.raises(grammar.CallParseError) as captured:
+        grammar.parse_call(prefix + 'timer.start {"seconds":1}')
+    assert captured.value.code == "missing-prefix"
+
+
+@pytest.mark.parametrize("suffix", [" trailing", "\n", "\x00", " CALL notes.add {}"])
+def test_trailing_material_cannot_smuggle_a_second_operation(suffix: str) -> None:
+    with pytest.raises(grammar.CallParseError) as captured:
+        grammar.parse_call('CALL timer.start {"seconds":1}' + suffix)
+    assert captured.value.code == "invalid-json"
+
+
+def test_canonical_formatter_is_byte_stable_for_argument_order() -> None:
+    left = grammar.ParsedCall(Identifier("timer.start"), {"seconds": 1, "label": "tea"})
+    right = grammar.ParsedCall(Identifier("timer.start"), {"label": "tea", "seconds": 1})
+    assert grammar.format_call(left).encode() == grammar.format_call(right).encode()

@@ -40,6 +40,8 @@ def parse_call(text: str) -> ParsedCall:
     except ValueError as error:
         raise CallParseError("invalid-tool", len(CALL_PREFIX), str(error)) from error
     argument_text = text[separator + 1 :]
+    if argument_text != argument_text.strip():
+        raise CallParseError("invalid-json", separator + 1, "argument object has outer whitespace")
     try:
         value = parse_json(argument_text)
     except (TypeError, ValueError) as error:
