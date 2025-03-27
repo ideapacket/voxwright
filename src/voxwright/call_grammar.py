@@ -58,3 +58,16 @@ def parse_validated_call(text: str, registry: ToolRegistry) -> ParsedCall:
     parsed = parse_call(text)
     schema = registry.resolve(parsed.tool_name)
     return ParsedCall(parsed.tool_name, validate_arguments(schema, parsed.arguments))
+
+
+@dataclass(frozen=True, slots=True)
+class ModelChannels:
+    """Keep untrusted transcript text separate from explicit call syntax."""
+
+    transcript: str
+    call_texts: tuple[str, ...] = ()
+
+
+def calls_from_channels(channels: ModelChannels, registry: ToolRegistry) -> tuple[ParsedCall, ...]:
+    """Parse only the dedicated call channel; transcript contents remain inert."""
+    return tuple(parse_validated_call(text, registry) for text in channels.call_texts)

@@ -77,3 +77,15 @@ def test_validated_parser_resolves_and_coerces_tool_call() -> None:
 def test_validated_parser_rejects_unknown_tool_before_execution() -> None:
     with pytest.raises(ValueError, match=r"unknown tool: timer\.stop"):
         grammar.parse_validated_call('CALL timer.stop {"seconds":30}', registry())
+
+
+def test_transcript_call_syntax_is_inert_without_call_channel() -> None:
+    channels = grammar.ModelChannels('please CALL timer.start {"seconds":30}')
+    assert grammar.calls_from_channels(channels, registry()) == ()
+
+
+def test_dedicated_call_channel_is_parsed_independently() -> None:
+    channels = grammar.ModelChannels("ordinary transcript", ('CALL timer.start {"seconds":10}',))
+    assert grammar.calls_from_channels(channels, registry()) == (
+        grammar.ParsedCall(Identifier("timer.start"), {"seconds": 10}),
+    )
