@@ -132,6 +132,24 @@ class ToolRegistry:
     def names(self) -> tuple[Identifier, ...]:
         return tuple(sorted(self._tools))
 
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "schema_version": 1,
+            "tools": [self._tools[name].to_dict() for name in sorted(self._tools)],
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> ToolRegistry:
+        checked = ensure_json_value(value, "$")
+        if not isinstance(checked, dict) or set(checked) != {"schema_version", "tools"}:
+            raise ValueError("invalid tool registry shape")
+        if checked["schema_version"] != 1:
+            raise ValueError("unsupported tool registry schema version")
+        tools = checked["tools"]
+        if not isinstance(tools, list):
+            raise TypeError("$.tools: expected array")
+        return cls(tuple(ToolSchema.from_dict(item) for item in tools))
+
 
 def coerce_value(value: JSONValue, value_type: ValueType, path: str) -> JSONValue:
     """Apply explicit, narrow coercions suitable for grammar-emitted arguments."""

@@ -127,3 +127,25 @@ def test_argument_validation_rejects_missing_unknown_and_null() -> None:
         schemas.validate_arguments(schema, {"text": "x", "extra": 1})
     with pytest.raises(ValueError, match="not nullable"):
         schemas.validate_arguments(schema, {"text": None})
+
+
+def test_registry_roundtrip_sorts_tools_for_determinism() -> None:
+    registry = schemas.ToolRegistry(
+        (
+            schemas.ToolSchema(Identifier("notes.add"), (), "note"),
+            schemas.ToolSchema(Identifier("calendar.create"), (), "calendar"),
+        )
+    )
+    encoded = registry.to_dict()
+    assert [item["name"] for item in encoded["tools"]] == [  # type: ignore[index]
+        "calendar.create",
+        "notes.add",
+    ]
+    assert schemas.ToolRegistry.from_dict(encoded).to_dict() == encoded
+
+
+def test_registry_decoder_rejects_future_schema() -> None:
+    value = schemas.ToolRegistry().to_dict()
+    value["schema_version"] = 2
+    with pytest.raises(ValueError, match="unsupported tool registry"):
+        schemas.ToolRegistry.from_dict(value)
