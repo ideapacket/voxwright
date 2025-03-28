@@ -68,3 +68,23 @@ def test_confirmation_policy_requires_filled_slot_and_valid_threshold() -> None:
         frames.ConfirmationPolicy(1.1)
     with pytest.raises(ValueError, match="requires a filled slot"):
         frames.ConfirmationPolicy().decide(open_slot())
+
+
+def task_frame() -> frames.TaskFrame:
+    slot = open_slot()
+    return frames.TaskFrame(Identifier("frame-1"), Identifier("home.light"), {slot.name: slot})
+
+
+def test_frame_activates_and_suspends_explicitly() -> None:
+    active = task_frame().activate()
+    suspended = active.suspend()
+    assert active.state is frames.FrameState.ACTIVE
+    assert suspended.state is frames.FrameState.SUSPENDED
+    assert suspended.activate().state is frames.FrameState.ACTIVE
+
+
+def test_frame_rejects_mismatched_slot_index() -> None:
+    with pytest.raises(ValueError, match="key does not match"):
+        frames.TaskFrame(
+            Identifier("frame-1"), Identifier("home.light"), {Identifier("wrong"): open_slot()}
+        )

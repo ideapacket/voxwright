@@ -84,3 +84,36 @@ class ConfirmationPolicy:
         if slot.confidence >= self.auto_threshold:
             return ConfirmationAction.AUTO_CONFIRM
         return ConfirmationAction.EXPLICIT_CONFIRM
+
+
+class FrameState(str, Enum):
+    OPEN = "open"
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+    CLOSED = "closed"
+
+
+@dataclass(frozen=True, slots=True)
+class TaskFrame:
+    """A task intent with named slots and explicit lifecycle state."""
+
+    frame_id: Identifier
+    intent: Identifier
+    slots: dict[Identifier, GroundedSlot]
+    state: FrameState = FrameState.OPEN
+
+    def __post_init__(self) -> None:
+        copied = dict(self.slots)
+        if any(name != slot.name for name, slot in copied.items()):
+            raise ValueError("frame slot key does not match slot name")
+        object.__setattr__(self, "slots", copied)
+
+    def activate(self) -> TaskFrame:
+        if self.state not in {FrameState.OPEN, FrameState.SUSPENDED}:
+            raise ValueError("only open or suspended frame can activate")
+        return replace(self, state=FrameState.ACTIVE)
+
+    def suspend(self) -> TaskFrame:
+        if self.state is not FrameState.ACTIVE:
+            raise ValueError("only active frame can suspend")
+        return replace(self, state=FrameState.SUSPENDED)
