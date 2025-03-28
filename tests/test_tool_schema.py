@@ -149,3 +149,32 @@ def test_registry_decoder_rejects_future_schema() -> None:
     value["schema_version"] = 2
     with pytest.raises(ValueError, match="unsupported tool registry"):
         schemas.ToolRegistry.from_dict(value)
+
+
+def test_parameter_defaults_must_be_optional() -> None:
+    with pytest.raises(ValueError, match="required parameter cannot declare a default"):
+        schemas.ParameterSpec(Identifier("count"), schemas.ValueType.INTEGER, True, False, 1)
+
+
+def test_nullable_parameter_accepts_null_without_coercion() -> None:
+    schema = schemas.ToolSchema(
+        Identifier("notes.add"),
+        (schemas.ParameterSpec(Identifier("folder"), schemas.ValueType.STRING, False, True),),
+        "add",
+    )
+    assert schemas.validate_arguments(schema, {"folder": None}) == {"folder": None}
+
+
+@pytest.mark.parametrize(
+    ("value", "value_type"),
+    [
+        (1.5, schemas.ValueType.INTEGER),
+        ("yes", schemas.ValueType.BOOLEAN),
+        ([], schemas.ValueType.OBJECT),
+    ],
+)
+def test_coercion_rejects_lossy_or_shape_changing_values(
+    value: object, value_type: schemas.ValueType
+) -> None:
+    with pytest.raises(TypeError, match="cannot coerce"):
+        schemas.coerce_value(value, value_type, "$.value")  # type: ignore[arg-type]
