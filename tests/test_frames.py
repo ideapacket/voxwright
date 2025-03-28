@@ -29,3 +29,27 @@ def test_slot_rejects_impossible_span_and_open_value() -> None:
         frames.GroundedSlot(Identifier("room"), None, 0.0, "short", 0, 6)
     with pytest.raises(ValueError, match="open slot cannot carry"):
         frames.GroundedSlot(Identifier("room"), "study")
+
+
+def test_slot_moves_fill_confirm_close_in_order() -> None:
+    filled = open_slot().fill("study", 0.9, "study light", 0, 5)
+    confirmed = filled.confirm()
+    closed = confirmed.close()
+    assert (filled.state, confirmed.state, closed.state) == (
+        frames.SlotState.FILLED,
+        frames.SlotState.CONFIRMED,
+        frames.SlotState.CLOSED,
+    )
+    assert closed.value == "study"
+
+
+@pytest.mark.parametrize("operation", ["confirm", "close"])
+def test_slot_rejects_out_of_order_transition(operation: str) -> None:
+    with pytest.raises(ValueError, match="only"):
+        getattr(open_slot(), operation)()
+
+
+def test_closed_slot_is_immutable_to_new_grounding() -> None:
+    closed = open_slot().fill("study", 1.0, "study", 0, 5).confirm().close()
+    with pytest.raises(ValueError, match="closed slot"):
+        closed.fill("bedroom", 1.0, "bedroom", 0, 7)

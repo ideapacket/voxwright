@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 from voxwright.core import JSONValue, ensure_json_value
@@ -41,3 +41,23 @@ class GroundedSlot:
     @property
     def grounded_text(self) -> str:
         return self.source_text[self.span_start : self.span_end]
+
+    def fill(
+        self, value: JSONValue, confidence: float, source_text: str, start: int, end: int
+    ) -> GroundedSlot:
+        """Fill or revise a non-closed slot from a transcript span."""
+        if self.state is SlotState.CLOSED:
+            raise ValueError("closed slot cannot be filled")
+        if value is None:
+            raise ValueError("filled slot value cannot be null")
+        return GroundedSlot(self.name, value, confidence, source_text, start, end, SlotState.FILLED)
+
+    def confirm(self) -> GroundedSlot:
+        if self.state is not SlotState.FILLED:
+            raise ValueError("only filled slot can be confirmed")
+        return replace(self, state=SlotState.CONFIRMED)
+
+    def close(self) -> GroundedSlot:
+        if self.state is not SlotState.CONFIRMED:
+            raise ValueError("only confirmed slot can be closed")
+        return replace(self, state=SlotState.CLOSED)
