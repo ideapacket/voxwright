@@ -61,3 +61,26 @@ class GroundedSlot:
         if self.state is not SlotState.CONFIRMED:
             raise ValueError("only confirmed slot can be closed")
         return replace(self, state=SlotState.CLOSED)
+
+
+class ConfirmationAction(str, Enum):
+    AUTO_CONFIRM = "auto-confirm"
+    EXPLICIT_CONFIRM = "explicit-confirm"
+
+
+@dataclass(frozen=True, slots=True)
+class ConfirmationPolicy:
+    """Choose explicit confirmation below a validated confidence threshold."""
+
+    auto_threshold: float = 0.85
+
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.auto_threshold <= 1.0:
+            raise ValueError("auto confirmation threshold must be between 0 and 1")
+
+    def decide(self, slot: GroundedSlot) -> ConfirmationAction:
+        if slot.state is not SlotState.FILLED:
+            raise ValueError("confirmation policy requires a filled slot")
+        if slot.confidence >= self.auto_threshold:
+            return ConfirmationAction.AUTO_CONFIRM
+        return ConfirmationAction.EXPLICIT_CONFIRM

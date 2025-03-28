@@ -53,3 +53,18 @@ def test_closed_slot_is_immutable_to_new_grounding() -> None:
     closed = open_slot().fill("study", 1.0, "study", 0, 5).confirm().close()
     with pytest.raises(ValueError, match="closed slot"):
         closed.fill("bedroom", 1.0, "bedroom", 0, 7)
+
+
+def test_confirmation_policy_is_inclusive_at_threshold() -> None:
+    policy = frames.ConfirmationPolicy(0.8)
+    exact = open_slot().fill("study", 0.8, "study", 0, 5)
+    below = open_slot().fill("study", 0.799, "study", 0, 5)
+    assert policy.decide(exact) is frames.ConfirmationAction.AUTO_CONFIRM
+    assert policy.decide(below) is frames.ConfirmationAction.EXPLICIT_CONFIRM
+
+
+def test_confirmation_policy_requires_filled_slot_and_valid_threshold() -> None:
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        frames.ConfirmationPolicy(1.1)
+    with pytest.raises(ValueError, match="requires a filled slot"):
+        frames.ConfirmationPolicy().decide(open_slot())
