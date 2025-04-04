@@ -117,3 +117,29 @@ class TaskFrame:
         if self.state is not FrameState.ACTIVE:
             raise ValueError("only active frame can suspend")
         return replace(self, state=FrameState.SUSPENDED)
+
+    def fill_slot(
+        self,
+        name: str | Identifier,
+        value: JSONValue,
+        confidence: float,
+        source_text: str,
+        start: int,
+        end: int,
+    ) -> TaskFrame:
+        if self.state is not FrameState.ACTIVE:
+            raise ValueError("slot filling requires active frame")
+        identifier = name if isinstance(name, Identifier) else Identifier(name)
+        if identifier not in self.slots:
+            raise ValueError(f"unknown frame slot: {identifier}")
+        slots = dict(self.slots)
+        slots[identifier] = slots[identifier].fill(value, confidence, source_text, start, end)
+        return replace(self, slots=slots)
+
+    def confirm_slot(self, name: str | Identifier) -> TaskFrame:
+        identifier = name if isinstance(name, Identifier) else Identifier(name)
+        if identifier not in self.slots:
+            raise ValueError(f"unknown frame slot: {identifier}")
+        slots = dict(self.slots)
+        slots[identifier] = slots[identifier].confirm()
+        return replace(self, slots=slots)

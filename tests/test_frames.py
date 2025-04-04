@@ -88,3 +88,18 @@ def test_frame_rejects_mismatched_slot_index() -> None:
         frames.TaskFrame(
             Identifier("frame-1"), Identifier("home.light"), {Identifier("wrong"): open_slot()}
         )
+
+
+def test_active_frame_fills_and_confirms_named_slot() -> None:
+    active = task_frame().activate()
+    filled = active.fill_slot("room", "study", 0.9, "study light", 0, 5)
+    confirmed = filled.confirm_slot("room")
+    assert confirmed.slots[Identifier("room")].state is frames.SlotState.CONFIRMED
+    assert task_frame().slots[Identifier("room")].state is frames.SlotState.OPEN
+
+
+def test_frame_slot_operations_reject_inactive_or_unknown_slot() -> None:
+    with pytest.raises(ValueError, match="requires active frame"):
+        task_frame().fill_slot("room", "study", 1.0, "study", 0, 5)
+    with pytest.raises(ValueError, match="unknown frame slot"):
+        task_frame().activate().fill_slot("device", "lamp", 1.0, "lamp", 0, 4)
