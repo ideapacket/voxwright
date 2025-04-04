@@ -136,3 +136,23 @@ def test_inheritance_never_copies_unconfirmed_evidence() -> None:
     parent = task_frame().activate().fill_slot("room", "study", 0.5, "study", 0, 5)
     with pytest.raises(ValueError, match="unconfirmed slot"):
         frames.inherit_slots(parent, task_frame(), (Identifier("room"),))
+
+
+def test_stack_push_suspends_previous_frame() -> None:
+    stack = frames.FrameStack()
+    first = stack.push(task_frame())
+    second = stack.push(
+        frames.TaskFrame(
+            Identifier("frame-2"),
+            Identifier("notes.add"),
+            {Identifier("text"): open_slot("text")},
+        )
+    )
+    assert first.state is frames.FrameState.ACTIVE
+    assert stack.frames[0].state is frames.FrameState.SUSPENDED
+    assert stack.current == second
+
+
+def test_stack_rejects_already_active_frame() -> None:
+    with pytest.raises(ValueError, match="only open frame"):
+        frames.FrameStack().push(task_frame().activate())

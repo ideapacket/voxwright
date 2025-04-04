@@ -175,3 +175,30 @@ def inherit_slots(parent: TaskFrame, child: TaskFrame, names: tuple[Identifier, 
             raise ValueError(f"inheritance target is not open: {name}")
         slots[name] = replace(source, state=SlotState.CONFIRMED)
     return replace(child, slots=slots)
+
+
+@dataclass(slots=True)
+class FrameStack:
+    """A deterministic stack for nested and interrupted application tasks."""
+
+    _frames: list[TaskFrame]
+
+    def __init__(self) -> None:
+        self._frames = []
+
+    @property
+    def frames(self) -> tuple[TaskFrame, ...]:
+        return tuple(self._frames)
+
+    @property
+    def current(self) -> TaskFrame | None:
+        return self._frames[-1] if self._frames else None
+
+    def push(self, frame: TaskFrame) -> TaskFrame:
+        if frame.state is not FrameState.OPEN:
+            raise ValueError("only open frame can be pushed")
+        if self._frames:
+            self._frames[-1] = self._frames[-1].suspend()
+        active = frame.activate()
+        self._frames.append(active)
+        return active
