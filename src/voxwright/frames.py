@@ -160,3 +160,18 @@ class TaskFrame:
             for name, slot in self.slots.items()
         }
         return replace(self, slots=slots, state=FrameState.CLOSED)
+
+
+def inherit_slots(parent: TaskFrame, child: TaskFrame, names: tuple[Identifier, ...]) -> TaskFrame:
+    """Copy confirmed related slots into open child slots without aliasing state."""
+    slots = dict(child.slots)
+    for name in names:
+        if name not in parent.slots or name not in slots:
+            raise ValueError(f"cannot inherit unknown slot: {name}")
+        source = parent.slots[name]
+        if source.state not in {SlotState.CONFIRMED, SlotState.CLOSED}:
+            raise ValueError(f"cannot inherit unconfirmed slot: {name}")
+        if slots[name].state is not SlotState.OPEN:
+            raise ValueError(f"inheritance target is not open: {name}")
+        slots[name] = replace(source, state=SlotState.CONFIRMED)
+    return replace(child, slots=slots)

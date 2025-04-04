@@ -118,3 +118,21 @@ def test_frame_closes_only_after_all_slots_are_confirmed() -> None:
 def test_empty_frame_is_not_accidentally_ready() -> None:
     frame = frames.TaskFrame(Identifier("frame-1"), Identifier("intent"), {}).activate()
     assert not frame.ready_to_close
+
+
+def test_related_frame_inherits_confirmed_slot_value_and_grounding() -> None:
+    parent = (
+        task_frame().activate().fill_slot("room", "study", 1.0, "study", 0, 5).confirm_slot("room")
+    )
+    child = frames.TaskFrame(
+        Identifier("frame-2"), Identifier("home.temperature"), {Identifier("room"): open_slot()}
+    )
+    inherited = frames.inherit_slots(parent, child, (Identifier("room"),))
+    assert inherited.slots[Identifier("room")].value == "study"
+    assert inherited.slots[Identifier("room")].state is frames.SlotState.CONFIRMED
+
+
+def test_inheritance_never_copies_unconfirmed_evidence() -> None:
+    parent = task_frame().activate().fill_slot("room", "study", 0.5, "study", 0, 5)
+    with pytest.raises(ValueError, match="unconfirmed slot"):
+        frames.inherit_slots(parent, task_frame(), (Identifier("room"),))
