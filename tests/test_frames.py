@@ -103,3 +103,18 @@ def test_frame_slot_operations_reject_inactive_or_unknown_slot() -> None:
         task_frame().fill_slot("room", "study", 1.0, "study", 0, 5)
     with pytest.raises(ValueError, match="unknown frame slot"):
         task_frame().activate().fill_slot("device", "lamp", 1.0, "lamp", 0, 4)
+
+
+def test_frame_closes_only_after_all_slots_are_confirmed() -> None:
+    active = task_frame().activate()
+    with pytest.raises(ValueError, match="unconfirmed slots"):
+        active.close()
+    confirmed = active.fill_slot("room", "study", 1.0, "study", 0, 5).confirm_slot("room")
+    closed = confirmed.close()
+    assert closed.state is frames.FrameState.CLOSED
+    assert closed.slots[Identifier("room")].state is frames.SlotState.CLOSED
+
+
+def test_empty_frame_is_not_accidentally_ready() -> None:
+    frame = frames.TaskFrame(Identifier("frame-1"), Identifier("intent"), {}).activate()
+    assert not frame.ready_to_close

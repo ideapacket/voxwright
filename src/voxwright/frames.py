@@ -143,3 +143,20 @@ class TaskFrame:
         slots = dict(self.slots)
         slots[identifier] = slots[identifier].confirm()
         return replace(self, slots=slots)
+
+    @property
+    def ready_to_close(self) -> bool:
+        return bool(self.slots) and all(
+            slot.state in {SlotState.CONFIRMED, SlotState.CLOSED} for slot in self.slots.values()
+        )
+
+    def close(self) -> TaskFrame:
+        if self.state is not FrameState.ACTIVE:
+            raise ValueError("only active frame can close")
+        if not self.ready_to_close:
+            raise ValueError("frame has unconfirmed slots")
+        slots = {
+            name: slot if slot.state is SlotState.CLOSED else slot.close()
+            for name, slot in self.slots.items()
+        }
+        return replace(self, slots=slots, state=FrameState.CLOSED)
