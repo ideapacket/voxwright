@@ -72,6 +72,18 @@ def test_confirmation_policy_requires_filled_slot_and_valid_threshold() -> None:
         frames.ConfirmationPolicy().decide(open_slot())
 
 
+def test_confirmation_policy_apply_changes_only_auto_confirmed_slot() -> None:
+    policy = frames.ConfirmationPolicy(0.8)
+    high = open_slot().fill("study", 0.9, "study", 0, 5)
+    low = open_slot().fill("study", 0.5, "study", 0, 5)
+    high_result, high_action = policy.apply(high)
+    low_result, low_action = policy.apply(low)
+    assert high_result.state is frames.SlotState.CONFIRMED
+    assert high_action is frames.ConfirmationAction.AUTO_CONFIRM
+    assert low_result == low
+    assert low_action is frames.ConfirmationAction.EXPLICIT_CONFIRM
+
+
 def task_frame() -> frames.TaskFrame:
     slot = open_slot()
     return frames.TaskFrame(Identifier("frame-1"), Identifier("home.light"), {slot.name: slot})

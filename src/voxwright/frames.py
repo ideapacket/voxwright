@@ -85,6 +85,13 @@ class ConfirmationPolicy:
             return ConfirmationAction.AUTO_CONFIRM
         return ConfirmationAction.EXPLICIT_CONFIRM
 
+    def apply(self, slot: GroundedSlot) -> tuple[GroundedSlot, ConfirmationAction]:
+        """Auto-confirm high confidence evidence and leave low confidence pending."""
+        action = self.decide(slot)
+        if action is ConfirmationAction.AUTO_CONFIRM:
+            return slot.confirm(), action
+        return slot, action
+
 
 class FrameState(str, Enum):
     OPEN = "open"
