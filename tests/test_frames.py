@@ -182,6 +182,31 @@ def test_stack_cannot_pop_live_frame_or_replace_wrong_identity() -> None:
         stack.replace_current(replace(task_frame(), frame_id=Identifier("other")))
 
 
+def test_frame_stack_snapshot_is_ordered_and_versioned() -> None:
+    stack = frames.FrameStack()
+    stack.push(task_frame())
+    stack.push(frames.TaskFrame(Identifier("frame-2"), Identifier("notes.add"), {}))
+    snapshot = stack.snapshot()
+    assert snapshot["schema_version"] == 1
+    assert [item["frame_id"] for item in snapshot["frames"]] == [  # type: ignore[index]
+        "frame-1",
+        "frame-2",
+    ]
+    assert snapshot["frames"][0]["state"] == "suspended"  # type: ignore[index]
+
+
+def test_snapshot_sorts_slot_names_for_byte_determinism() -> None:
+    one = open_slot("zeta")
+    two = open_slot("alpha")
+    frame = frames.TaskFrame(
+        Identifier("frame-1"), Identifier("intent"), {one.name: one, two.name: two}
+    )
+    stack = frames.FrameStack()
+    stack.push(frame)
+    slots = stack.snapshot()["frames"][0]["slots"]  # type: ignore[index]
+    assert list(slots) == ["alpha", "zeta"]
+
+
 def test_empty_stack_reports_current_without_raising() -> None:
     stack = frames.FrameStack()
     assert stack.current is None

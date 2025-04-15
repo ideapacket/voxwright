@@ -219,3 +219,27 @@ class FrameStack:
         if self._frames:
             self._frames[-1] = self._frames[-1].activate()
         return completed
+
+    def snapshot(self) -> dict[str, JSONValue]:
+        """Serialize stack state in bottom-to-top order for checkpoints."""
+        return {
+            "schema_version": 1,
+            "frames": [
+                {
+                    "frame_id": str(frame.frame_id),
+                    "intent": str(frame.intent),
+                    "state": frame.state.value,
+                    "slots": {
+                        str(name): {
+                            "value": slot.value,
+                            "confidence": slot.confidence,
+                            "source_text": slot.source_text,
+                            "span": [slot.span_start, slot.span_end],
+                            "state": slot.state.value,
+                        }
+                        for name, slot in sorted(frame.slots.items())
+                    },
+                }
+                for frame in self._frames
+            ],
+        }
