@@ -202,3 +202,20 @@ class FrameStack:
         active = frame.activate()
         self._frames.append(active)
         return active
+
+    def replace_current(self, frame: TaskFrame) -> None:
+        if not self._frames:
+            raise ValueError("frame stack is empty")
+        if frame.frame_id != self._frames[-1].frame_id:
+            raise ValueError("replacement frame identifier mismatch")
+        self._frames[-1] = frame
+
+    def pop_closed(self) -> TaskFrame:
+        if not self._frames:
+            raise ValueError("frame stack is empty")
+        if self._frames[-1].state is not FrameState.CLOSED:
+            raise ValueError("current frame must be closed before pop")
+        completed = self._frames.pop()
+        if self._frames:
+            self._frames[-1] = self._frames[-1].activate()
+        return completed

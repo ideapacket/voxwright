@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 import voxwright.frames as frames
@@ -156,3 +158,25 @@ def test_stack_push_suspends_previous_frame() -> None:
 def test_stack_rejects_already_active_frame() -> None:
     with pytest.raises(ValueError, match="only open frame"):
         frames.FrameStack().push(task_frame().activate())
+
+
+def test_pop_closed_restores_suspended_parent() -> None:
+    stack = frames.FrameStack()
+    stack.push(task_frame())
+    child = frames.TaskFrame(
+        Identifier("frame-2"), Identifier("notes.add"), {Identifier("text"): open_slot("text")}
+    )
+    active = stack.push(child)
+    closed = active.fill_slot("text", "milk", 1.0, "milk", 0, 4).confirm_slot("text").close()
+    stack.replace_current(closed)
+    assert stack.pop_closed() == closed
+    assert stack.current is not None and stack.current.state is frames.FrameState.ACTIVE
+
+
+def test_stack_cannot_pop_live_frame_or_replace_wrong_identity() -> None:
+    stack = frames.FrameStack()
+    stack.push(task_frame())
+    with pytest.raises(ValueError, match="must be closed"):
+        stack.pop_closed()
+    with pytest.raises(ValueError, match="identifier mismatch"):
+        stack.replace_current(replace(task_frame(), frame_id=Identifier("other")))
