@@ -180,3 +180,19 @@ def test_stack_cannot_pop_live_frame_or_replace_wrong_identity() -> None:
         stack.pop_closed()
     with pytest.raises(ValueError, match="identifier mismatch"):
         stack.replace_current(replace(task_frame(), frame_id=Identifier("other")))
+
+
+def test_empty_stack_reports_current_without_raising() -> None:
+    stack = frames.FrameStack()
+    assert stack.current is None
+    assert stack.frames == ()
+
+
+@pytest.mark.parametrize("operation", ["pop_closed", "replace_current"])
+def test_empty_stack_mutations_fail_precisely(operation: str) -> None:
+    stack = frames.FrameStack()
+    with pytest.raises(ValueError, match="frame stack is empty"):
+        if operation == "pop_closed":
+            stack.pop_closed()
+        else:
+            stack.replace_current(task_frame())
