@@ -52,3 +52,35 @@ def select_strategy(
     if confidence < config.implicit_below:
         return RepairStrategy.IMPLICIT_CONFIRM
     return RepairStrategy.ACCEPT
+
+
+@dataclass(frozen=True, slots=True)
+class RepairState:
+    """Immutable progress for one bounded misunderstanding repair."""
+
+    attempt: int = 0
+    resolved: bool = False
+    handed_off: bool = False
+
+    def __post_init__(self) -> None:
+        if self.attempt < 0:
+            raise ValueError("repair attempt cannot be negative")
+        if self.resolved and self.handed_off:
+            raise ValueError("repair cannot be both resolved and handed off")
+
+
+def advance_repair(
+    state: RepairState,
+    confidence: float,
+    alternatives: tuple[str, ...],
+    config: RepairConfig,
+) -> tuple[RepairState, RepairStrategy]:
+    """Advance once, resolving accepts and terminating at handoff."""
+    if state.resolved or state.handed_off:
+        raise ValueError("repair state is already terminal")
+    strategy = select_strategy(confidence, alternatives, state.attempt, config)
+    if strategy is RepairStrategy.ACCEPT:
+        return RepairState(state.attempt, resolved=True), strategy
+    if strategy is RepairStrategy.HANDOFF:
+        return RepairState(state.attempt, handed_off=True), strategy
+    return RepairState(state.attempt + 1), strategy

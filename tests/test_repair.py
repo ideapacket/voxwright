@@ -28,3 +28,18 @@ def test_repair_config_validates_threshold_order_and_attempts() -> None:
         repair.RepairConfig(reask_below=0.8, menu_below=0.5)
     with pytest.raises(ValueError, match="must be positive"):
         repair.RepairConfig(max_attempts=0)
+
+
+def test_repair_state_advances_then_resolves() -> None:
+    config = repair.RepairConfig()
+    state, strategy = repair.advance_repair(repair.RepairState(), 0.1, (), config)
+    assert state.attempt == 1
+    assert strategy is repair.RepairStrategy.SILENT_REASK
+    resolved, strategy = repair.advance_repair(state, 1.0, (), config)
+    assert resolved.resolved
+    assert strategy is repair.RepairStrategy.ACCEPT
+
+
+def test_terminal_repair_state_cannot_advance() -> None:
+    with pytest.raises(ValueError, match="already terminal"):
+        repair.advance_repair(repair.RepairState(resolved=True), 1.0, (), repair.RepairConfig())
