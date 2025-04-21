@@ -84,6 +84,39 @@ def test_confirmation_policy_apply_changes_only_auto_confirmed_slot() -> None:
     assert low_action is frames.ConfirmationAction.EXPLICIT_CONFIRM
 
 
+@pytest.mark.parametrize(
+    ("start", "operation", "allowed"),
+    [
+        (frames.SlotState.OPEN, "fill", True),
+        (frames.SlotState.FILLED, "confirm", True),
+        (frames.SlotState.CONFIRMED, "close", True),
+        (frames.SlotState.CLOSED, "fill", False),
+        (frames.SlotState.OPEN, "confirm", False),
+        (frames.SlotState.FILLED, "close", False),
+    ],
+)
+def test_slot_transition_contract_is_exhaustive_for_public_operations(
+    start: frames.SlotState, operation: str, allowed: bool
+) -> None:
+    slot = open_slot()
+    if start in {frames.SlotState.FILLED, frames.SlotState.CONFIRMED, frames.SlotState.CLOSED}:
+        slot = slot.fill("study", 1.0, "study", 0, 5)
+    if start in {frames.SlotState.CONFIRMED, frames.SlotState.CLOSED}:
+        slot = slot.confirm()
+    if start is frames.SlotState.CLOSED:
+        slot = slot.close()
+    invoke = (
+        (lambda: slot.fill("x", 1.0, "x", 0, 1))
+        if operation == "fill"
+        else getattr(slot, operation)
+    )
+    if allowed:
+        assert invoke() is not None
+    else:
+        with pytest.raises(ValueError):
+            invoke()
+
+
 def task_frame() -> frames.TaskFrame:
     slot = open_slot()
     return frames.TaskFrame(Identifier("frame-1"), Identifier("home.light"), {slot.name: slot})
