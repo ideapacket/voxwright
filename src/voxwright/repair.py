@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from voxwright.events import HandoffEvent, RepairRequest
+from voxwright.identifiers import Identifier
+
 
 class RepairStrategy(str, Enum):
     SILENT_REASK = "silent-reask"
@@ -84,3 +87,20 @@ def advance_repair(
     if strategy is RepairStrategy.HANDOFF:
         return RepairState(state.attempt, handed_off=True), strategy
     return RepairState(state.attempt + 1), strategy
+
+
+def repair_event(
+    strategy: RepairStrategy, attempt: int, alternatives: tuple[str, ...] = ()
+) -> RepairRequest | HandoffEvent | None:
+    """Translate a policy decision into an application event payload."""
+    if strategy is RepairStrategy.ACCEPT:
+        return None
+    if strategy is RepairStrategy.HANDOFF:
+        return HandoffEvent(Identifier("repair.exhausted"), "repair attempt bound reached")
+    prompts = {
+        RepairStrategy.SILENT_REASK: "Please repeat the request",
+        RepairStrategy.N_BEST_MENU: "Select the intended transcript",
+        RepairStrategy.IMPLICIT_CONFIRM: "I understood this request",
+        RepairStrategy.EXPLICIT_CONFIRM: "Please confirm the request",
+    }
+    return RepairRequest(Identifier(strategy.value), prompts[strategy], attempt + 1, alternatives)

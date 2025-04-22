@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 import voxwright.repair as repair
+from voxwright.events import HandoffEvent, RepairRequest
 
 
 def test_repair_strategy_bands_are_deterministic() -> None:
@@ -43,3 +44,12 @@ def test_repair_state_advances_then_resolves() -> None:
 def test_terminal_repair_state_cannot_advance() -> None:
     with pytest.raises(ValueError, match="already terminal"):
         repair.advance_repair(repair.RepairState(resolved=True), 1.0, (), repair.RepairConfig())
+
+
+def test_repair_decisions_map_to_typed_event_payloads() -> None:
+    menu = repair.repair_event(repair.RepairStrategy.N_BEST_MENU, 0, ("light", "night"))
+    handoff = repair.repair_event(repair.RepairStrategy.HANDOFF, 3)
+    assert isinstance(menu, RepairRequest)
+    assert menu.candidates == ("light", "night")
+    assert isinstance(handoff, HandoffEvent)
+    assert repair.repair_event(repair.RepairStrategy.ACCEPT, 0) is None
