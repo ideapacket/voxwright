@@ -53,3 +53,15 @@ def test_repair_decisions_map_to_typed_event_payloads() -> None:
     assert menu.candidates == ("light", "night")
     assert isinstance(handoff, HandoffEvent)
     assert repair.repair_event(repair.RepairStrategy.ACCEPT, 0) is None
+
+
+def test_n_best_menu_uses_one_based_user_selection() -> None:
+    alternatives = ("study light", "study night", "steady light")
+    assert repair.disambiguate(1, alternatives) == "study light"
+    assert repair.disambiguate(3, alternatives) == "steady light"
+
+
+@pytest.mark.parametrize("selection", [0, 4])
+def test_n_best_menu_rejects_out_of_range_selection(selection: int) -> None:
+    with pytest.raises(ValueError, match="between 1 and 3"):
+        repair.disambiguate(selection, ("a", "b", "c"))

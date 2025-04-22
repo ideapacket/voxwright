@@ -104,3 +104,12 @@ def repair_event(
         RepairStrategy.EXPLICIT_CONFIRM: "Please confirm the request",
     }
     return RepairRequest(Identifier(strategy.value), prompts[strategy], attempt + 1, alternatives)
+
+
+def disambiguate(selection: int, alternatives: tuple[str, ...]) -> str:
+    """Resolve a one-based n-best menu selection with precise boundaries."""
+    if not alternatives:
+        raise ValueError("disambiguation menu cannot be empty")
+    if not 1 <= selection <= len(alternatives):
+        raise ValueError(f"selection must be between 1 and {len(alternatives)}")
+    return alternatives[selection - 1]
