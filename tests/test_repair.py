@@ -65,3 +65,17 @@ def test_n_best_menu_uses_one_based_user_selection() -> None:
 def test_n_best_menu_rejects_out_of_range_selection(selection: int) -> None:
     with pytest.raises(ValueError, match="between 1 and 3"):
         repair.disambiguate(selection, ("a", "b", "c"))
+
+
+@pytest.mark.parametrize("response", ["yes", " Confirm ", "correct", "对"])
+def test_explicit_confirmation_accepts_known_positive_forms(response: str) -> None:
+    assert repair.confirmation_matches(response) is True
+
+
+@pytest.mark.parametrize("response", ["no", "cancel", "incorrect", "不对"])
+def test_explicit_confirmation_accepts_known_negative_forms(response: str) -> None:
+    assert repair.confirmation_matches(response) is False
+
+
+def test_explicit_confirmation_does_not_guess_unknown_response() -> None:
+    assert repair.confirmation_matches("maybe") is None

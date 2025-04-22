@@ -113,3 +113,13 @@ def disambiguate(selection: int, alternatives: tuple[str, ...]) -> str:
     if not 1 <= selection <= len(alternatives):
         raise ValueError(f"selection must be between 1 and {len(alternatives)}")
     return alternatives[selection - 1]
+
+
+def confirmation_matches(response: str) -> bool | None:
+    """Map explicit synthetic confirmations without guessing unknown text."""
+    normalized = response.strip().lower()
+    if normalized in {"yes", "confirm", "correct", "对"}:
+        return True
+    if normalized in {"no", "cancel", "incorrect", "不对"}:
+        return False
+    return None
