@@ -133,6 +133,32 @@ class RepairOutcome:
     strategies: tuple[RepairStrategy, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class RepairMetrics:
+    total: int
+    resolved: int
+    handed_off: int
+    repair_rate: float
+    mean_attempts: float
+
+
+def summarize_repairs(outcomes: tuple[RepairOutcome, ...]) -> RepairMetrics:
+    """Aggregate outcomes with production-point float quantization."""
+    total = len(outcomes)
+    if total == 0:
+        return RepairMetrics(0, 0, 0, 0.0, 0.0)
+    resolved = sum(outcome.resolved for outcome in outcomes)
+    handed_off = sum(outcome.handed_off for outcome in outcomes)
+    repaired = sum(outcome.attempts > 0 for outcome in outcomes)
+    return RepairMetrics(
+        total,
+        resolved,
+        handed_off,
+        round(repaired / total, 6),
+        round(sum(item.attempts for item in outcomes) / total, 6),
+    )
+
+
 def run_repair(
     confidences: tuple[float, ...],
     alternatives: tuple[str, ...] = (),

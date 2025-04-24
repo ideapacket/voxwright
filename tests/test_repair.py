@@ -117,3 +117,17 @@ def test_incomplete_confidence_sequence_falls_back_to_bounded_handoff() -> None:
     outcome = repair.run_repair((0.2,), config=repair.RepairConfig(max_attempts=2))
     assert outcome.handed_off
     assert len(outcome.strategies) == 3
+
+
+def test_repair_metrics_are_computed_from_executed_outcomes() -> None:
+    outcomes = (
+        repair.run_repair((1.0,)),
+        repair.run_repair((0.1, 1.0)),
+        repair.run_repair((0.1,), config=repair.RepairConfig(max_attempts=1)),
+    )
+    metrics = repair.summarize_repairs(outcomes)
+    assert metrics == repair.RepairMetrics(3, 2, 1, 0.666667, 0.666667)
+
+
+def test_empty_repair_campaign_has_exact_zero_metrics() -> None:
+    assert repair.summarize_repairs(()) == repair.RepairMetrics(0, 0, 0, 0.0, 0.0)
