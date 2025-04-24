@@ -99,3 +99,21 @@ def test_high_confidence_repair_terminates_without_attempt_increment() -> None:
     )
     assert state == repair.RepairState(0, resolved=True)
     assert strategy is repair.RepairStrategy.ACCEPT
+
+
+def test_synthetic_repair_run_records_strategy_trace() -> None:
+    outcome = repair.run_repair((0.1, 0.6, 0.95))
+    assert outcome.resolved
+    assert not outcome.handed_off
+    assert outcome.attempts == 2
+    assert outcome.strategies == (
+        repair.RepairStrategy.SILENT_REASK,
+        repair.RepairStrategy.EXPLICIT_CONFIRM,
+        repair.RepairStrategy.ACCEPT,
+    )
+
+
+def test_incomplete_confidence_sequence_falls_back_to_bounded_handoff() -> None:
+    outcome = repair.run_repair((0.2,), config=repair.RepairConfig(max_attempts=2))
+    assert outcome.handed_off
+    assert len(outcome.strategies) == 3

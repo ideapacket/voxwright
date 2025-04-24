@@ -123,3 +123,32 @@ def confirmation_matches(response: str) -> bool | None:
     if normalized in {"no", "cancel", "incorrect", "不对"}:
         return False
     return None
+
+
+@dataclass(frozen=True, slots=True)
+class RepairOutcome:
+    resolved: bool
+    handed_off: bool
+    attempts: int
+    strategies: tuple[RepairStrategy, ...]
+
+
+def run_repair(
+    confidences: tuple[float, ...],
+    alternatives: tuple[str, ...] = (),
+    config: RepairConfig | None = None,
+) -> RepairOutcome:
+    """Run a synthetic confidence sequence through the bounded policy."""
+    policy = config if config is not None else RepairConfig()
+    state = RepairState()
+    strategies: list[RepairStrategy] = []
+    for confidence in confidences:
+        state, strategy = advance_repair(state, confidence, alternatives, policy)
+        strategies.append(strategy)
+        if state.resolved or state.handed_off:
+            break
+    if not state.resolved and not state.handed_off:
+        while not state.handed_off:
+            state, strategy = advance_repair(state, 0.0, alternatives, policy)
+            strategies.append(strategy)
+    return RepairOutcome(state.resolved, state.handed_off, state.attempt, tuple(strategies))
