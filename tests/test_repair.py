@@ -79,3 +79,23 @@ def test_explicit_confirmation_accepts_known_negative_forms(response: str) -> No
 
 def test_explicit_confirmation_does_not_guess_unknown_response() -> None:
     assert repair.confirmation_matches("maybe") is None
+
+
+@pytest.mark.parametrize("max_attempts", range(1, 8))
+def test_repair_loop_always_terminates_at_configured_bound(max_attempts: int) -> None:
+    config = repair.RepairConfig(max_attempts=max_attempts)
+    state = repair.RepairState()
+    steps = 0
+    while not state.handed_off:
+        state, _ = repair.advance_repair(state, 0.0, (), config)
+        steps += 1
+        assert steps <= max_attempts + 1
+    assert steps == max_attempts + 1
+
+
+def test_high_confidence_repair_terminates_without_attempt_increment() -> None:
+    state, strategy = repair.advance_repair(
+        repair.RepairState(), 1.0, (), repair.RepairConfig(max_attempts=5)
+    )
+    assert state == repair.RepairState(0, resolved=True)
+    assert strategy is repair.RepairStrategy.ACCEPT
