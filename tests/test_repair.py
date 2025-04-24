@@ -131,3 +131,22 @@ def test_repair_metrics_are_computed_from_executed_outcomes() -> None:
 
 def test_empty_repair_campaign_has_exact_zero_metrics() -> None:
     assert repair.summarize_repairs(()) == repair.RepairMetrics(0, 0, 0, 0.0, 0.0)
+
+
+def test_repair_config_roundtrips_exact_public_shape() -> None:
+    config = repair.RepairConfig(0.2, 0.4, 0.6, 0.8, 4)
+    assert config.to_dict() == {
+        "reask_below": 0.2,
+        "menu_below": 0.4,
+        "explicit_below": 0.6,
+        "implicit_below": 0.8,
+        "max_attempts": 4,
+    }
+    assert repair.RepairConfig.from_dict(config.to_dict()) == config
+
+
+def test_repair_config_decoder_rejects_boolean_threshold() -> None:
+    value = repair.RepairConfig().to_dict()
+    value["reask_below"] = True
+    with pytest.raises(TypeError, match="thresholds must be numbers"):
+        repair.RepairConfig.from_dict(value)

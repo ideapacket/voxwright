@@ -37,6 +37,36 @@ class RepairConfig:
         if self.max_attempts < 1:
             raise ValueError("max repair attempts must be positive")
 
+    def to_dict(self) -> dict[str, float | int]:
+        return {
+            "reask_below": self.reask_below,
+            "menu_below": self.menu_below,
+            "explicit_below": self.explicit_below,
+            "implicit_below": self.implicit_below,
+            "max_attempts": self.max_attempts,
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> RepairConfig:
+        if not isinstance(value, dict) or set(value) != {
+            "reask_below",
+            "menu_below",
+            "explicit_below",
+            "implicit_below",
+            "max_attempts",
+        }:
+            raise ValueError("invalid repair config shape")
+        numbers = [
+            value[name]
+            for name in ("reask_below", "menu_below", "explicit_below", "implicit_below")
+        ]
+        if any(isinstance(item, bool) or not isinstance(item, (int, float)) for item in numbers):
+            raise TypeError("repair thresholds must be numbers")
+        attempts = value["max_attempts"]
+        if isinstance(attempts, bool) or not isinstance(attempts, int):
+            raise TypeError("max repair attempts must be an integer")
+        return cls(*(float(item) for item in numbers), attempts)
+
 
 def select_strategy(
     confidence: float, alternatives: tuple[str, ...], attempt: int, config: RepairConfig
