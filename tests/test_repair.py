@@ -150,3 +150,23 @@ def test_repair_config_decoder_rejects_boolean_threshold() -> None:
     value["reask_below"] = True
     with pytest.raises(TypeError, match="thresholds must be numbers"):
         repair.RepairConfig.from_dict(value)
+
+
+def test_noise_degradation_never_improves_fixed_confidence_campaign() -> None:
+    clean = tuple(repair.run_repair((confidence,)) for confidence in (0.95, 0.9, 0.8, 0.7))
+    noisy = tuple(
+        repair.run_repair((max(0.0, confidence - 0.4),)) for confidence in (0.95, 0.9, 0.8, 0.7)
+    )
+    clean_metrics = repair.summarize_repairs(clean)
+    noisy_metrics = repair.summarize_repairs(noisy)
+    assert noisy_metrics.repair_rate >= clean_metrics.repair_rate
+    assert noisy_metrics.mean_attempts >= clean_metrics.mean_attempts
+
+
+def test_every_strategy_has_event_or_terminal_semantics() -> None:
+    for strategy in repair.RepairStrategy:
+        payload = repair.repair_event(strategy, 0, ("a", "b"))
+        if strategy is repair.RepairStrategy.ACCEPT:
+            assert payload is None
+        else:
+            assert payload is not None
