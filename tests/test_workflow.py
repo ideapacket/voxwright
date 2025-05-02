@@ -38,3 +38,26 @@ def test_step_preserves_strict_json_effects() -> None:
         Identifier("set"), workflow.StepKind.ACTION, effects={"status": "ready"}
     )
     assert item.effects == {"status": "ready"}
+
+
+def linear_workflow() -> workflow.WorkflowDefinition:
+    return workflow.WorkflowDefinition(
+        Identifier("simple"),
+        1,
+        Identifier("start"),
+        (step("start", workflow.StepKind.ACTION, "done"), step("done", workflow.StepKind.END)),
+    )
+
+
+def test_definition_indexes_unique_steps() -> None:
+    definition = linear_workflow()
+    assert definition.step_map[Identifier("start")].next_steps == (Identifier("done"),)
+
+
+def test_definition_rejects_missing_start_and_duplicate_ids() -> None:
+    with pytest.raises(ValueError, match="start step does not exist"):
+        workflow.WorkflowDefinition(Identifier("bad"), 1, Identifier("missing"), (step("done"),))
+    with pytest.raises(ValueError, match="must be unique"):
+        workflow.WorkflowDefinition(
+            Identifier("bad"), 1, Identifier("same"), (step("same"), step("same"))
+        )

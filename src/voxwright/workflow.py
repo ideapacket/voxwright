@@ -43,3 +43,26 @@ class WorkflowStep:
             raise ValueError("only loop step can declare iteration bound")
         if self.kind is StepKind.END and self.next_steps:
             raise ValueError("end step cannot have successors")
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowDefinition:
+    """A named, versioned graph with a single explicit entry step."""
+
+    name: Identifier
+    version: int
+    start: Identifier
+    steps: tuple[WorkflowStep, ...]
+
+    def __post_init__(self) -> None:
+        if self.version < 1:
+            raise ValueError("workflow version must be positive")
+        by_id = {item.step_id: item for item in self.steps}
+        if len(by_id) != len(self.steps):
+            raise ValueError("workflow step identifiers must be unique")
+        if self.start not in by_id:
+            raise ValueError(f"workflow start step does not exist: {self.start}")
+
+    @property
+    def step_map(self) -> dict[Identifier, WorkflowStep]:
+        return {item.step_id: item for item in self.steps}
