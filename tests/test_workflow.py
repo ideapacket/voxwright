@@ -122,3 +122,27 @@ def test_effect_application_does_not_mutate_caller_state() -> None:
     )
     assert workflow.apply_effects(item, state) == {"status": "new", "count": 1}
     assert state == {"status": "old"}
+
+
+def test_linear_engine_applies_steps_in_graph_order() -> None:
+    start = workflow.WorkflowStep(
+        Identifier("start"), workflow.StepKind.ACTION, (Identifier("done"),), effects={"count": 1}
+    )
+    definition = workflow.WorkflowDefinition(
+        Identifier("linear"), 1, start.step_id, (start, step("done", workflow.StepKind.END))
+    )
+    result = workflow.run_linear(definition)
+    assert result.state == {"count": 1}
+    assert result.visited == (Identifier("start"), Identifier("done"))
+
+
+def test_linear_engine_stops_before_failed_precondition_effect() -> None:
+    guarded = workflow.WorkflowStep(
+        Identifier("guard"),
+        workflow.StepKind.ACTION,
+        preconditions={"allowed": True},
+        effects={"executed": True},
+    )
+    definition = workflow.WorkflowDefinition(Identifier("guarded"), 1, guarded.step_id, (guarded,))
+    with pytest.raises(RuntimeError, match="precondition failed"):
+        workflow.run_linear(definition, {"allowed": False})

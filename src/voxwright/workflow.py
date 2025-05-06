@@ -125,3 +125,32 @@ def apply_effects(step: WorkflowStep, state: dict[str, JSONValue]) -> dict[str, 
     result = dict(state)
     result.update(step.effects or {})
     return result
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutionResult:
+    state: dict[str, JSONValue]
+    visited: tuple[Identifier, ...]
+
+
+def run_linear(
+    definition: WorkflowDefinition, initial: dict[str, JSONValue] | None = None
+) -> ExecutionResult:
+    """Execute action chains until an end node using deterministic successor order."""
+    validate_references(definition)
+    validate_acyclic(definition)
+    state = dict(initial or {})
+    visited: list[Identifier] = []
+    current = definition.start
+    while True:
+        item = definition.step_map[current]
+        if not preconditions_met(item, state):
+            raise RuntimeError(f"step precondition failed: {item.step_id}")
+        visited.append(current)
+        state = apply_effects(item, state)
+        if item.kind is StepKind.END or not item.next_steps:
+            break
+        if item.kind is not StepKind.ACTION:
+            raise RuntimeError(f"run_linear cannot execute {item.kind.value} step")
+        current = item.next_steps[0]
+    return ExecutionResult(state, tuple(visited))
