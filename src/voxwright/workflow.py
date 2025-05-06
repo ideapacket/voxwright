@@ -107,3 +107,21 @@ def validate_acyclic(definition: WorkflowDefinition) -> None:
         visited.add(node)
 
     visit(definition.start)
+
+
+def preconditions_met(step: WorkflowStep, state: dict[str, JSONValue]) -> bool:
+    """Evaluate exact-match preconditions without truthy coercion."""
+    for name, expected in (step.preconditions or {}).items():
+        if name not in state:
+            return False
+        actual = state[name]
+        if type(actual) is not type(expected) or actual != expected:
+            return False
+    return True
+
+
+def apply_effects(step: WorkflowStep, state: dict[str, JSONValue]) -> dict[str, JSONValue]:
+    """Return a copied state with deterministic shallow effects."""
+    result = dict(state)
+    result.update(step.effects or {})
+    return result

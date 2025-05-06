@@ -104,3 +104,21 @@ def test_bounded_loop_back_edge_is_allowed() -> None:
         Identifier("bounded"), 1, Identifier("loop"), (loop, step("done", workflow.StepKind.END))
     )
     workflow.validate_acyclic(definition)
+
+
+def test_preconditions_compare_types_exactly() -> None:
+    item = workflow.WorkflowStep(
+        Identifier("check"), workflow.StepKind.ACTION, preconditions={"ready": True}
+    )
+    assert workflow.preconditions_met(item, {"ready": True})
+    assert not workflow.preconditions_met(item, {"ready": 1})
+    assert not workflow.preconditions_met(item, {})
+
+
+def test_effect_application_does_not_mutate_caller_state() -> None:
+    state = {"status": "old"}
+    item = workflow.WorkflowStep(
+        Identifier("set"), workflow.StepKind.ACTION, effects={"status": "new", "count": 1}
+    )
+    assert workflow.apply_effects(item, state) == {"status": "new", "count": 1}
+    assert state == {"status": "old"}
