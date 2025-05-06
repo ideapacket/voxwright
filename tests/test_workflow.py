@@ -162,3 +162,28 @@ def test_branch_target_uses_true_then_false_successor_order() -> None:
 def test_branch_target_rejects_non_branch_step() -> None:
     with pytest.raises(ValueError, match="two-way branch"):
         workflow.branch_target(step("action"), {})
+
+
+def test_loop_target_runs_exactly_bounded_iterations() -> None:
+    loop = workflow.WorkflowStep(
+        Identifier("loop"),
+        workflow.StepKind.LOOP,
+        (Identifier("body"), Identifier("done")),
+        max_iterations=2,
+    )
+    assert [workflow.loop_target(loop, index) for index in range(3)] == [
+        Identifier("body"),
+        Identifier("body"),
+        Identifier("done"),
+    ]
+
+
+def test_loop_target_rejects_negative_iteration() -> None:
+    loop = workflow.WorkflowStep(
+        Identifier("loop"),
+        workflow.StepKind.LOOP,
+        (Identifier("body"), Identifier("done")),
+        max_iterations=1,
+    )
+    with pytest.raises(ValueError, match="cannot be negative"):
+        workflow.loop_target(loop, -1)

@@ -161,3 +161,12 @@ def branch_target(step: WorkflowStep, state: dict[str, JSONValue]) -> Identifier
     if step.kind is not StepKind.BRANCH or len(step.next_steps) != 2:
         raise ValueError("branch target requires a two-way branch step")
     return step.next_steps[0 if preconditions_met(step, state) else 1]
+
+
+def loop_target(step: WorkflowStep, iteration: int) -> Identifier:
+    """Choose body then exit using an explicit zero-based iteration counter."""
+    if step.kind is not StepKind.LOOP or len(step.next_steps) != 2:
+        raise ValueError("loop target requires a two-way loop step")
+    if iteration < 0:
+        raise ValueError("loop iteration cannot be negative")
+    return step.next_steps[0 if iteration < step.max_iterations else 1]
