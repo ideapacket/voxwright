@@ -61,3 +61,22 @@ def test_definition_rejects_missing_start_and_duplicate_ids() -> None:
         workflow.WorkflowDefinition(
             Identifier("bad"), 1, Identifier("same"), (step("same"), step("same"))
         )
+
+
+def test_reference_validation_rejects_dangling_target() -> None:
+    definition = workflow.WorkflowDefinition(
+        Identifier("bad"),
+        1,
+        Identifier("start"),
+        (step("start", workflow.StepKind.ACTION, "missing"),),
+    )
+    with pytest.raises(ValueError, match="dangling reference missing"):
+        workflow.validate_references(definition)
+
+
+def test_reference_validation_enforces_branch_and_parallel_arity() -> None:
+    branch = workflow.WorkflowDefinition(
+        Identifier("bad"), 1, Identifier("branch"), (step("branch", workflow.StepKind.BRANCH),)
+    )
+    with pytest.raises(ValueError, match="invalid successor count"):
+        workflow.validate_references(branch)

@@ -66,3 +66,21 @@ class WorkflowDefinition:
     @property
     def step_map(self) -> dict[Identifier, WorkflowStep]:
         return {item.step_id: item for item in self.steps}
+
+
+def validate_references(definition: WorkflowDefinition) -> None:
+    """Reject dangling targets and kind-specific successor arity errors."""
+    known = definition.step_map
+    for item in definition.steps:
+        for target in item.next_steps:
+            if target not in known:
+                raise ValueError(f"step {item.step_id}: dangling reference {target}")
+        expected = {
+            StepKind.ACTION: {0, 1},
+            StepKind.BRANCH: {2},
+            StepKind.LOOP: {2},
+            StepKind.PARALLEL: set(range(1, 1000)),
+            StepKind.END: {0},
+        }[item.kind]
+        if len(item.next_steps) not in expected:
+            raise ValueError(f"step {item.step_id}: invalid successor count for {item.kind.value}")
