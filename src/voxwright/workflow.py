@@ -154,3 +154,10 @@ def run_linear(
             raise RuntimeError(f"run_linear cannot execute {item.kind.value} step")
         current = item.next_steps[0]
     return ExecutionResult(state, tuple(visited))
+
+
+def branch_target(step: WorkflowStep, state: dict[str, JSONValue]) -> Identifier:
+    """Choose true then false successor from a branch precondition."""
+    if step.kind is not StepKind.BRANCH or len(step.next_steps) != 2:
+        raise ValueError("branch target requires a two-way branch step")
+    return step.next_steps[0 if preconditions_met(step, state) else 1]

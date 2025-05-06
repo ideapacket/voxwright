@@ -146,3 +146,19 @@ def test_linear_engine_stops_before_failed_precondition_effect() -> None:
     definition = workflow.WorkflowDefinition(Identifier("guarded"), 1, guarded.step_id, (guarded,))
     with pytest.raises(RuntimeError, match="precondition failed"):
         workflow.run_linear(definition, {"allowed": False})
+
+
+def test_branch_target_uses_true_then_false_successor_order() -> None:
+    branch = workflow.WorkflowStep(
+        Identifier("choose"),
+        workflow.StepKind.BRANCH,
+        (Identifier("yes"), Identifier("no")),
+        preconditions={"confirmed": True},
+    )
+    assert workflow.branch_target(branch, {"confirmed": True}) == Identifier("yes")
+    assert workflow.branch_target(branch, {"confirmed": False}) == Identifier("no")
+
+
+def test_branch_target_rejects_non_branch_step() -> None:
+    with pytest.raises(ValueError, match="two-way branch"):
+        workflow.branch_target(step("action"), {})
