@@ -187,3 +187,18 @@ def test_loop_target_rejects_negative_iteration() -> None:
     )
     with pytest.raises(ValueError, match="cannot be negative"):
         workflow.loop_target(loop, -1)
+
+
+def test_parallel_fanout_preserves_declared_order() -> None:
+    fanout = step("fanout", workflow.StepKind.PARALLEL, "calendar", "music", "home")
+    assert workflow.parallel_order(fanout) == (
+        Identifier("calendar"),
+        Identifier("music"),
+        Identifier("home"),
+    )
+
+
+def test_parallel_fanout_rejects_duplicate_targets() -> None:
+    duplicate = step("fanout", workflow.StepKind.PARALLEL, "same", "same")
+    with pytest.raises(ValueError, match="must be unique"):
+        workflow.parallel_order(duplicate)

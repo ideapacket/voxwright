@@ -170,3 +170,12 @@ def loop_target(step: WorkflowStep, iteration: int) -> Identifier:
     if iteration < 0:
         raise ValueError("loop iteration cannot be negative")
     return step.next_steps[0 if iteration < step.max_iterations else 1]
+
+
+def parallel_order(step: WorkflowStep) -> tuple[Identifier, ...]:
+    """Return fan-out targets in declared order after duplicate rejection."""
+    if step.kind is not StepKind.PARALLEL or not step.next_steps:
+        raise ValueError("parallel order requires a fan-out step")
+    if len(set(step.next_steps)) != len(step.next_steps):
+        raise ValueError("parallel fan-out targets must be unique")
+    return step.next_steps
