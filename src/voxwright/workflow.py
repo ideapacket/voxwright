@@ -84,3 +84,26 @@ def validate_references(definition: WorkflowDefinition) -> None:
         }[item.kind]
         if len(item.next_steps) not in expected:
             raise ValueError(f"step {item.step_id}: invalid successor count for {item.kind.value}")
+
+
+def validate_acyclic(definition: WorkflowDefinition) -> None:
+    """Reject cycles unless their back edge originates at a bounded loop node."""
+    graph = definition.step_map
+    visiting: set[Identifier] = set()
+    visited: set[Identifier] = set()
+
+    def visit(node: Identifier) -> None:
+        if node in visiting:
+            raise ValueError(f"unbounded workflow cycle at {node}")
+        if node in visited:
+            return
+        visiting.add(node)
+        current = graph[node]
+        for target in current.next_steps:
+            if current.kind is StepKind.LOOP and target in visiting:
+                continue
+            visit(target)
+        visiting.remove(node)
+        visited.add(node)
+
+    visit(definition.start)

@@ -80,3 +80,27 @@ def test_reference_validation_enforces_branch_and_parallel_arity() -> None:
     )
     with pytest.raises(ValueError, match="invalid successor count"):
         workflow.validate_references(branch)
+
+
+def test_cycle_validation_rejects_unbounded_action_cycle() -> None:
+    definition = workflow.WorkflowDefinition(
+        Identifier("cycle"),
+        1,
+        Identifier("a"),
+        (step("a", workflow.StepKind.ACTION, "b"), step("b", workflow.StepKind.ACTION, "a")),
+    )
+    with pytest.raises(ValueError, match="unbounded workflow cycle"):
+        workflow.validate_acyclic(definition)
+
+
+def test_bounded_loop_back_edge_is_allowed() -> None:
+    loop = workflow.WorkflowStep(
+        Identifier("loop"),
+        workflow.StepKind.LOOP,
+        (Identifier("loop"), Identifier("done")),
+        max_iterations=2,
+    )
+    definition = workflow.WorkflowDefinition(
+        Identifier("bounded"), 1, Identifier("loop"), (loop, step("done", workflow.StepKind.END))
+    )
+    workflow.validate_acyclic(definition)
