@@ -179,3 +179,16 @@ def parallel_order(step: WorkflowStep) -> tuple[Identifier, ...]:
     if len(set(step.next_steps)) != len(step.next_steps):
         raise ValueError("parallel fan-out targets must be unique")
     return step.next_steps
+
+
+def compensate(
+    completed: tuple[WorkflowStep, ...], state: dict[str, JSONValue]
+) -> tuple[dict[str, JSONValue], tuple[Identifier, ...]]:
+    """Apply compensation effects in reverse completion order."""
+    result = dict(state)
+    compensated: list[Identifier] = []
+    for item in reversed(completed):
+        if item.compensation is not None:
+            result.update(item.compensation)
+            compensated.append(item.step_id)
+    return result, tuple(compensated)

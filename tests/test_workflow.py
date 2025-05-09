@@ -202,3 +202,21 @@ def test_parallel_fanout_rejects_duplicate_targets() -> None:
     duplicate = step("fanout", workflow.StepKind.PARALLEL, "same", "same")
     with pytest.raises(ValueError, match="must be unique"):
         workflow.parallel_order(duplicate)
+
+
+def test_compensation_runs_in_reverse_completion_order() -> None:
+    first = workflow.WorkflowStep(
+        Identifier("reserve"), workflow.StepKind.ACTION, compensation={"resource": "released"}
+    )
+    second = workflow.WorkflowStep(
+        Identifier("notify"), workflow.StepKind.ACTION, compensation={"notice": "retracted"}
+    )
+    state, order = workflow.compensate((first, second), {"resource": "held", "notice": "sent"})
+    assert state == {"resource": "released", "notice": "retracted"}
+    assert order == (Identifier("notify"), Identifier("reserve"))
+
+
+def test_steps_without_compensation_are_skipped() -> None:
+    state, order = workflow.compensate((step("read"),), {"value": 1})
+    assert state == {"value": 1}
+    assert order == ()
