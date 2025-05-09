@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+import pytest
+
 import voxwright.workflow_ledger as ledgers
 from voxwright.identifiers import Identifier
 
@@ -39,3 +41,15 @@ def test_empty_ledger_checkpoint_has_hash_identity() -> None:
     assert checkpoint["completed"] == []
     assert checkpoint["state"] == {}
     assert str(checkpoint["digest"]).startswith("sha256:")
+
+
+def test_resume_skips_exact_completed_prefix() -> None:
+    ordered = (Identifier("one"), Identifier("two"), Identifier("three"))
+    checkpoint = {"completed": ["one", "two"]}
+    assert ledgers.remaining_steps(ordered, checkpoint) == (Identifier("three"),)
+
+
+def test_resume_rejects_nonprefix_checkpoint() -> None:
+    ordered = (Identifier("one"), Identifier("two"))
+    with pytest.raises(ValueError, match="not a prefix"):
+        ledgers.remaining_steps(ordered, {"completed": ["two"]})

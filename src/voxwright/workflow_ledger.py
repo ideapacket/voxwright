@@ -41,3 +41,16 @@ class WorkflowLedger:
             "state": payload["state"],  # type: ignore[index]
             "digest": self.links[-1].digest,
         }
+
+
+def remaining_steps(
+    ordered: tuple[Identifier, ...], checkpoint: dict[str, JSONValue]
+) -> tuple[Identifier, ...]:
+    """Resume only after a checkpoint's completed prefix."""
+    completed = checkpoint.get("completed")
+    if not isinstance(completed, list) or any(not isinstance(item, str) for item in completed):
+        raise ValueError("checkpoint completed steps must be a string array")
+    decoded = tuple(Identifier(item) for item in completed)
+    if ordered[: len(decoded)] != decoded:
+        raise ValueError("checkpoint is not a prefix of workflow order")
+    return ordered[len(decoded) :]
