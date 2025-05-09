@@ -53,3 +53,9 @@ def test_resume_rejects_nonprefix_checkpoint() -> None:
     ordered = (Identifier("one"), Identifier("two"))
     with pytest.raises(ValueError, match="not a prefix"):
         ledgers.remaining_steps(ordered, {"completed": ["two"]})
+
+
+@pytest.mark.parametrize("completed", [None, "one", [1], ["Bad Name"]])
+def test_resume_rejects_malformed_completed_steps(completed: object) -> None:
+    with pytest.raises((TypeError, ValueError), match=r"string array|invalid identifier"):
+        ledgers.remaining_steps((Identifier("one"),), {"completed": completed})  # type: ignore[dict-item]
