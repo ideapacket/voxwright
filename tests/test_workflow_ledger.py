@@ -22,3 +22,20 @@ def test_workflow_ledger_detects_tampering() -> None:
     ledger.record(Identifier("prepare"), {"ready": True})
     ledger.links[0] = replace(ledger.links[0], payload={"step_id": "skip", "state": {}})
     assert ledger.validate() == 0
+
+
+def test_checkpoint_captures_verified_last_state() -> None:
+    ledger = ledgers.WorkflowLedger()
+    ledger.record(Identifier("prepare"), {"count": 1})
+    last = ledger.record(Identifier("commit"), {"count": 2})
+    checkpoint = ledger.checkpoint()
+    assert checkpoint["completed"] == ["prepare", "commit"]
+    assert checkpoint["state"] == {"count": 2}
+    assert checkpoint["digest"] == last.digest
+
+
+def test_empty_ledger_checkpoint_has_hash_identity() -> None:
+    checkpoint = ledgers.WorkflowLedger().checkpoint()
+    assert checkpoint["completed"] == []
+    assert checkpoint["state"] == {}
+    assert str(checkpoint["digest"]).startswith("sha256:")
