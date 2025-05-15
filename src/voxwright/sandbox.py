@@ -84,3 +84,25 @@ class SimulatedState:
         timer = {"timer_id": f"timer-{len(self.timers) + 1}", "seconds": seconds, "active": True}
         self.timers.append(timer)
         return dict(timer)
+
+    def message_send(self, recipient: str, text: str) -> dict[str, JSONValue]:
+        message = {
+            "message_id": f"message-{len(self.messages) + 1}",
+            "recipient": recipient,
+            "text": text,
+        }
+        self.messages.append(message)
+        return dict(message)
+
+    def music_play(self, track: str) -> dict[str, JSONValue]:
+        self.music.update({"playing": True, "track": track})
+        return dict(self.music)
+
+    def home_set(self, room: str, on: bool) -> dict[str, JSONValue]:
+        self.home[room] = on
+        return {"room": room, "on": on}
+
+    def note_add(self, text: str) -> dict[str, JSONValue]:
+        note = {"note_id": f"note-{len(self.notes) + 1}", "text": text}
+        self.notes.append(note)
+        return dict(note)
