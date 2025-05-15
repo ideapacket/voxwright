@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import voxwright.sandbox as sandbox
+from voxwright.hashing import EMPTY_DIGEST
 from voxwright.identifiers import Identifier
 
 
@@ -29,3 +30,21 @@ def test_permission_policy_snapshots_mutable_rules() -> None:
     policy = sandbox.PermissionPolicy(rules)
     rules.clear()
     assert policy.decide("timer.start") is sandbox.PermissionDecision.ALLOW
+
+
+def test_side_effect_ledger_chains_denied_and_executed_attempts() -> None:
+    ledger = sandbox.SideEffectLedger()
+    denied = ledger.record(Identifier("home.unlock"), {"door": "front"}, False, "denied")
+    allowed = ledger.record(Identifier("timer.start"), {"seconds": 5}, True, {"timer_id": "t-1"})
+    assert denied.previous == EMPTY_DIGEST
+    assert allowed.previous == denied.digest
+    assert ledger.validate() is None
+
+
+def test_side_effect_ledger_detects_changed_execution_flag() -> None:
+    from dataclasses import replace
+
+    ledger = sandbox.SideEffectLedger()
+    link = ledger.record(Identifier("home.unlock"), {}, False, "denied")
+    ledger.links[0] = replace(link, payload={**link.payload, "executed": True})
+    assert ledger.validate() == 0
