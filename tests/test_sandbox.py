@@ -48,3 +48,25 @@ def test_side_effect_ledger_detects_changed_execution_flag() -> None:
     link = ledger.record(Identifier("home.unlock"), {}, False, "denied")
     ledger.links[0] = replace(link, payload={**link.payload, "executed": True})
     assert ledger.validate() == 0
+
+
+def test_calendar_store_allocates_deterministic_ids() -> None:
+    state = sandbox.SimulatedState.empty()
+    first = state.calendar_create("review", 19)
+    second = state.calendar_create("sync", 9)
+    assert first == {"event_id": "event-1", "title": "review", "hour": 19}
+    assert second["event_id"] == "event-2"
+    assert state.calendar == [first, second]
+
+
+def test_timer_store_is_independent_from_calendar_ids() -> None:
+    state = sandbox.SimulatedState.empty()
+    state.calendar_create("review", 19)
+    assert state.timer_start(30) == {"timer_id": "timer-1", "seconds": 30, "active": True}
+
+
+def test_empty_state_has_no_shared_mutable_stores() -> None:
+    left = sandbox.SimulatedState.empty()
+    right = sandbox.SimulatedState.empty()
+    left.calendar_create("left", 1)
+    assert right.calendar == []
