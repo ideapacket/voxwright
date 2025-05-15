@@ -58,3 +58,29 @@ class SideEffectLedger:
 
     def validate(self) -> int | None:
         return validate_chain(self.links)
+
+
+@dataclass(slots=True)
+class SimulatedState:
+    """Synthetic stores used by built-in tools; no external state is touched."""
+
+    calendar: list[dict[str, JSONValue]]
+    timers: list[dict[str, JSONValue]]
+    messages: list[dict[str, JSONValue]]
+    music: dict[str, JSONValue]
+    home: dict[str, JSONValue]
+    notes: list[dict[str, JSONValue]]
+
+    @classmethod
+    def empty(cls) -> SimulatedState:
+        return cls([], [], [], {"playing": False}, {}, [])
+
+    def calendar_create(self, title: str, hour: int) -> dict[str, JSONValue]:
+        event = {"event_id": f"event-{len(self.calendar) + 1}", "title": title, "hour": hour}
+        self.calendar.append(event)
+        return dict(event)
+
+    def timer_start(self, seconds: int) -> dict[str, JSONValue]:
+        timer = {"timer_id": f"timer-{len(self.timers) + 1}", "seconds": seconds, "active": True}
+        self.timers.append(timer)
+        return dict(timer)
