@@ -90,3 +90,25 @@ def test_home_store_keeps_latest_boolean_state_per_room() -> None:
     state.home_set("study", True)
     assert state.home_set("study", False) == {"room": "study", "on": False}
     assert state.home == {"study": False}
+
+
+def test_denied_permission_records_nonexecution() -> None:
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({}))
+    outcome = box.permission(Identifier("messages.send"))
+    assert outcome == sandbox.ExecutionOutcome(False, "denied", sandbox.PermissionDecision.DENY)
+    assert box.ledger.links[0].payload["executed"] is False  # type: ignore[index]
+
+
+def test_confirm_permission_prompts_until_session_grant() -> None:
+    name = Identifier("messages.send")
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({name: sandbox.PermissionDecision.CONFIRM}))
+    prompt = box.permission(name)
+    assert prompt is not None and prompt.prompt == "Confirm tool messages.send"
+    box.grant(name)
+    assert box.permission(name) is None
+
+
+def test_allow_permission_needs_no_grant() -> None:
+    name = Identifier("timer.start")
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({name: sandbox.PermissionDecision.ALLOW}))
+    assert box.permission(name) is None
