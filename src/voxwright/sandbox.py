@@ -143,3 +143,34 @@ class ToolSandbox:
         if decision is PermissionDecision.CONFIRM and tool_name not in self.grants:
             return ExecutionOutcome(False, None, decision, f"Confirm tool {tool_name}")
         return None
+
+    def execute(
+        self, tool_name: str | Identifier, arguments: dict[str, JSONValue], *, dry_run: bool = False
+    ) -> ExecutionOutcome:
+        name = tool_name if isinstance(tool_name, Identifier) else Identifier(tool_name)
+        blocked = self.permission(name)
+        if blocked is not None:
+            return blocked
+        if dry_run:
+            result: JSONValue = {"dry_run": True, "tool_name": str(name), "arguments": arguments}
+            self.ledger.record(name, arguments, False, result)
+            return ExecutionOutcome(False, result, self.policy.decide(name))
+        handlers = {
+            "calendar.create": lambda: self.state.calendar_create(
+                str(arguments["title"]), int(arguments["hour"])
+            ),
+            "timer.start": lambda: self.state.timer_start(int(arguments["seconds"])),
+            "messages.send": lambda: self.state.message_send(
+                str(arguments["recipient"]), str(arguments["text"])
+            ),
+            "music.play": lambda: self.state.music_play(str(arguments["track"])),
+            "home.set-light": lambda: self.state.home_set(
+                str(arguments["room"]), bool(arguments["on"])
+            ),
+            "notes.add": lambda: self.state.note_add(str(arguments["text"])),
+        }
+        if str(name) not in handlers:
+            raise ValueError(f"no simulated backend for tool: {name}")
+        result = handlers[str(name)]()
+        self.ledger.record(name, arguments, True, result)
+        return ExecutionOutcome(True, result, self.policy.decide(name))
