@@ -106,3 +106,40 @@ class SimulatedState:
         note = {"note_id": f"note-{len(self.notes) + 1}", "text": text}
         self.notes.append(note)
         return dict(note)
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutionOutcome:
+    executed: bool
+    result: JSONValue
+    permission: PermissionDecision
+    prompt: str | None = None
+
+
+@dataclass(slots=True)
+class ToolSandbox:
+    policy: PermissionPolicy
+    state: SimulatedState
+    ledger: SideEffectLedger
+    grants: set[Identifier]
+
+    def __init__(self, policy: PermissionPolicy, state: SimulatedState | None = None) -> None:
+        self.policy = policy
+        self.state = state if state is not None else SimulatedState.empty()
+        self.ledger = SideEffectLedger()
+        self.grants = set()
+
+    def grant(self, tool_name: str | Identifier) -> None:
+        name = tool_name if isinstance(tool_name, Identifier) else Identifier(tool_name)
+        if self.policy.decide(name) is not PermissionDecision.CONFIRM:
+            raise ValueError("session grant requires confirm permission")
+        self.grants.add(name)
+
+    def permission(self, tool_name: Identifier) -> ExecutionOutcome | None:
+        decision = self.policy.decide(tool_name)
+        if decision is PermissionDecision.DENY:
+            self.ledger.record(tool_name, {}, False, "denied")
+            return ExecutionOutcome(False, "denied", decision)
+        if decision is PermissionDecision.CONFIRM and tool_name not in self.grants:
+            return ExecutionOutcome(False, None, decision, f"Confirm tool {tool_name}")
+        return None
