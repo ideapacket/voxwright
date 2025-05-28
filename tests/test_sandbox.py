@@ -70,3 +70,23 @@ def test_empty_state_has_no_shared_mutable_stores() -> None:
     right = sandbox.SimulatedState.empty()
     left.calendar_create("left", 1)
     assert right.calendar == []
+
+
+def test_messaging_and_notes_append_synthetic_records() -> None:
+    state = sandbox.SimulatedState.empty()
+    assert state.message_send("student", "hello")["message_id"] == "message-1"
+    assert state.note_add("buy milk") == {"note_id": "note-1", "text": "buy milk"}
+    assert len(state.messages) == len(state.notes) == 1
+
+
+def test_music_replaces_current_track_deterministically() -> None:
+    state = sandbox.SimulatedState.empty()
+    state.music_play("Blue Sky")
+    assert state.music_play("Night Walk") == {"playing": True, "track": "Night Walk"}
+
+
+def test_home_store_keeps_latest_boolean_state_per_room() -> None:
+    state = sandbox.SimulatedState.empty()
+    state.home_set("study", True)
+    assert state.home_set("study", False) == {"room": "study", "on": False}
+    assert state.home == {"study": False}
