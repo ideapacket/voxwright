@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import voxwright.sandbox as sandbox
 from voxwright.hashing import EMPTY_DIGEST
 from voxwright.identifiers import Identifier
@@ -112,3 +114,33 @@ def test_allow_permission_needs_no_grant() -> None:
     name = Identifier("timer.start")
     box = sandbox.ToolSandbox(sandbox.PermissionPolicy({name: sandbox.PermissionDecision.ALLOW}))
     assert box.permission(name) is None
+
+
+def test_allowed_tool_executes_and_records_result() -> None:
+    name = Identifier("notes.add")
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({name: sandbox.PermissionDecision.ALLOW}))
+    outcome = box.execute(name, {"text": "buy milk"})
+    assert outcome.executed
+    assert outcome.result == {"note_id": "note-1", "text": "buy milk"}
+    assert box.ledger.links[-1].payload["executed"] is True  # type: ignore[index]
+
+
+def test_dry_run_never_mutates_synthetic_state() -> None:
+    name = Identifier("calendar.create")
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({name: sandbox.PermissionDecision.ALLOW}))
+    outcome = box.execute(name, {"title": "review", "hour": 19}, dry_run=True)
+    assert not outcome.executed
+    assert box.state.calendar == []
+    assert outcome.result == {
+        "dry_run": True,
+        "tool_name": "calendar.create",
+        "arguments": {"title": "review", "hour": 19},
+    }
+
+
+def test_unknown_backend_fails_without_ledger_execution() -> None:
+    name = Identifier("custom.tool")
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({name: sandbox.PermissionDecision.ALLOW}))
+    with pytest.raises(ValueError, match="no simulated backend"):
+        box.execute(name, {})
+    assert box.ledger.links == []
