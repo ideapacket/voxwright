@@ -144,3 +144,25 @@ def test_unknown_backend_fails_without_ledger_execution() -> None:
     with pytest.raises(ValueError, match="no simulated backend"):
         box.execute(name, {})
     assert box.ledger.links == []
+
+
+def test_atomic_batch_commits_all_successful_calls() -> None:
+    names = (Identifier("notes.add"), Identifier("timer.start"))
+    box = sandbox.ToolSandbox(
+        sandbox.PermissionPolicy({name: sandbox.PermissionDecision.ALLOW for name in names})
+    )
+    outcomes = box.execute_atomic(((names[0], {"text": "milk"}), (names[1], {"seconds": 30})))
+    assert len(outcomes) == 2
+    assert len(box.state.notes) == len(box.state.timers) == 1
+
+
+def test_atomic_batch_rolls_back_prior_effect_when_later_call_is_denied() -> None:
+    allowed = Identifier("notes.add")
+    denied = Identifier("messages.send")
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({allowed: sandbox.PermissionDecision.ALLOW}))
+    with pytest.raises(PermissionError, match="did not execute"):
+        box.execute_atomic(
+            ((allowed, {"text": "temporary"}), (denied, {"recipient": "x", "text": "x"}))
+        )
+    assert box.state.notes == []
+    assert box.ledger.links == []
