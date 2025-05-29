@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 
@@ -174,3 +175,22 @@ class ToolSandbox:
         result = handlers[str(name)]()
         self.ledger.record(name, arguments, True, result)
         return ExecutionOutcome(True, result, self.policy.decide(name))
+
+    def execute_atomic(
+        self, calls: tuple[tuple[Identifier, dict[str, JSONValue]], ...]
+    ) -> tuple[ExecutionOutcome, ...]:
+        """Rollback synthetic state and ledger if any call fails or is blocked."""
+        state_before = deepcopy(self.state)
+        links_before = list(self.ledger.links)
+        outcomes: list[ExecutionOutcome] = []
+        try:
+            for name, arguments in calls:
+                outcome = self.execute(name, arguments)
+                if not outcome.executed:
+                    raise PermissionError(f"tool did not execute: {name}")
+                outcomes.append(outcome)
+        except (KeyError, TypeError, ValueError, PermissionError):
+            self.state = state_before
+            self.ledger.links = links_before
+            raise
+        return tuple(outcomes)
