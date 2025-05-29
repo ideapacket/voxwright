@@ -7,6 +7,7 @@ import pytest
 import voxwright.sandbox as sandbox
 from voxwright.hashing import EMPTY_DIGEST
 from voxwright.identifiers import Identifier
+from voxwright.scenarios import INJECTION_TRANSCRIPTS
 
 
 def test_permission_policy_defaults_to_deny() -> None:
@@ -165,4 +166,23 @@ def test_atomic_batch_rolls_back_prior_effect_when_later_call_is_denied() -> Non
             ((allowed, {"text": "temporary"}), (denied, {"recipient": "x", "text": "x"}))
         )
     assert box.state.notes == []
+    assert box.ledger.links == []
+
+
+@pytest.mark.parametrize("attack", INJECTION_TRANSCRIPTS)
+def test_injection_text_cannot_change_denied_execution(attack: str) -> None:
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({}))
+    outcome = box.execute("notes.add", {"text": attack})
+    assert not outcome.executed
+    assert box.state.notes == []
+    assert box.ledger.links[-1].payload["executed"] is False  # type: ignore[index]
+
+
+def test_ungranted_confirm_tool_never_executes_across_repeated_attempts() -> None:
+    name = Identifier("messages.send")
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({name: sandbox.PermissionDecision.CONFIRM}))
+    for _ in range(20):
+        outcome = box.execute(name, {"recipient": "synthetic", "text": "hello"})
+        assert not outcome.executed
+    assert box.state.messages == []
     assert box.ledger.links == []
