@@ -51,3 +51,23 @@ def test_live_operation_can_cancel_and_running_can_rollback() -> None:
 def test_pending_operation_rejects_running_only_transition(method: str) -> None:
     with pytest.raises(ValueError, match="only running"):
         getattr(operation(), method)()
+
+
+def test_cancel_policy_cancels_idempotent_operation() -> None:
+    resolved, outcome = barge.resolve_interrupt(operation(True).start(), barge.BargePolicy.CANCEL)
+    assert resolved.state is barge.OperationState.CANCELLED
+    assert outcome is barge.InterruptResolution.CANCELLED
+
+
+def test_nonidempotent_operation_rolls_back_for_cancel_or_finish_policy() -> None:
+    for policy in (barge.BargePolicy.CANCEL, barge.BargePolicy.FINISH_IF_IDEMPOTENT):
+        resolved, outcome = barge.resolve_interrupt(operation().start(), policy)
+        assert resolved.state is barge.OperationState.ROLLED_BACK
+        assert outcome is barge.InterruptResolution.ROLLED_BACK
+
+
+def test_queue_policy_leaves_running_state_unchanged() -> None:
+    running = operation().start()
+    resolved, outcome = barge.resolve_interrupt(running, barge.BargePolicy.QUEUE)
+    assert resolved == running
+    assert outcome is barge.InterruptResolution.QUEUED
