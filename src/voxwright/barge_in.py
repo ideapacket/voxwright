@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 from voxwright.core import JSONValue, ensure_json_value
@@ -36,3 +36,23 @@ class InFlightOperation:
         if not isinstance(checked, dict):
             raise TypeError("$.arguments: expected object")
         object.__setattr__(self, "arguments", checked)
+
+    def start(self) -> InFlightOperation:
+        if self.state is not OperationState.PENDING:
+            raise ValueError("only pending operation can start")
+        return replace(self, state=OperationState.RUNNING)
+
+    def complete(self) -> InFlightOperation:
+        if self.state is not OperationState.RUNNING:
+            raise ValueError("only running operation can complete")
+        return replace(self, state=OperationState.COMPLETED)
+
+    def cancel(self) -> InFlightOperation:
+        if self.state not in {OperationState.PENDING, OperationState.RUNNING}:
+            raise ValueError("only live operation can cancel")
+        return replace(self, state=OperationState.CANCELLED)
+
+    def rollback(self) -> InFlightOperation:
+        if self.state is not OperationState.RUNNING:
+            raise ValueError("only running operation can rollback")
+        return replace(self, state=OperationState.ROLLED_BACK)
