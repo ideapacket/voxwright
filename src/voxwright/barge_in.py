@@ -56,3 +56,27 @@ class InFlightOperation:
         if self.state is not OperationState.RUNNING:
             raise ValueError("only running operation can rollback")
         return replace(self, state=OperationState.ROLLED_BACK)
+
+
+class InterruptResolution(str, Enum):
+    CANCELLED = "cancelled"
+    QUEUED = "queued"
+    FINISHED = "finished"
+    ROLLED_BACK = "rolled-back"
+
+
+def resolve_interrupt(
+    operation: InFlightOperation, policy: BargePolicy
+) -> tuple[InFlightOperation, InterruptResolution]:
+    """Resolve one interrupt using tool idempotency and explicit policy."""
+    if operation.state is not OperationState.RUNNING:
+        raise ValueError("barge-in requires a running operation")
+    if policy is BargePolicy.QUEUE:
+        return operation, InterruptResolution.QUEUED
+    if policy is BargePolicy.CANCEL:
+        if operation.idempotent:
+            return operation.cancel(), InterruptResolution.CANCELLED
+        return operation.rollback(), InterruptResolution.ROLLED_BACK
+    if operation.idempotent:
+        return operation.complete(), InterruptResolution.FINISHED
+    return operation.rollback(), InterruptResolution.ROLLED_BACK
