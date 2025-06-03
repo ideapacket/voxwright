@@ -80,3 +80,24 @@ def resolve_interrupt(
     if operation.idempotent:
         return operation.complete(), InterruptResolution.FINISHED
     return operation.rollback(), InterruptResolution.ROLLED_BACK
+
+
+@dataclass(frozen=True, order=True, slots=True)
+class Interrupt:
+    """A logically timed user interrupt ordered without wall-clock races."""
+
+    at_ms: int
+    sequence: int
+    interrupt_id: Identifier
+    transcript: str
+
+    def __post_init__(self) -> None:
+        if self.at_ms < 0 or self.sequence < 0:
+            raise ValueError("interrupt time and sequence must be non-negative")
+        if not self.transcript:
+            raise ValueError("interrupt transcript cannot be empty")
+
+
+def order_interrupts(interrupts: tuple[Interrupt, ...]) -> tuple[Interrupt, ...]:
+    """Resolve races by logical instant, sequence, then stable identifier."""
+    return tuple(sorted(interrupts))
