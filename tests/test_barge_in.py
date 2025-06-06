@@ -71,3 +71,23 @@ def test_queue_policy_leaves_running_state_unchanged() -> None:
     resolved, outcome = barge.resolve_interrupt(running, barge.BargePolicy.QUEUE)
     assert resolved == running
     assert outcome is barge.InterruptResolution.QUEUED
+
+
+def test_interrupt_races_use_logical_time_sequence_and_id() -> None:
+    items = (
+        barge.Interrupt(10, 2, Identifier("interrupt-b"), "second"),
+        barge.Interrupt(5, 9, Identifier("interrupt-c"), "first"),
+        barge.Interrupt(10, 2, Identifier("interrupt-a"), "tie winner"),
+    )
+    assert [item.interrupt_id.value for item in barge.order_interrupts(items)] == [
+        "interrupt-c",
+        "interrupt-a",
+        "interrupt-b",
+    ]
+
+
+def test_interrupt_rejects_negative_ordering_and_empty_text() -> None:
+    with pytest.raises(ValueError, match="must be non-negative"):
+        barge.Interrupt(-1, 0, Identifier("interrupt-1"), "stop")
+    with pytest.raises(ValueError, match="cannot be empty"):
+        barge.Interrupt(0, 0, Identifier("interrupt-1"), "")
