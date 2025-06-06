@@ -101,3 +101,27 @@ class Interrupt:
 def order_interrupts(interrupts: tuple[Interrupt, ...]) -> tuple[Interrupt, ...]:
     """Resolve races by logical instant, sequence, then stable identifier."""
     return tuple(sorted(interrupts))
+
+
+@dataclass(slots=True)
+class InterruptManager:
+    """Track one operation and a deterministic queue of pending interrupts."""
+
+    operation: InFlightOperation
+    policy: BargePolicy
+    queued: list[Interrupt]
+
+    def __init__(self, operation: InFlightOperation, policy: BargePolicy) -> None:
+        if operation.state is not OperationState.RUNNING:
+            raise ValueError("interrupt manager requires running operation")
+        self.operation = operation
+        self.policy = policy
+        self.queued = []
+
+    def interrupt(self, item: Interrupt) -> InterruptResolution:
+        operation, resolution = resolve_interrupt(self.operation, self.policy)
+        self.operation = operation
+        if resolution is InterruptResolution.QUEUED:
+            self.queued.append(item)
+            self.queued[:] = order_interrupts(tuple(self.queued))
+        return resolution
