@@ -91,3 +91,20 @@ def test_interrupt_rejects_negative_ordering_and_empty_text() -> None:
         barge.Interrupt(-1, 0, Identifier("interrupt-1"), "stop")
     with pytest.raises(ValueError, match="cannot be empty"):
         barge.Interrupt(0, 0, Identifier("interrupt-1"), "")
+
+
+def test_interrupt_manager_keeps_queue_in_race_order() -> None:
+    manager = barge.InterruptManager(operation(True).start(), barge.BargePolicy.QUEUE)
+    later = barge.Interrupt(20, 0, Identifier("interrupt-2"), "later")
+    earlier = barge.Interrupt(10, 0, Identifier("interrupt-1"), "earlier")
+    manager.interrupt(later)
+    manager.interrupt(earlier)
+    assert manager.queued == [earlier, later]
+    assert manager.operation.state is barge.OperationState.RUNNING
+
+
+def test_interrupt_manager_applies_nonqueue_resolution_once() -> None:
+    manager = barge.InterruptManager(operation(True).start(), barge.BargePolicy.CANCEL)
+    result = manager.interrupt(barge.Interrupt(1, 0, Identifier("interrupt-1"), "stop"))
+    assert result is barge.InterruptResolution.CANCELLED
+    assert manager.operation.state is barge.OperationState.CANCELLED
