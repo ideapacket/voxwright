@@ -136,3 +136,24 @@ class InterruptManager:
         drained = tuple(self.queued)
         self.queued.clear()
         return drained
+
+
+@dataclass(frozen=True, slots=True)
+class AtomicOutcome:
+    operation_id: Identifier
+    terminal_state: OperationState
+    committed: bool
+
+
+def atomic_outcome(operation: InFlightOperation) -> AtomicOutcome:
+    """Assert that non-idempotent interruption ended completed or rolled back."""
+    terminal = {OperationState.COMPLETED, OperationState.ROLLED_BACK}
+    if not operation.idempotent and operation.state not in terminal:
+        raise ValueError("non-idempotent operation is not atomic terminal")
+    if operation.state not in terminal | {OperationState.CANCELLED}:
+        raise ValueError("operation has not reached terminal state")
+    return AtomicOutcome(
+        operation.operation_id,
+        operation.state,
+        operation.state is OperationState.COMPLETED,
+    )
