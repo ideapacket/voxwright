@@ -125,3 +125,14 @@ class InterruptManager:
             self.queued.append(item)
             self.queued[:] = order_interrupts(tuple(self.queued))
         return resolution
+
+    def finish_and_drain(self) -> tuple[Interrupt, ...]:
+        """Complete a queued idempotent operation and return interrupts in order."""
+        if self.policy is not BargePolicy.QUEUE:
+            raise ValueError("only queue policy can drain interrupts")
+        if self.operation.state is not OperationState.RUNNING:
+            raise ValueError("queued operation is not running")
+        self.operation = self.operation.complete()
+        drained = tuple(self.queued)
+        self.queued.clear()
+        return drained
