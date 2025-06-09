@@ -108,3 +108,18 @@ def test_interrupt_manager_applies_nonqueue_resolution_once() -> None:
     result = manager.interrupt(barge.Interrupt(1, 0, Identifier("interrupt-1"), "stop"))
     assert result is barge.InterruptResolution.CANCELLED
     assert manager.operation.state is barge.OperationState.CANCELLED
+
+
+def test_queue_drain_completes_operation_and_clears_pending_items() -> None:
+    manager = barge.InterruptManager(operation(True).start(), barge.BargePolicy.QUEUE)
+    item = barge.Interrupt(1, 0, Identifier("interrupt-1"), "new request")
+    manager.interrupt(item)
+    assert manager.finish_and_drain() == (item,)
+    assert manager.operation.state is barge.OperationState.COMPLETED
+    assert manager.queued == []
+
+
+def test_nonqueue_manager_cannot_drain() -> None:
+    manager = barge.InterruptManager(operation(True).start(), barge.BargePolicy.CANCEL)
+    with pytest.raises(ValueError, match="only queue policy"):
+        manager.finish_and_drain()
