@@ -123,3 +123,25 @@ def test_nonqueue_manager_cannot_drain() -> None:
     manager = barge.InterruptManager(operation(True).start(), barge.BargePolicy.CANCEL)
     with pytest.raises(ValueError, match="only queue policy"):
         manager.finish_and_drain()
+
+
+@pytest.mark.parametrize("policy", list(barge.BargePolicy))
+def test_nonidempotent_barge_in_always_ends_atomic(policy: barge.BargePolicy) -> None:
+    running = operation(False).start()
+    if policy is barge.BargePolicy.QUEUE:
+        manager = barge.InterruptManager(running, policy)
+        manager.interrupt(barge.Interrupt(1, 0, Identifier("interrupt-1"), "stop"))
+        manager.finish_and_drain()
+        terminal = manager.operation
+    else:
+        terminal, _ = barge.resolve_interrupt(running, policy)
+    outcome = barge.atomic_outcome(terminal)
+    assert outcome.terminal_state in {
+        barge.OperationState.COMPLETED,
+        barge.OperationState.ROLLED_BACK,
+    }
+
+
+def test_atomic_outcome_rejects_live_nonidempotent_operation() -> None:
+    with pytest.raises(ValueError, match="not atomic terminal"):
+        barge.atomic_outcome(operation(False).start())
