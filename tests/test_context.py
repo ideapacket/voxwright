@@ -45,3 +45,30 @@ def test_attachment_rejects_invalid_accounting(version: int, cost: int, priority
             cost,
             priority,
         )
+
+
+def test_context_manager_replaces_only_with_newer_version() -> None:
+    manager = context.ContextManager(10)
+    manager.add(attachment())
+    newer = context.ContextAttachment(
+        Identifier("screen-1"),
+        context.AttachmentKind.SCREEN_STATE,
+        {"page": "music"},
+        version=2,
+        token_cost=2,
+    )
+    manager.add(newer)
+    assert manager.attachments == (newer,)
+    assert manager.token_cost == 2
+
+
+def test_context_manager_rejects_stale_or_equal_version() -> None:
+    manager = context.ContextManager(10)
+    manager.add(attachment())
+    with pytest.raises(ValueError, match="version must increase"):
+        manager.add(attachment())
+
+
+def test_context_budget_must_be_positive() -> None:
+    with pytest.raises(ValueError, match="must be positive"):
+        context.ContextManager(0)
