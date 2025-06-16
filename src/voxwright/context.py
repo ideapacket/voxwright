@@ -34,3 +34,34 @@ class ContextAttachment:
             raise ValueError("context token cost must be positive")
         if self.priority < 0:
             raise ValueError("context priority cannot be negative")
+
+
+@dataclass(slots=True)
+class ContextManager:
+    """Store the latest version of each context identifier in insertion order."""
+
+    token_budget: int
+    _attachments: list[ContextAttachment]
+
+    def __init__(self, token_budget: int) -> None:
+        if token_budget < 1:
+            raise ValueError("context token budget must be positive")
+        self.token_budget = token_budget
+        self._attachments = []
+
+    @property
+    def attachments(self) -> tuple[ContextAttachment, ...]:
+        return tuple(self._attachments)
+
+    @property
+    def token_cost(self) -> int:
+        return sum(item.token_cost for item in self._attachments)
+
+    def add(self, attachment: ContextAttachment) -> None:
+        matches = [item for item in self._attachments if item.context_id == attachment.context_id]
+        if matches and attachment.version <= matches[-1].version:
+            raise ValueError("context version must increase")
+        self._attachments = [
+            item for item in self._attachments if item.context_id != attachment.context_id
+        ]
+        self._attachments.append(attachment)
