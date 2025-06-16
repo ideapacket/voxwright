@@ -65,3 +65,14 @@ class ContextManager:
             item for item in self._attachments if item.context_id != attachment.context_id
         ]
         self._attachments.append(attachment)
+
+    def evict_to_budget(self) -> tuple[Identifier, ...]:
+        """Evict lowest priority then oldest attachments until within budget."""
+        evicted: list[Identifier] = []
+        while self.token_cost > self.token_budget:
+            victim_index = min(
+                range(len(self._attachments)),
+                key=lambda index: (self._attachments[index].priority, index),
+            )
+            evicted.append(self._attachments.pop(victim_index).context_id)
+        return tuple(evicted)
