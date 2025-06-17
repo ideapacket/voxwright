@@ -137,3 +137,27 @@ def test_structured_privacy_view_preserves_shape() -> None:
 def test_structured_privacy_view_deduplicates_categories_by_first_seen() -> None:
     _, categories = context.private_view(["a@example.com", "b@example.com", "+1 202 555 0100"])
     assert categories == ("email", "phone")
+
+
+def test_adapter_view_evicts_then_redacts() -> None:
+    manager = context.ContextManager(3)
+    manager.add(attachment("evicted", 3, 0))
+    manager.add(
+        context.ContextAttachment(
+            Identifier("document-1"),
+            context.AttachmentKind.DOCUMENT,
+            "contact a@example.com",
+            token_cost=3,
+            priority=1,
+        )
+    )
+    view = context.adapter_context(manager)
+    assert [item["context_id"] for item in view] == ["document-1"]
+    assert view[0]["content"] == "contact [REDACTED:email]"
+    assert view[0]["redactions"] == ["email"]
+
+
+def test_adapter_view_is_deterministic_for_unchanged_manager() -> None:
+    manager = context.ContextManager(10)
+    manager.add(attachment())
+    assert context.adapter_context(manager) == context.adapter_context(manager)
