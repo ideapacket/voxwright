@@ -99,3 +99,25 @@ def redact_private_text(text: str) -> RedactionResult:
         if name in categories:
             output = pattern.sub(f"[REDACTED:{name}]", output)
     return RedactionResult(output, tuple(categories))
+
+
+def private_view(value: JSONValue) -> tuple[JSONValue, tuple[str, ...]]:
+    """Recursively redact strings while preserving structured attachment shape."""
+    categories: list[str] = []
+    if isinstance(value, str):
+        result = redact_private_text(value)
+        return result.text, result.categories
+    if isinstance(value, list):
+        output = []
+        for item in value:
+            redacted, found = private_view(item)
+            output.append(redacted)
+            categories.extend(found)
+        return output, tuple(dict.fromkeys(categories))
+    if isinstance(value, dict):
+        mapped: dict[str, JSONValue] = {}
+        for name, item in value.items():
+            mapped[name], found = private_view(item)
+            categories.extend(found)
+        return mapped, tuple(dict.fromkeys(categories))
+    return value, ()
