@@ -121,3 +121,21 @@ def private_view(value: JSONValue) -> tuple[JSONValue, tuple[str, ...]]:
             categories.extend(found)
         return mapped, tuple(dict.fromkeys(categories))
     return value, ()
+
+
+def adapter_context(manager: ContextManager) -> list[dict[str, JSONValue]]:
+    """Build a redacted, budgeted adapter view with explicit context identifiers."""
+    manager.evict_to_budget()
+    output: list[dict[str, JSONValue]] = []
+    for item in manager.attachments:
+        content, categories = private_view(item.content)
+        output.append(
+            {
+                "context_id": str(item.context_id),
+                "kind": item.kind.value,
+                "version": item.version,
+                "content": content,
+                "redactions": list(categories),
+            }
+        )
+    return output
