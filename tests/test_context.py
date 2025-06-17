@@ -161,3 +161,30 @@ def test_adapter_view_is_deterministic_for_unchanged_manager() -> None:
     manager = context.ContextManager(10)
     manager.add(attachment())
     assert context.adapter_context(manager) == context.adapter_context(manager)
+
+
+def test_grounded_act_accepts_known_unique_citations() -> None:
+    attached = (attachment("screen-1"), attachment("screen-2"))
+    act = context.GroundedAct(
+        Identifier("calendar.open"),
+        (Identifier("screen-1"), Identifier("screen-2")),
+        {"view": "day"},
+    )
+    context.verify_citations(act, attached)
+
+
+def test_grounded_act_rejects_missing_unknown_and_duplicate_citations() -> None:
+    attached = (attachment("screen-1"),)
+    with pytest.raises(ValueError, match="requires at least one"):
+        context.verify_citations(context.GroundedAct(Identifier("act"), (), {}), attached)
+    with pytest.raises(ValueError, match="unknown context citation"):
+        context.verify_citations(
+            context.GroundedAct(Identifier("act"), (Identifier("missing"),), {}), attached
+        )
+    with pytest.raises(ValueError, match="must be unique"):
+        context.verify_citations(
+            context.GroundedAct(
+                Identifier("act"), (Identifier("screen-1"), Identifier("screen-1")), {}
+            ),
+            attached,
+        )
