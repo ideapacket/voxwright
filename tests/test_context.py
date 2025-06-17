@@ -117,3 +117,23 @@ def test_privacy_filter_preserves_nonmatching_application_text() -> None:
 )
 def test_privacy_filter_handles_hostile_suffixes(attack: str) -> None:
     assert "REDACTED" in context.redact_private_text(attack).text
+
+
+def test_structured_privacy_view_preserves_shape() -> None:
+    value = {
+        "owner": "alice@example.com",
+        "items": ["safe", {"phone": "+1 202 555 0100"}],
+        "enabled": True,
+    }
+    redacted, categories = context.private_view(value)
+    assert redacted == {
+        "owner": "[REDACTED:email]",
+        "items": ["safe", {"phone": "[REDACTED:phone]"}],
+        "enabled": True,
+    }
+    assert categories == ("email", "phone")
+
+
+def test_structured_privacy_view_deduplicates_categories_by_first_seen() -> None:
+    _, categories = context.private_view(["a@example.com", "b@example.com", "+1 202 555 0100"])
+    assert categories == ("email", "phone")
