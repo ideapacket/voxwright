@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 
@@ -76,3 +77,25 @@ class ContextManager:
             )
             evicted.append(self._attachments.pop(victim_index).context_id)
         return tuple(evicted)
+
+
+_EMAIL = re.compile(r"(?<![\w.-])[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}(?![\w.-])")
+_PHONE = re.compile(r"(?<!\d)(?:\+?\d[\d -]{7,}\d)(?!\d)")
+_CARD = re.compile(r"(?<!\d)(?:\d[ -]?){13,19}(?!\d)")
+
+
+@dataclass(frozen=True, slots=True)
+class RedactionResult:
+    text: str
+    categories: tuple[str, ...]
+
+
+def redact_private_text(text: str) -> RedactionResult:
+    """Redact common PII-like patterns before adapter observation."""
+    categories: list[str] = []
+    output = text
+    for name, pattern in (("email", _EMAIL), ("phone", _PHONE), ("card", _CARD)):
+        if pattern.search(output):
+            categories.append(name)
+            output = pattern.sub(f"[REDACTED:{name}]", output)
+    return RedactionResult(output, tuple(categories))
