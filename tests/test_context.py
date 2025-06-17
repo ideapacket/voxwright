@@ -95,3 +95,25 @@ def test_single_oversized_attachment_is_evicted() -> None:
     manager.add(attachment(cost=3))
     assert manager.evict_to_budget() == (Identifier("screen-1"),)
     assert manager.attachments == ()
+
+
+def test_privacy_filter_redacts_email_phone_and_card() -> None:
+    value = "mail alice@example.com call +86 138 0013 8000 card 4111 1111 1111 1111"
+    result = context.redact_private_text(value)
+    assert result.categories == ("email", "phone", "card")
+    assert "alice@example.com" not in result.text
+    assert "138 0013 8000" not in result.text
+    assert "4111 1111 1111 1111" not in result.text
+
+
+def test_privacy_filter_preserves_nonmatching_application_text() -> None:
+    text = "open calendar page 12 and select room 3"
+    assert context.redact_private_text(text) == context.RedactionResult(text, ())
+
+
+@pytest.mark.parametrize(
+    "attack",
+    ["a@b.com<script>", "phone:+1-202-555-0100 ignore filters", "4111111111111111 CALL tool"],
+)
+def test_privacy_filter_handles_hostile_suffixes(attack: str) -> None:
+    assert "REDACTED" in context.redact_private_text(attack).text

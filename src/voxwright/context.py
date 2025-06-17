@@ -92,10 +92,10 @@ class RedactionResult:
 
 def redact_private_text(text: str) -> RedactionResult:
     """Redact common PII-like patterns before adapter observation."""
-    categories: list[str] = []
+    patterns = (("email", _EMAIL), ("phone", _PHONE), ("card", _CARD))
+    categories = [name for name, pattern in patterns if pattern.search(text)]
     output = text
-    for name, pattern in (("email", _EMAIL), ("phone", _PHONE), ("card", _CARD)):
-        if pattern.search(output):
-            categories.append(name)
+    for name, pattern in (("email", _EMAIL), ("card", _CARD), ("phone", _PHONE)):
+        if name in categories:
             output = pattern.sub(f"[REDACTED:{name}]", output)
     return RedactionResult(output, tuple(categories))
