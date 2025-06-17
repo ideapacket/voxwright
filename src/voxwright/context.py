@@ -139,3 +139,24 @@ def adapter_context(manager: ContextManager) -> list[dict[str, JSONValue]]:
             }
         )
     return output
+
+
+@dataclass(frozen=True, slots=True)
+class GroundedAct:
+    """An application action with machine-checkable context citations."""
+
+    action: Identifier
+    citations: tuple[Identifier, ...]
+    arguments: dict[str, JSONValue]
+
+
+def verify_citations(act: GroundedAct, available: tuple[ContextAttachment, ...]) -> None:
+    """Require every act citation to reference a currently attached context id."""
+    known = {item.context_id for item in available}
+    if not act.citations:
+        raise ValueError("grounded act requires at least one context citation")
+    missing = [citation for citation in act.citations if citation not in known]
+    if missing:
+        raise ValueError(f"unknown context citation: {missing[0]}")
+    if len(set(act.citations)) != len(act.citations):
+        raise ValueError("context citations must be unique")
