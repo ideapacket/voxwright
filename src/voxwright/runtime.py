@@ -33,3 +33,23 @@ class LatencyBudget:
 
     def for_stage(self, stage: LatencyStage) -> int:
         return dict(zip(LatencyStage, self.values(), strict=True))[stage]
+
+
+@dataclass(frozen=True, slots=True)
+class LatencySample:
+    """One measured stage duration on the logical clock."""
+
+    stage: LatencyStage
+    started_ms: int
+    ended_ms: int
+
+    def __post_init__(self) -> None:
+        if self.started_ms < 0 or self.ended_ms < self.started_ms:
+            raise ValueError("latency sample has invalid logical interval")
+
+    @property
+    def duration_ms(self) -> int:
+        return self.ended_ms - self.started_ms
+
+    def within(self, budget: LatencyBudget) -> bool:
+        return self.duration_ms <= budget.for_stage(self.stage)
