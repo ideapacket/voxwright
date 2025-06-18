@@ -21,3 +21,16 @@ def test_latency_budget_allows_zero_but_not_negative() -> None:
     assert runtime.LatencyBudget(0, 0, 0, 0).total_ms == 0
     with pytest.raises(ValueError, match="cannot be negative"):
         runtime.LatencyBudget(-1, 0, 0, 0)
+
+
+def test_latency_sample_uses_inclusive_budget_boundary() -> None:
+    exact = runtime.LatencySample(runtime.LatencyStage.DECISION, 10, 210)
+    over = runtime.LatencySample(runtime.LatencyStage.DECISION, 10, 211)
+    assert exact.duration_ms == 200 and exact.within(budget())
+    assert not over.within(budget())
+
+
+@pytest.mark.parametrize(("start", "end"), [(-1, 0), (10, 9)])
+def test_latency_sample_rejects_invalid_interval(start: int, end: int) -> None:
+    with pytest.raises(ValueError, match="invalid logical interval"):
+        runtime.LatencySample(runtime.LatencyStage.TOOL, start, end)
