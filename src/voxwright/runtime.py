@@ -53,3 +53,36 @@ class LatencySample:
 
     def within(self, budget: LatencyBudget) -> bool:
         return self.duration_ms <= budget.for_stage(self.stage)
+
+
+@dataclass(frozen=True, slots=True)
+class LatencyTrace:
+    """An immutable, stage-ordered latency trace for one application turn."""
+
+    samples: tuple[LatencySample, ...] = ()
+
+    def __post_init__(self) -> None:
+        expected = tuple(LatencyStage)
+        for index, sample in enumerate(self.samples):
+            if index >= len(expected) or sample.stage is not expected[index]:
+                raise ValueError("latency samples must follow stage order without duplicates")
+            if index and sample.started_ms < self.samples[index - 1].ended_ms:
+                raise ValueError("latency samples cannot overlap")
+
+    def append(self, sample: LatencySample) -> LatencyTrace:
+        """Return a new trace containing the next ordered sample."""
+        return LatencyTrace((*self.samples, sample))
+
+    @property
+    def active_ms(self) -> int:
+        return sum(sample.duration_ms for sample in self.samples)
+
+    @property
+    def elapsed_ms(self) -> int:
+        if not self.samples:
+            return 0
+        return self.samples[-1].ended_ms - self.samples[0].started_ms
+
+    @property
+    def complete(self) -> bool:
+        return len(self.samples) == len(LatencyStage)
