@@ -46,3 +46,30 @@ def test_latency_trace_accumulates_ordered_samples_immutably() -> None:
     assert trace.active_ms == 40
     assert trace.elapsed_ms == 45
     assert not trace.complete
+
+
+def test_latency_trace_is_complete_after_every_stage() -> None:
+    trace = runtime.LatencyTrace()
+    for index, stage in enumerate(runtime.LatencyStage):
+        trace = trace.append(runtime.LatencySample(stage, index * 10, index * 10 + 5))
+    assert trace.complete
+    assert trace.active_ms == 20
+    assert trace.elapsed_ms == 35
+
+
+def test_latency_trace_rejects_skipped_duplicate_and_overlapping_stages() -> None:
+    perception = runtime.LatencySample(runtime.LatencyStage.PERCEPTION, 0, 10)
+    with pytest.raises(ValueError, match="stage order"):
+        runtime.LatencyTrace((perception, runtime.LatencySample(runtime.LatencyStage.TOOL, 10, 20)))
+    with pytest.raises(ValueError, match="stage order"):
+        runtime.LatencyTrace((perception, perception))
+    with pytest.raises(ValueError, match="cannot overlap"):
+        runtime.LatencyTrace(
+            (perception, runtime.LatencySample(runtime.LatencyStage.DECISION, 9, 20))
+        )
+
+
+def test_empty_latency_trace_has_zero_durations() -> None:
+    trace = runtime.LatencyTrace()
+    assert trace.active_ms == trace.elapsed_ms == 0
+    assert not trace.complete
