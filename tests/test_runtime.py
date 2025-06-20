@@ -124,3 +124,30 @@ def test_stream_block_preserves_logical_arrival_metadata() -> None:
         40,
         True,
     )
+
+
+@pytest.mark.parametrize(
+    ("values", "message"),
+    [
+        ((-1, 0, 1, False), "sequence"),
+        ((0, -1, 1, False), "arrival"),
+        ((0, 0, 0, False), "duration"),
+        ((0, 0, -1, False), "duration"),
+    ],
+)
+def test_stream_block_rejects_invalid_numeric_boundaries(
+    values: tuple[int, int, int, bool], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        runtime.StreamBlock(*values)
+
+
+def test_stream_block_rejects_boolean_integer_aliases() -> None:
+    with pytest.raises(ValueError, match="sequence"):
+        runtime.StreamBlock(True, 0, 1)
+    with pytest.raises(ValueError, match="arrival"):
+        runtime.StreamBlock(0, False, 1)
+    with pytest.raises(ValueError, match="duration"):
+        runtime.StreamBlock(0, 0, True)
+    with pytest.raises(TypeError, match="final flag"):
+        runtime.StreamBlock(0, 0, 1, final=1)  # type: ignore[arg-type]
