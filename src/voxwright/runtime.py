@@ -121,3 +121,23 @@ def assess_latency(trace: LatencyTrace, budget: LatencyBudget) -> BudgetAssessme
         if not sample.within(budget)
     )
     return BudgetAssessment(trace.complete, violations, budget.total_ms, trace.active_ms)
+
+
+@dataclass(frozen=True, slots=True)
+class StreamBlock:
+    """Transport-neutral input block scheduled on a logical clock."""
+
+    sequence: int
+    received_at_ms: int
+    duration_ms: int
+    final: bool = False
+
+    def __post_init__(self) -> None:
+        if isinstance(self.sequence, bool) or self.sequence < 0:
+            raise ValueError("stream block sequence must be a non-negative integer")
+        if isinstance(self.received_at_ms, bool) or self.received_at_ms < 0:
+            raise ValueError("stream block arrival must be a non-negative integer")
+        if isinstance(self.duration_ms, bool) or self.duration_ms <= 0:
+            raise ValueError("stream block duration must be a positive integer")
+        if not isinstance(self.final, bool):
+            raise TypeError("stream block final flag must be boolean")

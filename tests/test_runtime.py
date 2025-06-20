@@ -114,3 +114,13 @@ def test_idle_gaps_do_not_count_as_active_stage_overrun() -> None:
     assert assessment.within_budget
     assert trace.elapsed_ms == 3_150
     assert assessment.active_ms == assessment.total_budget_ms == 750
+
+
+def test_stream_block_preserves_logical_arrival_metadata() -> None:
+    block = runtime.StreamBlock(sequence=3, received_at_ms=250, duration_ms=40, final=True)
+    assert (block.sequence, block.received_at_ms, block.duration_ms, block.final) == (
+        3,
+        250,
+        40,
+        True,
+    )
