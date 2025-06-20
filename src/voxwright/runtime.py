@@ -86,3 +86,38 @@ class LatencyTrace:
     @property
     def complete(self) -> bool:
         return len(self.samples) == len(LatencyStage)
+
+
+@dataclass(frozen=True, slots=True)
+class BudgetViolation:
+    stage: LatencyStage
+    actual_ms: int
+    budget_ms: int
+
+    @property
+    def overrun_ms(self) -> int:
+        return self.actual_ms - self.budget_ms
+
+
+@dataclass(frozen=True, slots=True)
+class BudgetAssessment:
+    """Budget result derived exclusively from logical stage durations."""
+
+    complete: bool
+    violations: tuple[BudgetViolation, ...]
+    total_budget_ms: int
+    active_ms: int
+
+    @property
+    def within_budget(self) -> bool:
+        return self.complete and not self.violations and self.active_ms <= self.total_budget_ms
+
+
+def assess_latency(trace: LatencyTrace, budget: LatencyBudget) -> BudgetAssessment:
+    """Compare every observed stage to its configured inclusive budget."""
+    violations = tuple(
+        BudgetViolation(sample.stage, sample.duration_ms, budget.for_stage(sample.stage))
+        for sample in trace.samples
+        if not sample.within(budget)
+    )
+    return BudgetAssessment(trace.complete, violations, budget.total_ms, trace.active_ms)

@@ -73,3 +73,19 @@ def test_empty_latency_trace_has_zero_durations() -> None:
     trace = runtime.LatencyTrace()
     assert trace.active_ms == trace.elapsed_ms == 0
     assert not trace.complete
+
+
+def test_latency_assessment_reports_precise_stage_overruns() -> None:
+    samples = tuple(
+        runtime.LatencySample(stage, index * 500, index * 500 + duration)
+        for index, (stage, duration) in enumerate(
+            zip(runtime.LatencyStage, (100, 201, 310, 150), strict=True)
+        )
+    )
+    assessment = runtime.assess_latency(runtime.LatencyTrace(samples), budget())
+    assert not assessment.within_budget
+    assert [(item.stage.value, item.overrun_ms) for item in assessment.violations] == [
+        ("decision", 1),
+        ("tool", 10),
+    ]
+    assert assessment.active_ms == 761
