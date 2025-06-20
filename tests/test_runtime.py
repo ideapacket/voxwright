@@ -89,3 +89,28 @@ def test_latency_assessment_reports_precise_stage_overruns() -> None:
         ("tool", 10),
     ]
     assert assessment.active_ms == 761
+
+
+def test_latency_assessment_requires_a_complete_turn() -> None:
+    partial = runtime.LatencyTrace().append(
+        runtime.LatencySample(runtime.LatencyStage.PERCEPTION, 0, 1)
+    )
+    assessment = runtime.assess_latency(partial, budget())
+    assert not assessment.complete
+    assert not assessment.within_budget
+    assert assessment.violations == ()
+
+
+def test_idle_gaps_do_not_count_as_active_stage_overrun() -> None:
+    trace = runtime.LatencyTrace(
+        (
+            runtime.LatencySample(runtime.LatencyStage.PERCEPTION, 0, 100),
+            runtime.LatencySample(runtime.LatencyStage.DECISION, 1_000, 1_200),
+            runtime.LatencySample(runtime.LatencyStage.TOOL, 2_000, 2_300),
+            runtime.LatencySample(runtime.LatencyStage.RESPONSE, 3_000, 3_150),
+        )
+    )
+    assessment = runtime.assess_latency(trace, budget())
+    assert assessment.within_budget
+    assert trace.elapsed_ms == 3_150
+    assert assessment.active_ms == assessment.total_budget_ms == 750
