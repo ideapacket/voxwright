@@ -201,3 +201,33 @@ def test_partial_policy_selects_fresh_useful_fragments_stably() -> None:
     stale = runtime.PartialCandidate("stale", 0, 101)
     short = runtime.PartialCandidate("no", 100, 110)
     assert policy.select((late, stale, early, short)) == (early, late)
+
+
+def test_partial_staleness_boundary_is_inclusive() -> None:
+    policy = runtime.PartialResponsePolicy(50)
+    assert policy.accepts(runtime.PartialCandidate("fresh", 100, 150))
+    assert not policy.accepts(runtime.PartialCandidate("old", 100, 151))
+
+
+def test_partial_candidates_validate_content_and_time_direction() -> None:
+    with pytest.raises(ValueError, match="text cannot be empty"):
+        runtime.PartialCandidate("  ", 0, 0)
+    with pytest.raises(ValueError, match="invalid logical times"):
+        runtime.PartialCandidate("fragment", -1, 0)
+    with pytest.raises(ValueError, match="invalid logical times"):
+        runtime.PartialCandidate("fragment", 10, 9)
+
+
+def test_partial_policy_validates_configuration() -> None:
+    with pytest.raises(ValueError, match="cannot be negative"):
+        runtime.PartialResponsePolicy(-1)
+    with pytest.raises(ValueError, match="must be positive"):
+        runtime.PartialResponsePolicy(0, 0)
+
+
+def test_partial_selection_retains_input_order_for_equal_ready_times() -> None:
+    candidates = (
+        runtime.PartialCandidate("first", 0, 10),
+        runtime.PartialCandidate("second", 2, 10),
+    )
+    assert runtime.PartialResponsePolicy(20).select(candidates) == candidates
