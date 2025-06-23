@@ -168,3 +168,27 @@ def test_block_runtime_accounts_each_stage_on_logical_clock() -> None:
         ("response", 160, 200),
     ]
     assert clock.now_ms == 200
+
+
+def test_block_runtime_rejects_out_of_order_and_post_final_input() -> None:
+    engine = runtime.BlockRuntime()
+    durations = runtime.StageDurations(1, 1, 1, 1)
+    with pytest.raises(ValueError, match="expected stream block 0, got 1"):
+        engine.process(runtime.StreamBlock(1, 0, 1), durations)
+    engine.process(runtime.StreamBlock(0, 0, 1, final=True), durations)
+    with pytest.raises(RuntimeError, match="after the final block"):
+        engine.process(runtime.StreamBlock(1, 1, 1), durations)
+
+
+def test_block_runtime_never_rewinds_for_late_arrivals() -> None:
+    engine = runtime.BlockRuntime(LogicalClock(500))
+    turn = engine.process(runtime.StreamBlock(0, 100, 10), runtime.StageDurations(1, 2, 3, 4))
+    assert turn.trace.samples[0].started_ms == 500
+    assert engine.clock.now_ms == 510
+
+
+def test_stage_durations_reject_negative_and_boolean_values() -> None:
+    with pytest.raises(ValueError, match="non-negative"):
+        runtime.StageDurations(0, -1, 0, 0)
+    with pytest.raises(ValueError, match="non-negative"):
+        runtime.StageDurations(0, 0, True, 0)
