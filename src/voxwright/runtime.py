@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from voxwright.clock import LogicalClock
+
 
 class LatencyStage(str, Enum):
     PERCEPTION = "perception"
@@ -141,3 +143,48 @@ class StreamBlock:
             raise ValueError("stream block duration must be a positive integer")
         if not isinstance(self.final, bool):
             raise TypeError("stream block final flag must be boolean")
+
+
+@dataclass(frozen=True, slots=True)
+class StageDurations:
+    perception_ms: int
+    decision_ms: int
+    tool_ms: int
+    response_ms: int
+
+    def __post_init__(self) -> None:
+        if any(isinstance(value, bool) or value < 0 for value in self.values()):
+            raise ValueError("stage durations must be non-negative integers")
+
+    def values(self) -> tuple[int, int, int, int]:
+        return self.perception_ms, self.decision_ms, self.tool_ms, self.response_ms
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeTurn:
+    block: StreamBlock
+    trace: LatencyTrace
+
+
+class BlockRuntime:
+    """Execute ordered blocks using durations supplied by an offline fixture."""
+
+    def __init__(self, clock: LogicalClock | None = None) -> None:
+        self.clock = clock if clock is not None else LogicalClock()
+        self._next_sequence = 0
+        self._finished = False
+
+    def process(self, block: StreamBlock, durations: StageDurations) -> RuntimeTurn:
+        if self._finished:
+            raise RuntimeError("cannot process a block after the final block")
+        if block.sequence != self._next_sequence:
+            raise ValueError(f"expected stream block {self._next_sequence}, got {block.sequence}")
+        self.clock.move_to(max(self.clock.now_ms, block.received_at_ms))
+        trace = LatencyTrace()
+        for stage, duration in zip(LatencyStage, durations.values(), strict=True):
+            started_ms = self.clock.now_ms
+            self.clock.advance(duration)
+            trace = trace.append(LatencySample(stage, started_ms, self.clock.now_ms))
+        self._next_sequence += 1
+        self._finished = block.final
+        return RuntimeTurn(block, trace)

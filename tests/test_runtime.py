@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 import voxwright.runtime as runtime
+from voxwright.clock import LogicalClock
 
 
 def budget() -> runtime.LatencyBudget:
@@ -151,3 +152,19 @@ def test_stream_block_rejects_boolean_integer_aliases() -> None:
         runtime.StreamBlock(0, 0, True)
     with pytest.raises(TypeError, match="final flag"):
         runtime.StreamBlock(0, 0, 1, final=1)  # type: ignore[arg-type]
+
+
+def test_block_runtime_accounts_each_stage_on_logical_clock() -> None:
+    clock = LogicalClock(50)
+    engine = runtime.BlockRuntime(clock)
+    turn = engine.process(runtime.StreamBlock(0, 100, 20), runtime.StageDurations(10, 20, 30, 40))
+    observed = [
+        (sample.stage.value, sample.started_ms, sample.ended_ms) for sample in turn.trace.samples
+    ]
+    assert observed == [
+        ("perception", 100, 110),
+        ("decision", 110, 130),
+        ("tool", 130, 160),
+        ("response", 160, 200),
+    ]
+    assert clock.now_ms == 200
