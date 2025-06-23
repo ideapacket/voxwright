@@ -231,3 +231,17 @@ def test_partial_selection_retains_input_order_for_equal_ready_times() -> None:
         runtime.PartialCandidate("second", 2, 10),
     )
     assert runtime.PartialResponsePolicy(20).select(candidates) == candidates
+
+
+def test_timed_replay_is_independent_of_wall_clock() -> None:
+    plans = (
+        runtime.TimedBlockPlan(runtime.StreamBlock(0, 10, 20), runtime.StageDurations(5, 10, 0, 5)),
+        runtime.TimedBlockPlan(
+            runtime.StreamBlock(1, 25, 20, final=True), runtime.StageDurations(3, 4, 5, 6)
+        ),
+    )
+    first = runtime.replay_timed_blocks(plans)
+    second = runtime.replay_timed_blocks(plans)
+    assert first == second
+    assert [turn.trace.elapsed_ms for turn in first] == [20, 18]
+    assert first[1].trace.samples[0].started_ms == 30

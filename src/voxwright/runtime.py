@@ -237,3 +237,20 @@ class PartialResponsePolicy:
             )
             if self.accepts(candidate)
         )
+
+
+@dataclass(frozen=True, slots=True)
+class TimedBlockPlan:
+    block: StreamBlock
+    durations: StageDurations
+
+
+def replay_timed_blocks(
+    plans: tuple[TimedBlockPlan, ...], *, start_ms: int = 0
+) -> tuple[RuntimeTurn, ...]:
+    """Replay a complete timed fixture without consulting wall-clock time."""
+    runtime = BlockRuntime(LogicalClock(start_ms))
+    turns: list[RuntimeTurn] = []
+    for plan in plans:
+        turns.append(runtime.process(plan.block, plan.durations))
+    return tuple(turns)
