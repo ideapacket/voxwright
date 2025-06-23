@@ -192,3 +192,12 @@ def test_stage_durations_reject_negative_and_boolean_values() -> None:
         runtime.StageDurations(0, -1, 0, 0)
     with pytest.raises(ValueError, match="non-negative"):
         runtime.StageDurations(0, 0, True, 0)
+
+
+def test_partial_policy_selects_fresh_useful_fragments_stably() -> None:
+    policy = runtime.PartialResponsePolicy(max_staleness_ms=100, min_characters=4)
+    late = runtime.PartialCandidate("later", 100, 180)
+    early = runtime.PartialCandidate("early", 80, 120)
+    stale = runtime.PartialCandidate("stale", 0, 101)
+    short = runtime.PartialCandidate("no", 100, 110)
+    assert policy.select((late, stale, early, short)) == (early, late)

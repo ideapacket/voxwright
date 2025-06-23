@@ -188,3 +188,52 @@ class BlockRuntime:
         self._next_sequence += 1
         self._finished = block.final
         return RuntimeTurn(block, trace)
+
+
+@dataclass(frozen=True, slots=True)
+class PartialCandidate:
+    """A response fragment tied to the evidence time that produced it."""
+
+    text: str
+    evidence_at_ms: int
+    ready_at_ms: int
+
+    def __post_init__(self) -> None:
+        if not self.text.strip():
+            raise ValueError("partial response text cannot be empty")
+        if self.evidence_at_ms < 0 or self.ready_at_ms < self.evidence_at_ms:
+            raise ValueError("partial response has invalid logical times")
+
+    @property
+    def staleness_ms(self) -> int:
+        return self.ready_at_ms - self.evidence_at_ms
+
+
+@dataclass(frozen=True, slots=True)
+class PartialResponsePolicy:
+    """Bound speak-while-thinking output by evidence age and useful length."""
+
+    max_staleness_ms: int
+    min_characters: int = 1
+
+    def __post_init__(self) -> None:
+        if self.max_staleness_ms < 0:
+            raise ValueError("maximum partial staleness cannot be negative")
+        if self.min_characters <= 0:
+            raise ValueError("minimum partial length must be positive")
+
+    def accepts(self, candidate: PartialCandidate) -> bool:
+        return (
+            candidate.staleness_ms <= self.max_staleness_ms
+            and len(candidate.text.strip()) >= self.min_characters
+        )
+
+    def select(self, candidates: tuple[PartialCandidate, ...]) -> tuple[PartialCandidate, ...]:
+        """Keep acceptable fragments in deterministic ready-time order."""
+        return tuple(
+            candidate
+            for _, candidate in sorted(
+                enumerate(candidates), key=lambda item: (item[1].ready_at_ms, item[0])
+            )
+            if self.accepts(candidate)
+        )
