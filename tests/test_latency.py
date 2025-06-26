@@ -25,3 +25,20 @@ def test_latency_distribution_requires_a_single_nonempty_stage() -> None:
         latency_distribution(())
     with pytest.raises(ValueError, match="share one stage"):
         latency_distribution((sample(LatencyStage.TOOL, 1), sample(LatencyStage.RESPONSE, 1)))
+
+
+def test_latency_percentiles_are_stable_for_small_campaigns() -> None:
+    single = latency_distribution((sample(LatencyStage.DECISION, 7),))
+    assert (single.p50_ms, single.p95_ms, single.mean_ms) == (7, 7, 7.0)
+
+    two = latency_distribution(
+        (sample(LatencyStage.DECISION, 100), sample(LatencyStage.DECISION, 0))
+    )
+    assert (two.p50_ms, two.p95_ms, two.mean_ms) == (0, 100, 50.0)
+
+
+def test_latency_mean_is_quantized_at_production() -> None:
+    result = latency_distribution(
+        tuple(sample(LatencyStage.PERCEPTION, value) for value in (0, 0, 2))
+    )
+    assert result.mean_ms == 0.666667
