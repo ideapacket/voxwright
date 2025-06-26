@@ -245,3 +245,30 @@ def test_timed_replay_is_independent_of_wall_clock() -> None:
     assert first == second
     assert [turn.trace.elapsed_ms for turn in first] == [20, 18]
     assert first[1].trace.samples[0].started_ms == 30
+
+
+def test_timed_replay_honors_nonzero_epoch_and_arrival_gaps() -> None:
+    plans = (
+        runtime.TimedBlockPlan(runtime.StreamBlock(0, 1, 10), runtime.StageDurations(1, 1, 1, 1)),
+        runtime.TimedBlockPlan(
+            runtime.StreamBlock(1, 200, 10, final=True), runtime.StageDurations(1, 1, 1, 1)
+        ),
+    )
+    turns = runtime.replay_timed_blocks(plans, start_ms=50)
+    assert turns[0].trace.samples[0].started_ms == 50
+    assert turns[1].trace.samples[0].started_ms == 200
+
+
+def test_timed_replay_propagates_sequence_and_finality_errors() -> None:
+    duration = runtime.StageDurations(0, 0, 0, 0)
+    with pytest.raises(ValueError, match="expected stream block 0"):
+        runtime.replay_timed_blocks(
+            (runtime.TimedBlockPlan(runtime.StreamBlock(2, 0, 1), duration),)
+        )
+    with pytest.raises(RuntimeError, match="after the final block"):
+        runtime.replay_timed_blocks(
+            (
+                runtime.TimedBlockPlan(runtime.StreamBlock(0, 0, 1, final=True), duration),
+                runtime.TimedBlockPlan(runtime.StreamBlock(1, 0, 1), duration),
+            )
+        )
