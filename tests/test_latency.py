@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.latency import latency_distribution, stage_latency_profile
+from voxwright.latency import (
+    RunOutcome,
+    latency_distribution,
+    latency_success_curve,
+    stage_latency_profile,
+)
 from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace
 
 
@@ -72,3 +77,20 @@ def test_stage_profile_does_not_mutate_input_traces() -> None:
     before = tuple(item.samples for item in traces)
     stage_latency_profile(traces)
     assert tuple(item.samples for item in traces) == before
+
+
+def test_latency_success_curve_counts_outcomes_against_all_runs() -> None:
+    outcomes = (
+        RunOutcome(100, True),
+        RunOutcome(200, False),
+        RunOutcome(300, True),
+        RunOutcome(400, True),
+    )
+    points = latency_success_curve(outcomes, (400, 100, 250))
+    assert [point.budget_ms for point in points] == [100, 250, 400]
+    assert [(point.completed, point.successes) for point in points] == [(1, 1), (2, 1), (4, 3)]
+    assert [(point.adherence_rate, point.success_rate) for point in points] == [
+        (0.25, 0.25),
+        (0.5, 0.25),
+        (1.0, 0.75),
+    ]
