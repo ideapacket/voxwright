@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from voxwright.runtime import LatencySample, LatencyStage
+from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,4 +39,18 @@ def latency_distribution(samples: tuple[LatencySample, ...]) -> LatencyDistribut
         p95_ms=_nearest_rank(values, 95),
         maximum_ms=values[-1],
         mean_ms=round(sum(values) / len(values), 6),
+    )
+
+
+def stage_latency_profile(traces: tuple[LatencyTrace, ...]) -> tuple[LatencyDistribution, ...]:
+    """Build one distribution per stage from complete turn traces."""
+    if not traces:
+        raise ValueError("stage latency profile requires at least one trace")
+    if any(not trace.complete for trace in traces):
+        raise ValueError("stage latency profile requires complete traces")
+    return tuple(
+        latency_distribution(
+            tuple(sample for trace in traces for sample in trace.samples if sample.stage is stage)
+        )
+        for stage in LatencyStage
     )

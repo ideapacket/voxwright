@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.latency import latency_distribution
-from voxwright.runtime import LatencySample, LatencyStage
+from voxwright.latency import latency_distribution, stage_latency_profile
+from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace
 
 
 def sample(stage: LatencyStage, duration_ms: int) -> LatencySample:
     return LatencySample(stage, 10, 10 + duration_ms)
+
+
+def trace(durations: tuple[int, int, int, int]) -> LatencyTrace:
+    return LatencyTrace(
+        tuple(
+            LatencySample(stage, sum(durations[:index]), sum(durations[: index + 1]))
+            for index, stage in enumerate(LatencyStage)
+        )
+    )
 
 
 def test_latency_distribution_uses_nearest_rank_and_quantized_mean() -> None:
@@ -42,3 +51,9 @@ def test_latency_mean_is_quantized_at_production() -> None:
         tuple(sample(LatencyStage.PERCEPTION, value) for value in (0, 0, 2))
     )
     assert result.mean_ms == 0.666667
+
+
+def test_stage_profile_preserves_canonical_stage_order() -> None:
+    profile = stage_latency_profile((trace((10, 20, 30, 40)), trace((20, 30, 40, 50))))
+    assert tuple(item.stage for item in profile) == tuple(LatencyStage)
+    assert [item.mean_ms for item in profile] == [15.0, 25.0, 35.0, 45.0]
