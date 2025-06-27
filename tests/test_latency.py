@@ -57,3 +57,18 @@ def test_stage_profile_preserves_canonical_stage_order() -> None:
     profile = stage_latency_profile((trace((10, 20, 30, 40)), trace((20, 30, 40, 50))))
     assert tuple(item.stage for item in profile) == tuple(LatencyStage)
     assert [item.mean_ms for item in profile] == [15.0, 25.0, 35.0, 45.0]
+
+
+def test_stage_profile_rejects_empty_and_partial_campaigns() -> None:
+    with pytest.raises(ValueError, match="at least one trace"):
+        stage_latency_profile(())
+    partial = LatencyTrace((sample(LatencyStage.PERCEPTION, 10),))
+    with pytest.raises(ValueError, match="complete traces"):
+        stage_latency_profile((trace((1, 2, 3, 4)), partial))
+
+
+def test_stage_profile_does_not_mutate_input_traces() -> None:
+    traces = (trace((4, 3, 2, 1)), trace((1, 2, 3, 4)))
+    before = tuple(item.samples for item in traces)
+    stage_latency_profile(traces)
+    assert tuple(item.samples for item in traces) == before
