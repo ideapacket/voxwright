@@ -6,8 +6,10 @@ import pytest
 
 from voxwright.latency import (
     RunOutcome,
+    RuntimeSetting,
     latency_distribution,
     latency_success_curve,
+    pareto_frontier,
     stage_latency_profile,
 )
 from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace
@@ -118,3 +120,17 @@ def test_run_outcome_rejects_invalid_latency_and_success_type() -> None:
         RunOutcome(-1, True)
     with pytest.raises(TypeError, match="must be boolean"):
         RunOutcome(1, 1)  # type: ignore[arg-type]
+
+
+def test_pareto_frontier_removes_dominated_runtime_settings() -> None:
+    settings = (
+        RuntimeSetting("fast", 100, 0.6),
+        RuntimeSetting("balanced", 200, 0.9),
+        RuntimeSetting("dominated", 250, 0.8),
+        RuntimeSetting("accurate", 400, 1.0),
+    )
+    assert [setting.name for setting in pareto_frontier(settings)] == [
+        "fast",
+        "balanced",
+        "accurate",
+    ]

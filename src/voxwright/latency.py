@@ -104,3 +104,46 @@ def latency_success_curve(
             )
         )
     return tuple(points)
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeSetting:
+    name: str
+    p95_latency_ms: int
+    task_success: float
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ValueError("runtime setting name cannot be empty")
+        if isinstance(self.p95_latency_ms, bool) or self.p95_latency_ms < 0:
+            raise ValueError("runtime setting latency must be a non-negative integer")
+        if not 0.0 <= self.task_success <= 1.0:
+            raise ValueError("runtime setting success must be between 0 and 1")
+        object.__setattr__(self, "task_success", round(self.task_success, 6))
+
+
+def pareto_frontier(settings: tuple[RuntimeSetting, ...]) -> tuple[RuntimeSetting, ...]:
+    """Retain settings not dominated on both lower latency and higher success."""
+    names = [setting.name for setting in settings]
+    if len(set(names)) != len(names):
+        raise ValueError("runtime setting names must be unique")
+    frontier = tuple(
+        candidate
+        for candidate in settings
+        if not any(
+            other is not candidate
+            and other.p95_latency_ms <= candidate.p95_latency_ms
+            and other.task_success >= candidate.task_success
+            and (
+                other.p95_latency_ms < candidate.p95_latency_ms
+                or other.task_success > candidate.task_success
+            )
+            for other in settings
+        )
+    )
+    return tuple(
+        sorted(
+            frontier,
+            key=lambda item: (item.p95_latency_ms, -item.task_success, item.name),
+        )
+    )
