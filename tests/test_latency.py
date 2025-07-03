@@ -134,3 +134,23 @@ def test_pareto_frontier_removes_dominated_runtime_settings() -> None:
         "balanced",
         "accurate",
     ]
+
+
+def test_pareto_frontier_resolves_equal_coordinates_deterministically() -> None:
+    settings = (
+        RuntimeSetting("zeta", 100, 0.8),
+        RuntimeSetting("alpha", 100, 0.8),
+        RuntimeSetting("slower", 110, 0.8),
+    )
+    assert [setting.name for setting in pareto_frontier(settings)] == ["alpha", "zeta"]
+
+
+def test_pareto_setting_validation_catches_invalid_campaign_records() -> None:
+    with pytest.raises(ValueError, match="name cannot be empty"):
+        RuntimeSetting(" ", 1, 0.5)
+    with pytest.raises(ValueError, match="non-negative integer"):
+        RuntimeSetting("bad-latency", -1, 0.5)
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        RuntimeSetting("bad-success", 1, 1.01)
+    with pytest.raises(ValueError, match="names must be unique"):
+        pareto_frontier((RuntimeSetting("same", 1, 0.1), RuntimeSetting("same", 2, 0.2)))
