@@ -11,8 +11,9 @@ from voxwright.latency import (
     latency_success_curve,
     pareto_frontier,
     stage_latency_profile,
+    summarize_latency_campaign,
 )
-from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace
+from voxwright.runtime import LatencyBudget, LatencySample, LatencyStage, LatencyTrace
 
 
 def sample(stage: LatencyStage, duration_ms: int) -> LatencySample:
@@ -154,3 +155,12 @@ def test_pareto_setting_validation_catches_invalid_campaign_records() -> None:
         RuntimeSetting("bad-success", 1, 1.01)
     with pytest.raises(ValueError, match="names must be unique"):
         pareto_frontier((RuntimeSetting("same", 1, 0.1), RuntimeSetting("same", 2, 0.2)))
+
+
+def test_campaign_summary_combines_adherence_and_stage_profiles() -> None:
+    summary = summarize_latency_campaign(
+        (trace((10, 20, 30, 40)), trace((10, 21, 30, 40))),
+        LatencyBudget(10, 20, 30, 40),
+    )
+    assert (summary.turn_count, summary.within_budget_count, summary.adherence_rate) == (2, 1, 0.5)
+    assert [stage.mean_ms for stage in summary.stages] == [10.0, 20.5, 30.0, 40.0]

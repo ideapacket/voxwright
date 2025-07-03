@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace
+from voxwright.runtime import (
+    LatencyBudget,
+    LatencySample,
+    LatencyStage,
+    LatencyTrace,
+    assess_latency,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,3 +153,20 @@ def pareto_frontier(settings: tuple[RuntimeSetting, ...]) -> tuple[RuntimeSettin
             key=lambda item: (item.p95_latency_ms, -item.task_success, item.name),
         )
     )
+
+
+@dataclass(frozen=True, slots=True)
+class LatencyCampaignSummary:
+    turn_count: int
+    within_budget_count: int
+    adherence_rate: float
+    stages: tuple[LatencyDistribution, ...]
+
+
+def summarize_latency_campaign(
+    traces: tuple[LatencyTrace, ...], budget: LatencyBudget
+) -> LatencyCampaignSummary:
+    """Aggregate complete logical turns against a single campaign budget."""
+    stages = stage_latency_profile(traces)
+    within = sum(assess_latency(trace, budget).within_budget for trace in traces)
+    return LatencyCampaignSummary(len(traces), within, round(within / len(traces), 6), stages)
