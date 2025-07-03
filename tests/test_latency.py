@@ -94,3 +94,27 @@ def test_latency_success_curve_counts_outcomes_against_all_runs() -> None:
         (0.5, 0.25),
         (1.0, 0.75),
     ]
+
+
+def test_latency_curve_includes_exact_budget_boundary() -> None:
+    point = latency_success_curve((RunOutcome(0, True), RunOutcome(1, False)), (0,))[0]
+    assert (point.completed, point.successes) == (1, 1)
+    assert (point.adherence_rate, point.success_rate) == (0.5, 0.5)
+
+
+def test_latency_curve_rejects_ambiguous_inputs() -> None:
+    with pytest.raises(ValueError, match="at least one outcome"):
+        latency_success_curve((), (100,))
+    with pytest.raises(ValueError, match="at least one budget"):
+        latency_success_curve((RunOutcome(1, True),), ())
+    with pytest.raises(ValueError, match="non-negative integers"):
+        latency_success_curve((RunOutcome(1, True),), (-1,))
+    with pytest.raises(ValueError, match="must be unique"):
+        latency_success_curve((RunOutcome(1, True),), (10, 10))
+
+
+def test_run_outcome_rejects_invalid_latency_and_success_type() -> None:
+    with pytest.raises(ValueError, match="non-negative integer"):
+        RunOutcome(-1, True)
+    with pytest.raises(TypeError, match="must be boolean"):
+        RunOutcome(1, 1)  # type: ignore[arg-type]
