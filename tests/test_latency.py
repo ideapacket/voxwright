@@ -164,3 +164,16 @@ def test_campaign_summary_combines_adherence_and_stage_profiles() -> None:
     )
     assert (summary.turn_count, summary.within_budget_count, summary.adherence_rate) == (2, 1, 0.5)
     assert [stage.mean_ms for stage in summary.stages] == [10.0, 20.5, 30.0, 40.0]
+
+
+def test_campaign_summary_counts_exact_budget_as_adherent() -> None:
+    budget = LatencyBudget(1, 2, 3, 4)
+    summary = summarize_latency_campaign((trace((1, 2, 3, 4)),), budget)
+    assert summary.within_budget_count == 1
+    assert summary.adherence_rate == 1.0
+
+
+def test_campaign_summary_reuses_complete_trace_requirement() -> None:
+    partial = LatencyTrace((sample(LatencyStage.PERCEPTION, 1),))
+    with pytest.raises(ValueError, match="complete traces"):
+        summarize_latency_campaign((partial,), LatencyBudget(1, 1, 1, 1))
