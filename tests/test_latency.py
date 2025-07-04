@@ -188,3 +188,20 @@ def test_recommendation_chooses_fastest_eligible_frontier_point() -> None:
         RuntimeSetting("accurate", 400, 1.0),
     )
     assert recommend_setting(settings, minimum_success=0.8) == settings[1]
+
+
+def test_recommendation_returns_none_when_floor_is_unreachable() -> None:
+    settings = (RuntimeSetting("offline", 100, 0.75),)
+    assert recommend_setting(settings, minimum_success=0.8) is None
+
+
+def test_recommendation_includes_exact_success_floor() -> None:
+    setting = RuntimeSetting("exact", 10, 0.8)
+    assert recommend_setting((setting,), minimum_success=0.8) is setting
+
+
+def test_recommendation_rejects_invalid_success_floor() -> None:
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        recommend_setting((), minimum_success=-0.1)
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        recommend_setting((), minimum_success=1.1)
