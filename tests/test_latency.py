@@ -10,6 +10,7 @@ from voxwright.latency import (
     latency_distribution,
     latency_success_curve,
     pareto_frontier,
+    recommend_setting,
     stage_latency_profile,
     summarize_latency_campaign,
 )
@@ -177,3 +178,13 @@ def test_campaign_summary_reuses_complete_trace_requirement() -> None:
     partial = LatencyTrace((sample(LatencyStage.PERCEPTION, 1),))
     with pytest.raises(ValueError, match="complete traces"):
         summarize_latency_campaign((partial,), LatencyBudget(1, 1, 1, 1))
+
+
+def test_recommendation_chooses_fastest_eligible_frontier_point() -> None:
+    settings = (
+        RuntimeSetting("fast", 100, 0.6),
+        RuntimeSetting("balanced", 200, 0.9),
+        RuntimeSetting("dominated", 250, 0.8),
+        RuntimeSetting("accurate", 400, 1.0),
+    )
+    assert recommend_setting(settings, minimum_success=0.8) == settings[1]

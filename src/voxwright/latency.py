@@ -170,3 +170,15 @@ def summarize_latency_campaign(
     stages = stage_latency_profile(traces)
     within = sum(assess_latency(trace, budget).within_budget for trace in traces)
     return LatencyCampaignSummary(len(traces), within, round(within / len(traces), 6), stages)
+
+
+def recommend_setting(
+    settings: tuple[RuntimeSetting, ...], *, minimum_success: float
+) -> RuntimeSetting | None:
+    """Choose the lowest-latency Pareto setting meeting a success floor."""
+    if not 0.0 <= minimum_success <= 1.0:
+        raise ValueError("minimum success must be between 0 and 1")
+    return next(
+        (item for item in pareto_frontier(settings) if item.task_success >= minimum_success),
+        None,
+    )
