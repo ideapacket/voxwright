@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.evaluation import EvaluationRun
+from voxwright.evaluation import EvaluationRun, slot_score, task_success_rate
 
 
 def run(**overrides: object) -> EvaluationRun:
@@ -62,3 +62,23 @@ def test_evaluation_run_enforces_counter_boundaries() -> None:
         run(false_executes=-1)
     with pytest.raises(ValueError, match="latency budget"):
         run(latency_budget_ms=-1)
+
+
+def test_task_and_slot_scores_use_planted_truth() -> None:
+    runs = (
+        run(),
+        run(
+            run_id="run-2",
+            goal_satisfied=False,
+            expected_slots={"room": "study", "on": "yes"},
+            predicted_slots={"room": "study", "extra": "ignored"},
+        ),
+    )
+    assert task_success_rate(runs) == 0.5
+    score = slot_score(runs)
+    assert (score.correct, score.expected, score.predicted, score.accuracy) == (
+        2,
+        3,
+        3,
+        0.666667,
+    )

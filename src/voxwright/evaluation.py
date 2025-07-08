@@ -55,3 +55,33 @@ class EvaluationRun:
             raise ValueError("evaluation turns must be positive")
         if self.repairs > self.turns:
             raise ValueError("evaluation repairs cannot exceed turns")
+
+
+@dataclass(frozen=True, slots=True)
+class SlotScore:
+    correct: int
+    expected: int
+    predicted: int
+    accuracy: float
+
+
+def task_success_rate(runs: tuple[EvaluationRun, ...]) -> float:
+    """Return the fraction of planted goals reported satisfied."""
+    if not runs:
+        raise ValueError("task success requires at least one run")
+    return round(sum(run.goal_satisfied for run in runs) / len(runs), 6)
+
+
+def slot_score(runs: tuple[EvaluationRun, ...]) -> SlotScore:
+    """Score exact key/value slot matches against planted values."""
+    if not runs:
+        raise ValueError("slot score requires at least one run")
+    expected = sum(len(run.expected_slots) for run in runs)
+    predicted = sum(len(run.predicted_slots) for run in runs)
+    correct = sum(
+        value == run.predicted_slots.get(name)
+        for run in runs
+        for name, value in run.expected_slots.items()
+    )
+    accuracy = (1.0 if predicted == 0 else 0.0) if expected == 0 else correct / expected
+    return SlotScore(correct, expected, predicted, round(accuracy, 6))
