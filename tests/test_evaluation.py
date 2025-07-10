@@ -112,3 +112,19 @@ def test_tool_score_counts_repeated_planted_calls_as_a_multiset() -> None:
     score = tool_score((item,))
     assert (score.true_positive, score.false_positive, score.false_negative) == (2, 1, 1)
     assert (score.precision, score.recall, score.f1) == (0.666667, 0.666667, 0.666667)
+
+
+def test_tool_score_defines_empty_denominators_explicitly() -> None:
+    no_tools = run(expected_tools=(), selected_tools=())
+    missed = run(expected_tools=("notes.add",), selected_tools=())
+    spurious = run(expected_tools=(), selected_tools=("notes.add",))
+    assert (tool_score((no_tools,)).precision, tool_score((no_tools,)).recall) == (1.0, 1.0)
+    assert tool_score((missed,)).precision == 1.0
+    assert tool_score((missed,)).recall == 0.0
+    assert tool_score((spurious,)).precision == 0.0
+    assert tool_score((spurious,)).recall == 1.0
+
+
+def test_tool_score_rejects_an_empty_campaign() -> None:
+    with pytest.raises(ValueError, match="at least one run"):
+        tool_score(())
