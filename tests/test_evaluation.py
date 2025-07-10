@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.evaluation import EvaluationRun, slot_score, task_success_rate
+from voxwright.evaluation import EvaluationRun, slot_score, task_success_rate, tool_score
 
 
 def run(**overrides: object) -> EvaluationRun:
@@ -102,3 +102,13 @@ def test_wrong_slot_value_is_not_a_partial_match() -> None:
     score = slot_score((run(predicted_slots={"title": "wrong"}),))
     assert score.correct == 0
     assert score.accuracy == 0.0
+
+
+def test_tool_score_counts_repeated_planted_calls_as_a_multiset() -> None:
+    item = run(
+        expected_tools=("notes.add", "notes.add", "calendar.create"),
+        selected_tools=("notes.add", "calendar.create", "music.play"),
+    )
+    score = tool_score((item,))
+    assert (score.true_positive, score.false_positive, score.false_negative) == (2, 1, 1)
+    assert (score.precision, score.recall, score.f1) == (0.666667, 0.666667, 0.666667)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 
 
@@ -85,3 +86,36 @@ def slot_score(runs: tuple[EvaluationRun, ...]) -> SlotScore:
     )
     accuracy = (1.0 if predicted == 0 else 0.0) if expected == 0 else correct / expected
     return SlotScore(correct, expected, predicted, round(accuracy, 6))
+
+
+@dataclass(frozen=True, slots=True)
+class ToolScore:
+    true_positive: int
+    false_positive: int
+    false_negative: int
+    precision: float
+    recall: float
+    f1: float
+
+
+def tool_score(runs: tuple[EvaluationRun, ...]) -> ToolScore:
+    """Compute multiset tool-selection precision, recall, and F1."""
+    if not runs:
+        raise ValueError("tool score requires at least one run")
+    pairs = tuple((Counter(run.expected_tools), Counter(run.selected_tools)) for run in runs)
+    true_positive = sum(sum((expected & selected).values()) for expected, selected in pairs)
+    false_positive = sum(sum((selected - expected).values()) for expected, selected in pairs)
+    false_negative = sum(sum((expected - selected).values()) for expected, selected in pairs)
+    precision_denominator = true_positive + false_positive
+    recall_denominator = true_positive + false_negative
+    precision = true_positive / precision_denominator if precision_denominator else 1.0
+    recall = true_positive / recall_denominator if recall_denominator else 1.0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    return ToolScore(
+        true_positive,
+        false_positive,
+        false_negative,
+        round(precision, 6),
+        round(recall, 6),
+        round(f1, 6),
+    )
