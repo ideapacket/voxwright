@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.evaluation import EvaluationRun, slot_score, task_success_rate, tool_score
+from voxwright.evaluation import (
+    EvaluationRun,
+    efficiency_score,
+    slot_score,
+    task_success_rate,
+    tool_score,
+)
 
 
 def run(**overrides: object) -> EvaluationRun:
@@ -128,3 +134,25 @@ def test_tool_score_defines_empty_denominators_explicitly() -> None:
 def test_tool_score_rejects_an_empty_campaign() -> None:
     with pytest.raises(ValueError, match="at least one run"):
         tool_score(())
+
+
+def test_efficiency_score_uses_turn_weighted_repair_rate() -> None:
+    score = efficiency_score(
+        (
+            run(turns=2, repairs=1, false_executes=0, latency_ms=100, latency_budget_ms=100),
+            run(
+                run_id="run-2",
+                turns=4,
+                repairs=2,
+                false_executes=1,
+                latency_ms=101,
+                latency_budget_ms=100,
+            ),
+        )
+    )
+    assert (
+        score.mean_turns,
+        score.repair_rate,
+        score.false_execute_count,
+        score.latency_adherence,
+    ) == (3.0, 0.5, 1, 0.5)

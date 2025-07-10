@@ -119,3 +119,26 @@ def tool_score(runs: tuple[EvaluationRun, ...]) -> ToolScore:
         round(recall, 6),
         round(f1, 6),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class EfficiencyScore:
+    mean_turns: float
+    repair_rate: float
+    false_execute_count: int
+    latency_adherence: float
+
+
+def efficiency_score(runs: tuple[EvaluationRun, ...]) -> EfficiencyScore:
+    """Aggregate application turns, repair use, safety errors, and latency."""
+    if not runs:
+        raise ValueError("efficiency score requires at least one run")
+    total_turns = sum(run.turns for run in runs)
+    repairs = sum(run.repairs for run in runs)
+    adherent = sum(run.latency_ms <= run.latency_budget_ms for run in runs)
+    return EfficiencyScore(
+        mean_turns=round(total_turns / len(runs), 6),
+        repair_rate=round(repairs / total_turns, 6),
+        false_execute_count=sum(run.false_executes for run in runs),
+        latency_adherence=round(adherent / len(runs), 6),
+    )
