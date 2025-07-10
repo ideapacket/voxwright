@@ -82,3 +82,23 @@ def test_task_and_slot_scores_use_planted_truth() -> None:
         3,
         0.666667,
     )
+
+
+def test_task_and_slot_scores_reject_empty_campaigns() -> None:
+    with pytest.raises(ValueError, match="task success"):
+        task_success_rate(())
+    with pytest.raises(ValueError, match="slot score"):
+        slot_score(())
+
+
+def test_slotless_tasks_are_perfect_only_without_spurious_slots() -> None:
+    empty = run(expected_slots={}, predicted_slots={})
+    spurious = run(expected_slots={}, predicted_slots={"unexpected": "value"})
+    assert slot_score((empty,)).accuracy == 1.0
+    assert slot_score((spurious,)).accuracy == 0.0
+
+
+def test_wrong_slot_value_is_not_a_partial_match() -> None:
+    score = slot_score((run(predicted_slots={"title": "wrong"}),))
+    assert score.correct == 0
+    assert score.accuracy == 0.0
