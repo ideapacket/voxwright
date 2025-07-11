@@ -156,3 +156,19 @@ def test_efficiency_score_uses_turn_weighted_repair_rate() -> None:
         score.false_execute_count,
         score.latency_adherence,
     ) == (3.0, 0.5, 1, 0.5)
+
+
+def test_efficiency_includes_exact_latency_budget_boundary() -> None:
+    score = efficiency_score((run(latency_ms=100, latency_budget_ms=100),))
+    assert score.latency_adherence == 1.0
+
+
+def test_efficiency_rejects_empty_campaigns() -> None:
+    with pytest.raises(ValueError, match="at least one run"):
+        efficiency_score(())
+
+
+def test_repair_rate_is_zero_for_unrepaired_runs() -> None:
+    score = efficiency_score((run(turns=3, repairs=0),))
+    assert score.repair_rate == 0.0
+    assert score.mean_turns == 3.0
