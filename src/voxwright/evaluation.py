@@ -142,3 +142,25 @@ def efficiency_score(runs: tuple[EvaluationRun, ...]) -> EfficiencyScore:
         false_execute_count=sum(run.false_executes for run in runs),
         latency_adherence=round(adherent / len(runs), 6),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class MetricBundle:
+    run_count: int
+    task_success: float
+    slots: SlotScore
+    tools: ToolScore
+    efficiency: EfficiencyScore
+
+
+def score_runs(runs: tuple[EvaluationRun, ...]) -> MetricBundle:
+    """Produce the complete public metric bundle for an executed campaign."""
+    if not runs:
+        raise ValueError("campaign scoring requires at least one run")
+    return MetricBundle(
+        len(runs),
+        task_success_rate(runs),
+        slot_score(runs),
+        tool_score(runs),
+        efficiency_score(runs),
+    )

@@ -7,6 +7,7 @@ import pytest
 from voxwright.evaluation import (
     EvaluationRun,
     efficiency_score,
+    score_runs,
     slot_score,
     task_success_rate,
     tool_score,
@@ -172,3 +173,12 @@ def test_repair_rate_is_zero_for_unrepaired_runs() -> None:
     score = efficiency_score((run(turns=3, repairs=0),))
     assert score.repair_rate == 0.0
     assert score.mean_turns == 3.0
+
+
+def test_score_runs_assembles_every_metric_family() -> None:
+    metrics = score_runs((run(),))
+    assert metrics.run_count == 1
+    assert metrics.task_success == 1.0
+    assert metrics.slots.accuracy == 1.0
+    assert metrics.tools.f1 == 1.0
+    assert metrics.efficiency.false_execute_count == 0
