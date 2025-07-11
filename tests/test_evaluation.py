@@ -182,3 +182,17 @@ def test_score_runs_assembles_every_metric_family() -> None:
     assert metrics.slots.accuracy == 1.0
     assert metrics.tools.f1 == 1.0
     assert metrics.efficiency.false_execute_count == 0
+
+
+def test_perfect_run_has_no_error_or_safety_counts() -> None:
+    metrics = score_runs((run(),))
+    assert metrics.slots.expected - metrics.slots.correct == 0
+    assert metrics.tools.false_positive == 0
+    assert metrics.tools.false_negative == 0
+    assert metrics.efficiency.false_execute_count == 0
+    assert metrics.efficiency.repair_rate == 0.0
+
+
+def test_campaign_bundle_rejects_no_runs() -> None:
+    with pytest.raises(ValueError, match="at least one run"):
+        score_runs(())
