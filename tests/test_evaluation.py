@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from voxwright.core import canonical_json
 from voxwright.evaluation import (
     EvaluationRun,
     efficiency_score,
@@ -196,3 +197,14 @@ def test_perfect_run_has_no_error_or_safety_counts() -> None:
 def test_campaign_bundle_rejects_no_runs() -> None:
     with pytest.raises(ValueError, match="at least one run"):
         score_runs(())
+
+
+def test_metric_bundle_has_a_versioned_canonical_shape() -> None:
+    encoded = canonical_json(score_runs((run(),)).to_dict())
+    assert encoded == (
+        '{"efficiency":{"false_execute_count":0,"latency_adherence":1.0,'
+        '"mean_turns":2.0,"repair_rate":0.0},"run_count":1,"schema_version":1,'
+        '"slots":{"accuracy":1.0,"correct":1,"expected":1,"predicted":1},'
+        '"task_success":1.0,"tools":{"f1":1.0,"false_negative":0,'
+        '"false_positive":0,"precision":1.0,"recall":1.0,"true_positive":1}}'
+    )

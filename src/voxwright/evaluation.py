@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 
+from voxwright.core import JSONValue
+
+METRIC_SCHEMA_VERSION = 1
+
 
 @dataclass(frozen=True, slots=True)
 class EvaluationRun:
@@ -151,6 +155,33 @@ class MetricBundle:
     slots: SlotScore
     tools: ToolScore
     efficiency: EfficiencyScore
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "schema_version": METRIC_SCHEMA_VERSION,
+            "run_count": self.run_count,
+            "task_success": self.task_success,
+            "slots": {
+                "correct": self.slots.correct,
+                "expected": self.slots.expected,
+                "predicted": self.slots.predicted,
+                "accuracy": self.slots.accuracy,
+            },
+            "tools": {
+                "true_positive": self.tools.true_positive,
+                "false_positive": self.tools.false_positive,
+                "false_negative": self.tools.false_negative,
+                "precision": self.tools.precision,
+                "recall": self.tools.recall,
+                "f1": self.tools.f1,
+            },
+            "efficiency": {
+                "mean_turns": self.efficiency.mean_turns,
+                "repair_rate": self.efficiency.repair_rate,
+                "false_execute_count": self.efficiency.false_execute_count,
+                "latency_adherence": self.efficiency.latency_adherence,
+            },
+        }
 
 
 def score_runs(runs: tuple[EvaluationRun, ...]) -> MetricBundle:
