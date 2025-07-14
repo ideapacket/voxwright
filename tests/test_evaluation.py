@@ -208,3 +208,21 @@ def test_metric_bundle_has_a_versioned_canonical_shape() -> None:
         '"task_success":1.0,"tools":{"f1":1.0,"false_negative":0,'
         '"false_positive":0,"precision":1.0,"recall":1.0,"true_positive":1}}'
     )
+
+
+def test_metric_serialization_changes_with_real_observations() -> None:
+    perfect = score_runs((run(),)).to_dict()
+    degraded = score_runs(
+        (
+            run(
+                goal_satisfied=False,
+                predicted_slots={"title": "wrong"},
+                selected_tools=(),
+                repairs=1,
+            ),
+        )
+    ).to_dict()
+    assert perfect != degraded
+    assert degraded["task_success"] == 0.0
+    assert degraded["slots"] != perfect["slots"]
+    assert degraded["tools"] != perfect["tools"]
