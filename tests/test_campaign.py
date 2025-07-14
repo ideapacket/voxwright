@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from voxwright.campaign import SliceDimension, slice_campaign
 from voxwright.evaluation import EvaluationRun
 
@@ -40,3 +42,22 @@ def test_campaign_slices_difficulty_without_losing_runs() -> None:
     slices = slice_campaign(runs, SliceDimension.DIFFICULTY)
     assert sum(item.metrics.run_count for item in slices) == len(runs)
     assert {item.label for item in slices} == {"easy", "hard"}
+
+
+def test_campaign_slice_order_is_independent_of_input_order() -> None:
+    forward = (run("a", task="schedule"), run("b", task="music"))
+    reverse = tuple(reversed(forward))
+    assert [item.label for item in slice_campaign(forward, SliceDimension.TASK_TYPE)] == [
+        item.label for item in slice_campaign(reverse, SliceDimension.TASK_TYPE)
+    ]
+
+
+def test_campaign_slicing_rejects_no_observations() -> None:
+    with pytest.raises(ValueError, match="at least one run"):
+        slice_campaign((), SliceDimension.TASK_TYPE)
+
+
+def test_campaign_slice_retains_original_order_within_label() -> None:
+    runs = (run("z", task="music"), run("a", task="music"))
+    [music] = slice_campaign(runs, SliceDimension.TASK_TYPE)
+    assert music.run_ids == ("z", "a")
