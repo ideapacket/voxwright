@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from voxwright.campaign import SliceDimension, noise_band, slice_campaign
@@ -72,3 +74,22 @@ def test_campaign_noise_bands_are_machine_readable() -> None:
         "high",
         "high",
     ]
+
+
+def test_noise_slice_places_every_boundary_once() -> None:
+    runs = tuple(
+        replace(run(f"run-{index}"), noise_rate=rate) for index, rate in enumerate((0.0, 0.2, 0.5))
+    )
+    slices = slice_campaign(runs, SliceDimension.NOISE_BAND)
+    assert [(item.label, item.metrics.run_count) for item in slices] == [
+        ("high", 1),
+        ("low", 1),
+        ("medium", 1),
+    ]
+
+
+def test_noise_band_rejects_out_of_range_values() -> None:
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        noise_band(-0.01)
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        noise_band(1.01)
