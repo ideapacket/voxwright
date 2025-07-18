@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.campaign import SliceDimension, slice_campaign
+from voxwright.campaign import SliceDimension, noise_band, slice_campaign
 from voxwright.evaluation import EvaluationRun
 
 
@@ -61,3 +61,14 @@ def test_campaign_slice_retains_original_order_within_label() -> None:
     runs = (run("z", task="music"), run("a", task="music"))
     [music] = slice_campaign(runs, SliceDimension.TASK_TYPE)
     assert music.run_ids == ("z", "a")
+
+
+def test_campaign_noise_bands_are_machine_readable() -> None:
+    assert [noise_band(value) for value in (0.0, 0.19, 0.2, 0.49, 0.5, 1.0)] == [
+        "low",
+        "low",
+        "medium",
+        "medium",
+        "high",
+        "high",
+    ]
