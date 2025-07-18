@@ -6,7 +6,7 @@ from dataclasses import replace
 
 import pytest
 
-from voxwright.campaign import SliceDimension, noise_band, slice_campaign
+from voxwright.campaign import SliceDimension, noise_band, slice_campaign, slot_breakdown
 from voxwright.evaluation import EvaluationRun
 
 
@@ -93,3 +93,19 @@ def test_noise_band_rejects_out_of_range_values() -> None:
         noise_band(-0.01)
     with pytest.raises(ValueError, match="between 0 and 1"):
         noise_band(1.01)
+
+
+def test_slot_breakdown_explains_per_name_accuracy() -> None:
+    runs = (
+        run("a"),
+        replace(
+            run("b"),
+            expected_slots={"value": "b", "room": "study"},
+            predicted_slots={"value": "wrong", "room": "study"},
+        ),
+    )
+    scores = slot_breakdown(runs)
+    assert [(score.name, score.correct, score.expected, score.accuracy) for score in scores] == [
+        ("room", 1, 1, 1.0),
+        ("value", 1, 2, 0.5),
+    ]

@@ -60,3 +60,32 @@ def slice_campaign(
             )
         )
     return tuple(slices)
+
+
+@dataclass(frozen=True, slots=True)
+class NamedSlotScore:
+    name: str
+    correct: int
+    expected: int
+    predicted: int
+    accuracy: float
+
+
+def slot_breakdown(runs: tuple[EvaluationRun, ...]) -> tuple[NamedSlotScore, ...]:
+    """Explain exact slot accuracy by planted slot name."""
+    if not runs:
+        raise ValueError("slot breakdown requires at least one run")
+    names = sorted(
+        {name for run in runs for name in (*run.expected_slots.keys(), *run.predicted_slots.keys())}
+    )
+    result: list[NamedSlotScore] = []
+    for name in names:
+        expected = sum(name in run.expected_slots for run in runs)
+        predicted = sum(name in run.predicted_slots for run in runs)
+        correct = sum(
+            name in run.expected_slots and run.expected_slots[name] == run.predicted_slots.get(name)
+            for run in runs
+        )
+        accuracy = correct / expected if expected else 0.0
+        result.append(NamedSlotScore(name, correct, expected, predicted, round(accuracy, 6)))
+    return tuple(result)
