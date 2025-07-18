@@ -154,3 +154,17 @@ def test_tool_breakdown_reports_each_tool_error_family() -> None:
         ("music.stop", 0, 1, 0),
         ("notes.add", 1, 0, 1),
     ]
+
+
+def test_tool_breakdown_never_matches_calls_across_runs() -> None:
+    expected_only = replace(run("a"), expected_tools=("notes.add",), selected_tools=())
+    selected_only = replace(run("b"), expected_tools=(), selected_tools=("notes.add",))
+    [score] = tool_breakdown((expected_only, selected_only))
+    assert (score.true_positive, score.false_positive, score.false_negative) == (0, 1, 1)
+
+
+def test_tool_breakdown_handles_toolless_and_empty_campaigns() -> None:
+    tooless = replace(run("a"), expected_tools=(), selected_tools=())
+    assert tool_breakdown((tooless,)) == ()
+    with pytest.raises(ValueError, match="at least one run"):
+        tool_breakdown(())
