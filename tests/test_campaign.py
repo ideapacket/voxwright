@@ -6,7 +6,13 @@ from dataclasses import replace
 
 import pytest
 
-from voxwright.campaign import SliceDimension, noise_band, slice_campaign, slot_breakdown
+from voxwright.campaign import (
+    SliceDimension,
+    noise_band,
+    slice_campaign,
+    slot_breakdown,
+    tool_breakdown,
+)
 from voxwright.evaluation import EvaluationRun
 
 
@@ -132,3 +138,19 @@ def test_slot_breakdown_handles_slotless_campaign_and_empty_input() -> None:
     assert slot_breakdown((slotless,)) == ()
     with pytest.raises(ValueError, match="at least one run"):
         slot_breakdown(())
+
+
+def test_tool_breakdown_reports_each_tool_error_family() -> None:
+    item = replace(
+        run("a"),
+        expected_tools=("notes.add", "notes.add", "music.play"),
+        selected_tools=("notes.add", "music.stop"),
+    )
+    assert [
+        (score.name, score.true_positive, score.false_positive, score.false_negative)
+        for score in tool_breakdown((item,))
+    ] == [
+        ("music.play", 0, 0, 1),
+        ("music.stop", 0, 1, 0),
+        ("notes.add", 1, 0, 1),
+    ]

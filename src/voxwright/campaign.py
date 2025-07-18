@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
 
@@ -89,3 +90,29 @@ def slot_breakdown(runs: tuple[EvaluationRun, ...]) -> tuple[NamedSlotScore, ...
         accuracy = correct / expected if expected else 0.0
         result.append(NamedSlotScore(name, correct, expected, predicted, round(accuracy, 6)))
     return tuple(result)
+
+
+@dataclass(frozen=True, slots=True)
+class NamedToolScore:
+    name: str
+    true_positive: int
+    false_positive: int
+    false_negative: int
+
+
+def tool_breakdown(runs: tuple[EvaluationRun, ...]) -> tuple[NamedToolScore, ...]:
+    """Explain multiset tool errors per tool without cross-run matching."""
+    if not runs:
+        raise ValueError("tool breakdown requires at least one run")
+    names = sorted({name for run in runs for name in (*run.expected_tools, *run.selected_tools)})
+    scores: list[NamedToolScore] = []
+    for name in names:
+        true_positive = false_positive = false_negative = 0
+        for run in runs:
+            expected = Counter(run.expected_tools)[name]
+            selected = Counter(run.selected_tools)[name]
+            true_positive += min(expected, selected)
+            false_positive += max(0, selected - expected)
+            false_negative += max(0, expected - selected)
+        scores.append(NamedToolScore(name, true_positive, false_positive, false_negative))
+    return tuple(scores)
