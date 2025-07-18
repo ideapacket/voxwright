@@ -109,3 +109,26 @@ def test_slot_breakdown_explains_per_name_accuracy() -> None:
         ("room", 1, 1, 1.0),
         ("value", 1, 2, 0.5),
     ]
+
+
+def test_slot_breakdown_marks_spurious_only_names() -> None:
+    item = replace(
+        run("a"),
+        expected_slots={},
+        predicted_slots={"phantom": "value"},
+    )
+    [score] = slot_breakdown((item,))
+    assert (score.name, score.correct, score.expected, score.predicted, score.accuracy) == (
+        "phantom",
+        0,
+        0,
+        1,
+        0.0,
+    )
+
+
+def test_slot_breakdown_handles_slotless_campaign_and_empty_input() -> None:
+    slotless = replace(run("a"), expected_slots={}, predicted_slots={})
+    assert slot_breakdown((slotless,)) == ()
+    with pytest.raises(ValueError, match="at least one run"):
+        slot_breakdown(())
