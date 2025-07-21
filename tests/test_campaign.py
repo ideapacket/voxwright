@@ -187,3 +187,32 @@ def test_metric_comparison_uses_candidate_minus_baseline() -> None:
     assert (delta.task_success, delta.slot_accuracy, delta.tool_f1) == (-1.0, -1.0, -1.0)
     assert (delta.mean_turns, delta.repair_rate, delta.false_executes) == (1.0, 0.5, 1)
     assert delta.latency_adherence == -1.0
+
+
+def test_injected_errors_never_improve_quality_metrics() -> None:
+    baseline_run = run("baseline")
+    error_run = replace(
+        baseline_run,
+        run_id="error",
+        goal_satisfied=False,
+        predicted_slots={},
+        selected_tools=(),
+    )
+    delta = compare_metrics(score_runs((baseline_run,)), score_runs((error_run,)))
+    assert delta.task_success <= 0
+    assert delta.slot_accuracy <= 0
+    assert delta.tool_f1 <= 0
+
+
+def test_identical_metric_bundles_have_exact_zero_deltas() -> None:
+    metrics = score_runs((run("same"),))
+    delta = compare_metrics(metrics, metrics)
+    assert (
+        delta.task_success,
+        delta.slot_accuracy,
+        delta.tool_f1,
+        delta.mean_turns,
+        delta.repair_rate,
+        delta.false_executes,
+        delta.latency_adherence,
+    ) == (0.0, 0.0, 0.0, 0.0, 0.0, 0, 0.0)
