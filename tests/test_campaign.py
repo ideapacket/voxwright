@@ -8,12 +8,13 @@ import pytest
 
 from voxwright.campaign import (
     SliceDimension,
+    compare_metrics,
     noise_band,
     slice_campaign,
     slot_breakdown,
     tool_breakdown,
 )
-from voxwright.evaluation import EvaluationRun
+from voxwright.evaluation import EvaluationRun, score_runs
 
 
 def run(run_id: str, *, task: str = "schedule", difficulty: str = "easy") -> EvaluationRun:
@@ -168,3 +169,21 @@ def test_tool_breakdown_handles_toolless_and_empty_campaigns() -> None:
     assert tool_breakdown((tooless,)) == ()
     with pytest.raises(ValueError, match="at least one run"):
         tool_breakdown(())
+
+
+def test_metric_comparison_uses_candidate_minus_baseline() -> None:
+    baseline = score_runs((run("base"),))
+    degraded_run = replace(
+        run("candidate"),
+        goal_satisfied=False,
+        predicted_slots={"value": "wrong"},
+        selected_tools=(),
+        turns=2,
+        repairs=1,
+        false_executes=1,
+        latency_ms=30,
+    )
+    delta = compare_metrics(baseline, score_runs((degraded_run,)))
+    assert (delta.task_success, delta.slot_accuracy, delta.tool_f1) == (-1.0, -1.0, -1.0)
+    assert (delta.mean_turns, delta.repair_rate, delta.false_executes) == (1.0, 0.5, 1)
+    assert delta.latency_adherence == -1.0

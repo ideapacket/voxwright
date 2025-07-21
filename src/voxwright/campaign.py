@@ -116,3 +116,31 @@ def tool_breakdown(runs: tuple[EvaluationRun, ...]) -> tuple[NamedToolScore, ...
             false_negative += max(0, expected - selected)
         scores.append(NamedToolScore(name, true_positive, false_positive, false_negative))
     return tuple(scores)
+
+
+@dataclass(frozen=True, slots=True)
+class MetricDelta:
+    task_success: float
+    slot_accuracy: float
+    tool_f1: float
+    mean_turns: float
+    repair_rate: float
+    false_executes: int
+    latency_adherence: float
+
+
+def compare_metrics(baseline: MetricBundle, candidate: MetricBundle) -> MetricDelta:
+    """Return candidate-minus-baseline deltas with production quantization."""
+    return MetricDelta(
+        task_success=round(candidate.task_success - baseline.task_success, 6),
+        slot_accuracy=round(candidate.slots.accuracy - baseline.slots.accuracy, 6),
+        tool_f1=round(candidate.tools.f1 - baseline.tools.f1, 6),
+        mean_turns=round(candidate.efficiency.mean_turns - baseline.efficiency.mean_turns, 6),
+        repair_rate=round(candidate.efficiency.repair_rate - baseline.efficiency.repair_rate, 6),
+        false_executes=(
+            candidate.efficiency.false_execute_count - baseline.efficiency.false_execute_count
+        ),
+        latency_adherence=round(
+            candidate.efficiency.latency_adherence - baseline.efficiency.latency_adherence, 6
+        ),
+    )
