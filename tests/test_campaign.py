@@ -7,6 +7,7 @@ from dataclasses import replace
 import pytest
 
 from voxwright.campaign import (
+    CampaignArtifact,
     SliceDimension,
     compare_metrics,
     noise_band,
@@ -216,3 +217,14 @@ def test_identical_metric_bundles_have_exact_zero_deltas() -> None:
         delta.false_executes,
         delta.latency_adherence,
     ) == (0.0, 0.0, 0.0, 0.0, 0.0, 0, 0.0)
+
+
+def test_campaign_artifact_embeds_seed_config_digest_and_metrics() -> None:
+    artifact = CampaignArtifact(
+        "offline-smoke", 42, {"adapter": "scripted", "synthetic": True}, score_runs((run("a"),))
+    )
+    encoded = artifact.to_dict()
+    assert encoded["schema_version"] == 1
+    assert encoded["seed"] == 42
+    assert str(encoded["config_digest"]).startswith("sha256:")
+    assert encoded["metrics"] == artifact.metrics.to_dict()

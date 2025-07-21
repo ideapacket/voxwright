@@ -6,7 +6,11 @@ from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
 
+from voxwright.core import JSONValue
 from voxwright.evaluation import EvaluationRun, MetricBundle, score_runs
+from voxwright.hashing import object_digest
+
+CAMPAIGN_SCHEMA_VERSION = 1
 
 
 class SliceDimension(str, Enum):
@@ -144,3 +148,31 @@ def compare_metrics(baseline: MetricBundle, candidate: MetricBundle) -> MetricDe
             candidate.efficiency.latency_adherence - baseline.efficiency.latency_adherence, 6
         ),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class CampaignArtifact:
+    name: str
+    seed: int
+    config: dict[str, JSONValue]
+    metrics: MetricBundle
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ValueError("campaign name cannot be empty")
+        if isinstance(self.seed, bool) or self.seed < 0:
+            raise ValueError("campaign seed must be a non-negative integer")
+
+    @property
+    def config_digest(self) -> str:
+        return object_digest(self.config)
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "schema_version": CAMPAIGN_SCHEMA_VERSION,
+            "name": self.name,
+            "seed": self.seed,
+            "config": self.config,
+            "config_digest": self.config_digest,
+            "metrics": self.metrics.to_dict(),
+        }
