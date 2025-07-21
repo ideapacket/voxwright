@@ -15,6 +15,7 @@ from voxwright.campaign import (
     slot_breakdown,
     tool_breakdown,
 )
+from voxwright.core import canonical_json
 from voxwright.evaluation import EvaluationRun, score_runs
 
 
@@ -228,3 +229,18 @@ def test_campaign_artifact_embeds_seed_config_digest_and_metrics() -> None:
     assert encoded["seed"] == 42
     assert str(encoded["config_digest"]).startswith("sha256:")
     assert encoded["metrics"] == artifact.metrics.to_dict()
+
+
+def test_campaign_artifact_is_canonical_and_repeatable() -> None:
+    first = CampaignArtifact("repeatable", 7, {"z": 1, "a": 2}, score_runs((run("a"),)))
+    second = CampaignArtifact("repeatable", 7, {"a": 2, "z": 1}, score_runs((run("a"),)))
+    assert canonical_json(first.to_dict()) == canonical_json(second.to_dict())
+    assert first.config_digest == second.config_digest
+
+
+def test_campaign_artifact_validates_identity_and_seed() -> None:
+    metrics = score_runs((run("a"),))
+    with pytest.raises(ValueError, match="name cannot be empty"):
+        CampaignArtifact(" ", 0, {}, metrics)
+    with pytest.raises(ValueError, match="non-negative integer"):
+        CampaignArtifact("bad-seed", -1, {}, metrics)
