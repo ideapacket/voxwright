@@ -4,7 +4,30 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.reports import CoverageFacts, coverage_limitations
+from voxwright.campaign import CampaignArtifact
+from voxwright.evaluation import EvaluationRun, score_runs
+from voxwright.reports import CoverageFacts, ReportSpec, coverage_limitations, render_markdown
+
+
+def report_spec(title: str = "Synthetic campaign") -> ReportSpec:
+    run = EvaluationRun(
+        "run-1",
+        "schedule",
+        "easy",
+        0.1,
+        {"title": "lab"},
+        {"title": "lab"},
+        ("calendar.create",),
+        ("calendar.create",),
+        True,
+        2,
+        0,
+        0,
+        100,
+        150,
+    )
+    campaign = CampaignArtifact("offline", 7, {"adapter": "scripted"}, score_runs((run,)))
+    return ReportSpec(title, campaign, CoverageFacts(1, ("schedule",), ("scripted",)))
 
 
 def test_limitations_are_derived_from_actual_coverage() -> None:
@@ -42,3 +65,11 @@ def test_coverage_facts_reject_invalid_counts_and_names() -> None:
         CoverageFacts(1, ("",), ())
     with pytest.raises(ValueError, match="must be unique"):
         CoverageFacts(1, (), ("scripted", "scripted"))
+
+
+def test_markdown_report_contains_measured_campaign_values() -> None:
+    report = render_markdown(report_spec())
+    assert report.startswith("# Synthetic campaign\n")
+    assert "| Task success | 1.000000 |" in report
+    assert "| False execute | 0 |" in report
+    assert "Campaign: `offline`" in report
