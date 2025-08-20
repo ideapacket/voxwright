@@ -73,3 +73,22 @@ def test_markdown_report_contains_measured_campaign_values() -> None:
     assert "| Task success | 1.000000 |" in report
     assert "| False execute | 0 |" in report
     assert "Campaign: `offline`" in report
+
+
+def test_markdown_report_escapes_hostile_heading_and_metadata() -> None:
+    spec = report_spec("[title](bad) <script>|cell")
+    report = render_markdown(spec)
+    assert "\\[title\\](bad) \\<script\\>\\|cell" in report
+    assert "<script>" not in report
+
+
+def test_report_spec_requires_matching_executed_count() -> None:
+    spec = report_spec()
+    with pytest.raises(ValueError, match="count must match"):
+        ReportSpec(spec.title, spec.campaign, CoverageFacts(2, spec.coverage.task_types, ()))
+
+
+def test_report_spec_rejects_empty_title() -> None:
+    spec = report_spec()
+    with pytest.raises(ValueError, match="title cannot be empty"):
+        ReportSpec(" ", spec.campaign, spec.coverage)
