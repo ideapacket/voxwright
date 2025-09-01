@@ -9,6 +9,7 @@ from voxwright.evaluation import EvaluationRun, score_runs
 from voxwright.reports import (
     CoverageFacts,
     ReportSpec,
+    bar_chart_svg,
     coverage_limitations,
     render_html,
     render_markdown,
@@ -120,3 +121,10 @@ def test_html_report_has_one_complete_document() -> None:
     assert report.count("<!doctype html>") == 1
     assert report.count("<html") == report.count("</html>") == 1
     assert report.endswith("</body></html>\n")
+
+
+def test_bar_chart_scales_against_observed_maximum() -> None:
+    chart = bar_chart_svg("Latency stages", (("decision", 50.0), ("tool", 100.0)))
+    assert '<rect x="140" y="44" width="180.0"' in chart
+    assert '<rect x="140" y="74" width="360.0"' in chart
+    assert "50.000" in chart and "100.000" in chart

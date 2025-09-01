@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from html import escape
 
@@ -127,3 +128,34 @@ def render_html(spec: ReportSpec) -> str:
         f"<h2>局限</h2><ul>{limitations}</ul>"
         "</body></html>\n"
     )
+
+
+def bar_chart_svg(title: str, values: tuple[tuple[str, float], ...]) -> str:
+    """Render a deterministic horizontal SVG bar chart without plotting dependencies."""
+    if not title.strip():
+        raise ValueError("bar chart title cannot be empty")
+    if not values:
+        raise ValueError("bar chart requires at least one value")
+    if any(not label.strip() for label, _ in values):
+        raise ValueError("bar chart labels cannot be empty")
+    if any(not math.isfinite(value) or value < 0 for _, value in values):
+        raise ValueError("bar chart values must be finite and non-negative")
+    maximum = max(value for _, value in values) or 1.0
+    height = 52 + len(values) * 30
+    elements = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 {height}" role="img">',
+        f"<title>{escape(title)}</title>",
+        f'<text x="12" y="24" font-size="16">{escape(title)}</text>',
+    ]
+    for index, (label, value) in enumerate(values):
+        y = 44 + index * 30
+        width = round(360 * value / maximum, 3)
+        elements.extend(
+            (
+                f'<text x="12" y="{y + 15}" font-size="12">{escape(label)}</text>',
+                f'<rect x="140" y="{y}" width="{width}" height="18" fill="#3568a8"/>',
+                f'<text x="508" y="{y + 15}" font-size="12">{value:.3f}</text>',
+            )
+        )
+    elements.append("</svg>")
+    return "".join(elements)
