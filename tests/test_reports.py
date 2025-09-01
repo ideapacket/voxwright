@@ -128,3 +128,27 @@ def test_bar_chart_scales_against_observed_maximum() -> None:
     assert '<rect x="140" y="44" width="180.0"' in chart
     assert '<rect x="140" y="74" width="360.0"' in chart
     assert "50.000" in chart and "100.000" in chart
+
+
+def test_bar_chart_escapes_labels_and_title() -> None:
+    chart = bar_chart_svg("<latency>", (("tool<script>", 1.0),))
+    assert "<script>" not in chart
+    assert "&lt;latency&gt;" in chart
+    assert "tool&lt;script&gt;" in chart
+
+
+def test_bar_chart_validates_empty_and_nonfinite_data() -> None:
+    with pytest.raises(ValueError, match="title cannot be empty"):
+        bar_chart_svg(" ", (("value", 1.0),))
+    with pytest.raises(ValueError, match="at least one"):
+        bar_chart_svg("values", ())
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        bar_chart_svg("values", (("bad", float("nan")),))
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        bar_chart_svg("values", (("bad", -1.0),))
+
+
+def test_zero_bar_chart_has_finite_geometry() -> None:
+    chart = bar_chart_svg("zero", (("none", 0.0),))
+    assert 'width="0.0"' in chart
+    assert "nan" not in chart.lower()
