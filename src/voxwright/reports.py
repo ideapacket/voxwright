@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from html import escape
 
 from voxwright.campaign import CampaignArtifact
 
@@ -92,3 +93,37 @@ def render_markdown(spec: ReportSpec) -> str:
     ]
     lines.extend(f"- {_markdown_text(item)}" for item in coverage_limitations(spec.coverage))
     return "\n".join(lines) + "\n"
+
+
+def render_html(spec: ReportSpec) -> str:
+    """Render a self-contained, escaped HTML campaign summary."""
+    metrics = spec.campaign.metrics
+    limitations = "".join(
+        f"<li>{escape(item)}</li>" for item in coverage_limitations(spec.coverage)
+    )
+    rows = (
+        ("Task success", metrics.task_success),
+        ("Slot accuracy", metrics.slots.accuracy),
+        ("Tool F1", metrics.tools.f1),
+        ("Repair rate", metrics.efficiency.repair_rate),
+        ("Latency adherence", metrics.efficiency.latency_adherence),
+    )
+    metric_rows = "".join(
+        f"<tr><th>{escape(name)}</th><td>{value:.6f}</td></tr>" for name, value in rows
+    )
+    return (
+        '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        f"<title>{escape(spec.title)}</title>"
+        "<style>body{font:16px system-ui;max-width:900px;margin:auto;padding:2rem}"
+        "table{border-collapse:collapse}th,td{border:1px solid #bbb;padding:.4rem}</style>"
+        "</head><body>"
+        f"<h1>{escape(spec.title)}</h1>"
+        "<p><strong>离线合成评估:</strong> 指标来自植入真值, 不代表真实模型质量。</p>"
+        f"<p>Campaign: <code>{escape(spec.campaign.name)}</code>; Seed: "
+        f"<code>{spec.campaign.seed}</code>; Config: "
+        f"<code>{escape(spec.campaign.config_digest)}</code></p>"
+        f"<table><tbody>{metric_rows}</tbody></table>"
+        f"<h2>局限</h2><ul>{limitations}</ul>"
+        "</body></html>\n"
+    )

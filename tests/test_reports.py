@@ -6,7 +6,13 @@ import pytest
 
 from voxwright.campaign import CampaignArtifact
 from voxwright.evaluation import EvaluationRun, score_runs
-from voxwright.reports import CoverageFacts, ReportSpec, coverage_limitations, render_markdown
+from voxwright.reports import (
+    CoverageFacts,
+    ReportSpec,
+    coverage_limitations,
+    render_html,
+    render_markdown,
+)
 
 
 def report_spec(title: str = "Synthetic campaign") -> ReportSpec:
@@ -92,3 +98,11 @@ def test_report_spec_rejects_empty_title() -> None:
     spec = report_spec()
     with pytest.raises(ValueError, match="title cannot be empty"):
         ReportSpec(" ", spec.campaign, spec.coverage)
+
+
+def test_html_report_is_self_contained_and_measured() -> None:
+    report = render_html(report_spec())
+    assert report.startswith("<!doctype html>")
+    assert "Task success</th><td>1.000000" in report
+    assert "Config: <code>sha256:" in report
+    assert "http://" not in report and "https://" not in report
