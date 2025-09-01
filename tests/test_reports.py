@@ -106,3 +106,17 @@ def test_html_report_is_self_contained_and_measured() -> None:
     assert "Task success</th><td>1.000000" in report
     assert "Config: <code>sha256:" in report
     assert "http://" not in report and "https://" not in report
+
+
+def test_html_report_escapes_hostile_user_content() -> None:
+    report = render_html(report_spec('<script>alert("x")</script>'))
+    assert "<script>" not in report
+    assert "&lt;script&gt;" in report
+    assert "alert(&quot;x&quot;)" in report
+
+
+def test_html_report_has_one_complete_document() -> None:
+    report = render_html(report_spec())
+    assert report.count("<!doctype html>") == 1
+    assert report.count("<html") == report.count("</html>") == 1
+    assert report.endswith("</body></html>\n")
