@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
@@ -77,17 +78,25 @@ class SimulatedState:
         return cls([], [], [], {"playing": False}, {}, [])
 
     def calendar_create(self, title: str, hour: int) -> dict[str, JSONValue]:
-        event = {"event_id": f"event-{len(self.calendar) + 1}", "title": title, "hour": hour}
+        event: dict[str, JSONValue] = {
+            "event_id": f"event-{len(self.calendar) + 1}",
+            "title": title,
+            "hour": hour,
+        }
         self.calendar.append(event)
         return dict(event)
 
     def timer_start(self, seconds: int) -> dict[str, JSONValue]:
-        timer = {"timer_id": f"timer-{len(self.timers) + 1}", "seconds": seconds, "active": True}
+        timer: dict[str, JSONValue] = {
+            "timer_id": f"timer-{len(self.timers) + 1}",
+            "seconds": seconds,
+            "active": True,
+        }
         self.timers.append(timer)
         return dict(timer)
 
     def message_send(self, recipient: str, text: str) -> dict[str, JSONValue]:
-        message = {
+        message: dict[str, JSONValue] = {
             "message_id": f"message-{len(self.messages) + 1}",
             "recipient": recipient,
             "text": text,
@@ -104,7 +113,10 @@ class SimulatedState:
         return {"room": room, "on": on}
 
     def note_add(self, text: str) -> dict[str, JSONValue]:
-        note = {"note_id": f"note-{len(self.notes) + 1}", "text": text}
+        note: dict[str, JSONValue] = {
+            "note_id": f"note-{len(self.notes) + 1}",
+            "text": text,
+        }
         self.notes.append(note)
         return dict(note)
 
@@ -115,6 +127,27 @@ class ExecutionOutcome:
     result: JSONValue
     permission: PermissionDecision
     prompt: str | None = None
+
+
+def _text_argument(arguments: dict[str, JSONValue], name: str) -> str:
+    value = arguments.get(name)
+    if not isinstance(value, str):
+        raise TypeError(f"tool argument {name!r} must be a string")
+    return value
+
+
+def _integer_argument(arguments: dict[str, JSONValue], name: str) -> int:
+    value = arguments.get(name)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"tool argument {name!r} must be an integer")
+    return value
+
+
+def _boolean_argument(arguments: dict[str, JSONValue], name: str) -> bool:
+    value = arguments.get(name)
+    if not isinstance(value, bool):
+        raise TypeError(f"tool argument {name!r} must be a boolean")
+    return value
 
 
 @dataclass(slots=True)
@@ -156,19 +189,19 @@ class ToolSandbox:
             result: JSONValue = {"dry_run": True, "tool_name": str(name), "arguments": arguments}
             self.ledger.record(name, arguments, False, result)
             return ExecutionOutcome(False, result, self.policy.decide(name))
-        handlers = {
+        handlers: dict[str, Callable[[], dict[str, JSONValue]]] = {
             "calendar.create": lambda: self.state.calendar_create(
-                str(arguments["title"]), int(arguments["hour"])
+                _text_argument(arguments, "title"), _integer_argument(arguments, "hour")
             ),
-            "timer.start": lambda: self.state.timer_start(int(arguments["seconds"])),
+            "timer.start": lambda: self.state.timer_start(_integer_argument(arguments, "seconds")),
             "messages.send": lambda: self.state.message_send(
-                str(arguments["recipient"]), str(arguments["text"])
+                _text_argument(arguments, "recipient"), _text_argument(arguments, "text")
             ),
-            "music.play": lambda: self.state.music_play(str(arguments["track"])),
+            "music.play": lambda: self.state.music_play(_text_argument(arguments, "track")),
             "home.set-light": lambda: self.state.home_set(
-                str(arguments["room"]), bool(arguments["on"])
+                _text_argument(arguments, "room"), _boolean_argument(arguments, "on")
             ),
-            "notes.add": lambda: self.state.note_add(str(arguments["text"])),
+            "notes.add": lambda: self.state.note_add(_text_argument(arguments, "text")),
         }
         if str(name) not in handlers:
             raise ValueError(f"no simulated backend for tool: {name}")

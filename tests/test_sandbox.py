@@ -147,6 +147,21 @@ def test_unknown_backend_fails_without_ledger_execution() -> None:
     assert box.ledger.links == []
 
 
+def test_simulated_backends_reject_unvalidated_argument_types() -> None:
+    calendar = Identifier("calendar.create")
+    home = Identifier("home.set-light")
+    box = sandbox.ToolSandbox(
+        sandbox.PermissionPolicy(
+            {calendar: sandbox.PermissionDecision.ALLOW, home: sandbox.PermissionDecision.ALLOW}
+        )
+    )
+    with pytest.raises(TypeError, match="'hour' must be an integer"):
+        box.execute(calendar, {"title": "review", "hour": "19"})
+    with pytest.raises(TypeError, match="'on' must be a boolean"):
+        box.execute(home, {"room": "study", "on": 1})
+    assert box.state.calendar == [] and box.state.home == {}
+
+
 def test_atomic_batch_commits_all_successful_calls() -> None:
     names = (Identifier("notes.add"), Identifier("timer.start"))
     box = sandbox.ToolSandbox(
