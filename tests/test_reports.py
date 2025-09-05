@@ -186,3 +186,20 @@ def test_html_report_embeds_validated_inline_charts() -> None:
     report = render_html(report_spec(), charts=(chart,))
     assert f"<figure>{chart}</figure>" in report
     assert report.count("<svg ") == 1
+
+
+def test_html_report_rejects_arbitrary_chart_markup() -> None:
+    with pytest.raises(ValueError, match="safe complete SVG"):
+        render_html(report_spec(), charts=("<script>alert(1)</script>",))
+    with pytest.raises(ValueError, match="safe complete SVG"):
+        render_html(report_spec(), charts=("<svg><script>bad</script></svg>",))
+
+
+def test_charted_html_is_byte_deterministic() -> None:
+    charts = (
+        bar_chart_svg("Latency", (("tool", 10.0),)),
+        curve_chart_svg("Success", ((0.0, 0.5), (1.0, 1.0))),
+    )
+    first = render_html(report_spec(), charts=charts)
+    second = render_html(report_spec(), charts=charts)
+    assert first.encode() == second.encode()
