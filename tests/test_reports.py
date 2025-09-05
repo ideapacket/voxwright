@@ -159,3 +159,23 @@ def test_curve_chart_maps_normalized_points_deterministically() -> None:
     chart = curve_chart_svg("Success", ((0.0, 0.0), (0.5, 0.5), (1.0, 1.0)))
     assert 'points="40.0,220.0 280.0,130.0 520.0,40.0"' in chart
     assert "<title>Success</title>" in chart
+
+
+def test_curve_chart_accepts_repeated_x_coordinates() -> None:
+    chart = curve_chart_svg("Repair", ((0.0, 0.2), (0.0, 0.3)))
+    assert 'points="40.0,184.0 40.0,166.0"' in chart
+
+
+def test_curve_chart_rejects_unordered_or_unbounded_points() -> None:
+    with pytest.raises(ValueError, match="ordered by x"):
+        curve_chart_svg("bad", ((1.0, 0.5), (0.0, 0.5)))
+    with pytest.raises(ValueError, match="bounded y"):
+        curve_chart_svg("bad", ((0.0, 1.1),))
+    with pytest.raises(ValueError, match="at least one point"):
+        curve_chart_svg("bad", ())
+
+
+def test_curve_chart_escapes_hostile_title() -> None:
+    chart = curve_chart_svg("<curve>", ((0.0, 0.0),))
+    assert "<curve>" not in chart
+    assert "&lt;curve&gt;" in chart
