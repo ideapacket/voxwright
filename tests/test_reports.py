@@ -11,6 +11,7 @@ from voxwright.reports import (
     ReportSpec,
     bar_chart_svg,
     coverage_limitations,
+    curve_chart_svg,
     render_html,
     render_markdown,
 )
@@ -152,3 +153,9 @@ def test_zero_bar_chart_has_finite_geometry() -> None:
     chart = bar_chart_svg("zero", (("none", 0.0),))
     assert 'width="0.0"' in chart
     assert "nan" not in chart.lower()
+
+
+def test_curve_chart_maps_normalized_points_deterministically() -> None:
+    chart = curve_chart_svg("Success", ((0.0, 0.0), (0.5, 0.5), (1.0, 1.0)))
+    assert 'points="40.0,220.0 280.0,130.0 520.0,40.0"' in chart
+    assert "<title>Success</title>" in chart

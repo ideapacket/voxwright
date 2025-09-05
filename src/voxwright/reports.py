@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from html import escape
+from itertools import pairwise
 
 from voxwright.campaign import CampaignArtifact
 
@@ -159,3 +160,29 @@ def bar_chart_svg(title: str, values: tuple[tuple[str, float], ...]) -> str:
         )
     elements.append("</svg>")
     return "".join(elements)
+
+
+def curve_chart_svg(title: str, points: tuple[tuple[float, float], ...]) -> str:
+    """Render an ordered normalized success or repair curve as SVG."""
+    if not title.strip():
+        raise ValueError("curve chart title cannot be empty")
+    if not points:
+        raise ValueError("curve chart requires at least one point")
+    if any(
+        not math.isfinite(x) or not math.isfinite(y) or x < 0 or not 0.0 <= y <= 1.0
+        for x, y in points
+    ):
+        raise ValueError("curve points require finite non-negative x and bounded y")
+    if any(right[0] < left[0] for left, right in pairwise(points)):
+        raise ValueError("curve points must be ordered by x")
+    maximum_x = max(x for x, _ in points) or 1.0
+    coordinates = " ".join(
+        f"{round(40 + 480 * x / maximum_x, 3)},{round(220 - 180 * y, 3)}" for x, y in points
+    )
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 250" role="img">'
+        f"<title>{escape(title)}</title>"
+        '<path d="M40 20V220H530" fill="none" stroke="#333"/>'
+        f'<polyline points="{coordinates}" fill="none" stroke="#b54747" stroke-width="3"/>'
+        "</svg>"
+    )
