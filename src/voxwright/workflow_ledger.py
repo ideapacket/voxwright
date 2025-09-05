@@ -26,7 +26,15 @@ class WorkflowLedger:
 
     @property
     def completed_steps(self) -> tuple[Identifier, ...]:
-        return tuple(Identifier(str(link.payload["step_id"])) for link in self.links)  # type: ignore[index]
+        completed: list[Identifier] = []
+        for link in self.links:
+            if not isinstance(link.payload, dict):
+                raise ValueError("workflow ledger payload must be an object")
+            step_id = link.payload.get("step_id")
+            if not isinstance(step_id, str):
+                raise ValueError("workflow ledger step_id must be a string")
+            completed.append(Identifier(step_id))
+        return tuple(completed)
 
     def checkpoint(self) -> dict[str, JSONValue]:
         """Return replayable state from the last verified ledger entry."""
@@ -35,10 +43,12 @@ class WorkflowLedger:
         if not self.links:
             return {"schema_version": 1, "completed": [], "state": {}, "digest": EMPTY_DIGEST}
         payload = self.links[-1].payload
+        if not isinstance(payload, dict) or not isinstance(payload.get("state"), dict):
+            raise ValueError("workflow ledger state must be an object")
         return {
             "schema_version": 1,
             "completed": [str(item) for item in self.completed_steps],
-            "state": payload["state"],  # type: ignore[index]
+            "state": payload["state"],
             "digest": self.links[-1].digest,
         }
 
