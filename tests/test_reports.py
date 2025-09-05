@@ -179,3 +179,10 @@ def test_curve_chart_escapes_hostile_title() -> None:
     chart = curve_chart_svg("<curve>", ((0.0, 0.0),))
     assert "<curve>" not in chart
     assert "&lt;curve&gt;" in chart
+
+
+def test_html_report_embeds_validated_inline_charts() -> None:
+    chart = bar_chart_svg("Latency", (("tool", 10.0),))
+    report = render_html(report_spec(), charts=(chart,))
+    assert f"<figure>{chart}</figure>" in report
+    assert report.count("<svg ") == 1

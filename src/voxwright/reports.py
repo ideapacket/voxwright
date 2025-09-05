@@ -97,7 +97,7 @@ def render_markdown(spec: ReportSpec) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_html(spec: ReportSpec) -> str:
+def render_html(spec: ReportSpec, *, charts: tuple[str, ...] = ()) -> str:
     """Render a self-contained, escaped HTML campaign summary."""
     metrics = spec.campaign.metrics
     limitations = "".join(
@@ -113,6 +113,16 @@ def render_html(spec: ReportSpec) -> str:
     metric_rows = "".join(
         f"<tr><th>{escape(name)}</th><td>{value:.6f}</td></tr>" for name, value in rows
     )
+    for chart in charts:
+        lowered = chart.lower()
+        if (
+            not chart.startswith("<svg ")
+            or not chart.endswith("</svg>")
+            or "<script" in lowered
+            or "onload=" in lowered
+        ):
+            raise ValueError("report charts must be safe complete SVG documents")
+    chart_section = "".join(f"<figure>{chart}</figure>" for chart in charts)
     return (
         '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -125,7 +135,7 @@ def render_html(spec: ReportSpec) -> str:
         f"<p>Campaign: <code>{escape(spec.campaign.name)}</code>; Seed: "
         f"<code>{spec.campaign.seed}</code>; Config: "
         f"<code>{escape(spec.campaign.config_digest)}</code></p>"
-        f"<table><tbody>{metric_rows}</tbody></table>"
+        f"<table><tbody>{metric_rows}</tbody></table>{chart_section}"
         f"<h2>局限</h2><ul>{limitations}</ul>"
         "</body></html>\n"
     )
