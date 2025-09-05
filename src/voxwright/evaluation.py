@@ -30,12 +30,12 @@ class EvaluationRun:
     latency_budget_ms: int
 
     def __post_init__(self) -> None:
-        for label, value in (
+        for label, text_value in (
             ("run id", self.run_id),
             ("task type", self.task_type),
             ("difficulty", self.difficulty),
         ):
-            if not value.strip():
+            if not text_value.strip():
                 raise ValueError(f"evaluation {label} cannot be empty")
         if not 0.0 <= self.noise_rate <= 1.0:
             raise ValueError("evaluation noise rate must be between 0 and 1")
@@ -47,14 +47,14 @@ class EvaluationRun:
             raise ValueError("tool names cannot be empty")
         if not isinstance(self.goal_satisfied, bool):
             raise TypeError("goal_satisfied must be boolean")
-        for label, value in (
+        for label, numeric_value in (
             ("turns", self.turns),
             ("repairs", self.repairs),
             ("false executes", self.false_executes),
             ("latency", self.latency_ms),
             ("latency budget", self.latency_budget_ms),
         ):
-            if isinstance(value, bool) or value < 0:
+            if isinstance(numeric_value, bool) or numeric_value < 0:
                 raise ValueError(f"evaluation {label} must be a non-negative integer")
         if self.turns == 0:
             raise ValueError("evaluation turns must be positive")
