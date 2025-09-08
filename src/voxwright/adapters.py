@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
+from voxwright.core import JSONValue
 from voxwright.events import (
     AgentUtterance,
     EventEnvelope,
@@ -156,6 +157,7 @@ class TemplateAdapter:
         transcript = Transcript.from_payload(source.payload)
         selected = next((rule for rule in self._RULES if rule[0] in transcript.text.lower()), None)
         base_sequence = source.sequence + 1
+        events: tuple[EventEnvelope, ...]
         if selected is None:
             utterance = AgentUtterance(
                 "Please restate the application task", Identifier("response-rule")
@@ -190,7 +192,7 @@ class TemplateAdapter:
         return AdapterTurn(events)
 
 
-def extract_rule_slots(text: str, intent_name: Identifier) -> dict[str, str | bool]:
+def extract_rule_slots(text: str, intent_name: Identifier) -> dict[str, JSONValue]:
     """Extract transparent synthetic slots for template-adapter demonstrations."""
     words = text.lower().split()
     if intent_name.value == "home.set-light":
