@@ -65,7 +65,13 @@ class RepairConfig:
         attempts = value["max_attempts"]
         if isinstance(attempts, bool) or not isinstance(attempts, int):
             raise TypeError("max repair attempts must be an integer")
-        return cls(*(float(item) for item in numbers), attempts)
+        return cls(
+            float(numbers[0]),
+            float(numbers[1]),
+            float(numbers[2]),
+            float(numbers[3]),
+            attempts,
+        )
 
 
 def select_strategy(
