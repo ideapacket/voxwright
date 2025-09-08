@@ -58,9 +58,14 @@ def remaining_steps(
 ) -> tuple[Identifier, ...]:
     """Resume only after a checkpoint's completed prefix."""
     completed = checkpoint.get("completed")
-    if not isinstance(completed, list) or any(not isinstance(item, str) for item in completed):
+    if not isinstance(completed, list):
         raise ValueError("checkpoint completed steps must be a string array")
-    decoded = tuple(Identifier(item) for item in completed)
+    decoded_items: list[Identifier] = []
+    for item in completed:
+        if not isinstance(item, str):
+            raise ValueError("checkpoint completed steps must be a string array")
+        decoded_items.append(Identifier(item))
+    decoded = tuple(decoded_items)
     if ordered[: len(decoded)] != decoded:
         raise ValueError("checkpoint is not a prefix of workflow order")
     return ordered[len(decoded) :]
