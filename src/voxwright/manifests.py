@@ -70,31 +70,39 @@ def _scenario_from_dict(value: dict[str, JSONValue]) -> SyntheticScenario:
     goals_value = value["goals"]
     if not isinstance(persona_value, dict) or not isinstance(goals_value, list):
         raise ValueError("manifest scenario has invalid persona or goals")
+    quirks_value = persona_value.get("quirks")
+    if not isinstance(quirks_value, list):
+        raise ValueError("manifest persona quirks must be an array")
     persona = Persona(
         Identifier(str(persona_value["persona_id"])),
         str(persona_value["locale"]),
         str(persona_value["pace"]),
-        tuple(str(item) for item in persona_value["quirks"]),  # type: ignore[union-attr]
+        tuple(str(item) for item in quirks_value),
     )
     goals = []
     for item in goals_value:
         if not isinstance(item, dict):
             raise ValueError("manifest goal must be an object")
         calls = item["tool_calls"]
-        if not isinstance(calls, list):
-            raise ValueError("manifest tool_calls must be an array")
+        slots = item["slots"]
+        if not isinstance(calls, list) or not isinstance(slots, dict):
+            raise ValueError("manifest goal slots and tool_calls have invalid shapes")
+        decoded_calls: list[ExpectedToolCall] = []
+        for call in calls:
+            if not isinstance(call, dict):
+                raise ValueError("manifest tool call must be an object")
+            arguments = call.get("arguments")
+            if not isinstance(arguments, dict):
+                raise ValueError("manifest tool arguments must be an object")
+            decoded_calls.append(
+                ExpectedToolCall(Identifier(str(call.get("tool_name"))), arguments)
+            )
         goals.append(
             TaskGoal(
                 Identifier(str(item["goal_id"])),
                 TaskType(str(item["task_type"])),
-                item["slots"],  # type: ignore[arg-type]
-                tuple(
-                    ExpectedToolCall(
-                        Identifier(str(call["tool_name"])),
-                        call["arguments"],  # type: ignore[arg-type,index]
-                    )
-                    for call in calls
-                ),
+                slots,
+                tuple(decoded_calls),
             )
         )
     return SyntheticScenario(

@@ -75,3 +75,19 @@ def test_empty_manifest_is_a_valid_empty_campaign(tmp_path: object) -> None:
     manifests.write_manifest(path, [])
     assert path.read_bytes() == b""
     assert manifests.read_manifest(path) == []
+
+
+def test_manifest_decoder_rejects_invalid_nested_shapes() -> None:
+    value = manifests.scenario_to_dict(scenarios.schedule_scenario(1))
+    persona = value["persona"]
+    assert isinstance(persona, dict)
+    persona["quirks"] = "not-an-array"
+    with pytest.raises(ValueError, match="quirks must be an array"):
+        manifests._scenario_from_dict(value)
+
+    value = manifests.scenario_to_dict(scenarios.schedule_scenario(1))
+    goals = value["goals"]
+    assert isinstance(goals, list) and isinstance(goals[0], dict)
+    goals[0]["slots"] = []
+    with pytest.raises(ValueError, match="invalid shapes"):
+        manifests._scenario_from_dict(value)
