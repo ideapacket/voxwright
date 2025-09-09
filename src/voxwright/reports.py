@@ -196,3 +196,33 @@ def curve_chart_svg(title: str, points: tuple[tuple[float, float], ...]) -> str:
         f'<polyline points="{coordinates}" fill="none" stroke="#b54747" stroke-width="3"/>'
         "</svg>"
     )
+
+
+def heat_table_svg(title: str, cells: tuple[tuple[str, float], ...]) -> str:
+    """Render labeled normalized values as an accessible SVG heat table."""
+    if not title.strip():
+        raise ValueError("heat table title cannot be empty")
+    if not cells:
+        raise ValueError("heat table requires at least one cell")
+    if any(
+        not label.strip() or not math.isfinite(value) or not 0.0 <= value <= 1.0
+        for label, value in cells
+    ):
+        raise ValueError("heat table cells require labels and values between 0 and 1")
+    height = 40 + len(cells) * 32
+    output = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 {height}" role="img">',
+        f"<title>{escape(title)}</title>",
+    ]
+    for index, (label, value) in enumerate(cells):
+        y = 10 + index * 32
+        shade = round(235 - 150 * value)
+        output.extend(
+            (
+                f'<rect x="160" y="{y}" width="200" height="26" fill="rgb({shade},{shade},255)"/>',
+                f'<text x="8" y="{y + 18}" font-size="12">{escape(label)}</text>',
+                f'<text x="368" y="{y + 18}" font-size="12">{value:.3f}</text>',
+            )
+        )
+    output.append("</svg>")
+    return "".join(output)

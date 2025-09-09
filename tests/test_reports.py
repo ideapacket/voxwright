@@ -12,6 +12,7 @@ from voxwright.reports import (
     bar_chart_svg,
     coverage_limitations,
     curve_chart_svg,
+    heat_table_svg,
     render_html,
     render_markdown,
 )
@@ -203,3 +204,10 @@ def test_charted_html_is_byte_deterministic() -> None:
     first = render_html(report_spec(), charts=charts)
     second = render_html(report_spec(), charts=charts)
     assert first.encode() == second.encode()
+
+
+def test_heat_table_encodes_normalized_slice_values() -> None:
+    chart = heat_table_svg("Task slices", (("music", 0.0), ("schedule", 1.0)))
+    assert "rgb(235,235,255)" in chart
+    assert "rgb(85,85,255)" in chart
+    assert "music" in chart and "1.000" in chart
