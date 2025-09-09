@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.campaign import CampaignArtifact
+from voxwright.campaign import CampaignArtifact, SliceDimension, slice_campaign
 from voxwright.evaluation import EvaluationRun, score_runs
 from voxwright.reports import (
     CoverageFacts,
@@ -15,6 +15,7 @@ from voxwright.reports import (
     heat_table_svg,
     render_html,
     render_markdown,
+    render_slice_markdown,
 )
 
 
@@ -228,3 +229,14 @@ def test_heat_table_rejects_invalid_cells() -> None:
         heat_table_svg("Slices", (("slice", 1.01),))
     with pytest.raises(ValueError, match="between 0 and 1"):
         heat_table_svg("Slices", (("", 0.5),))
+
+
+def test_slice_markdown_reports_independently_scored_groups() -> None:
+    base = report_spec().campaign.metrics
+    run_a = EvaluationRun("a", "schedule", "easy", 0.0, {}, {}, (), (), True, 1, 0, 0, 1, 2)
+    run_b = EvaluationRun("b", "music", "easy", 0.0, {}, {}, (), (), False, 1, 0, 0, 1, 2)
+    slices = slice_campaign((run_a, run_b), SliceDimension.TASK_TYPE)
+    table = render_slice_markdown(slices)
+    assert "| music | 1 | 0.000000 |" in table
+    assert "| schedule | 1 | 1.000000 |" in table
+    assert base.run_count == 1

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from html import escape
 from itertools import pairwise
 
-from voxwright.campaign import CampaignArtifact
+from voxwright.campaign import CampaignArtifact, CampaignSlice
 
 
 @dataclass(frozen=True, slots=True)
@@ -226,3 +226,20 @@ def heat_table_svg(title: str, cells: tuple[tuple[str, float], ...]) -> str:
         )
     output.append("</svg>")
     return "".join(output)
+
+
+def render_slice_markdown(slices: tuple[CampaignSlice, ...]) -> str:
+    """Render campaign slice metrics as a stable Markdown table fragment."""
+    if not slices:
+        raise ValueError("slice table requires at least one slice")
+    rows = [
+        "| Dimension | Slice | Runs | Success | Slot accuracy | Tool F1 |",
+        "| --- | --- | ---: | ---: | ---: | ---: |",
+    ]
+    rows.extend(
+        f"| {_markdown_text(item.dimension.value)} | {_markdown_text(item.label)} | "
+        f"{item.metrics.run_count} | {item.metrics.task_success:.6f} | "
+        f"{item.metrics.slots.accuracy:.6f} | {item.metrics.tools.f1:.6f} |"
+        for item in slices
+    )
+    return "\n".join(rows) + "\n"
