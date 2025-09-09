@@ -8,6 +8,7 @@ from html import escape
 from itertools import pairwise
 
 from voxwright.campaign import CampaignArtifact, CampaignSlice
+from voxwright.hashing import content_digest
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,3 +244,10 @@ def render_slice_markdown(slices: tuple[CampaignSlice, ...]) -> str:
         for item in slices
     )
     return "\n".join(rows) + "\n"
+
+
+def report_digest(report: str) -> str:
+    """Digest the exact UTF-8 bytes of a completed deterministic report."""
+    if not report:
+        raise ValueError("report digest requires nonempty content")
+    return content_digest(report.encode("utf-8"))

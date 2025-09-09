@@ -16,6 +16,7 @@ from voxwright.reports import (
     render_html,
     render_markdown,
     render_slice_markdown,
+    report_digest,
 )
 
 
@@ -252,3 +253,9 @@ def test_slice_markdown_escapes_hostile_labels() -> None:
 def test_slice_markdown_rejects_no_slices() -> None:
     with pytest.raises(ValueError, match="at least one slice"):
         render_slice_markdown(())
+
+
+def test_report_digest_tracks_exact_rendered_bytes() -> None:
+    report = render_markdown(report_spec())
+    assert report_digest(report) == report_digest(render_markdown(report_spec()))
+    assert report_digest(report + "\n") != report_digest(report)
