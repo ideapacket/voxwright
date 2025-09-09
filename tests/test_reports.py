@@ -240,3 +240,15 @@ def test_slice_markdown_reports_independently_scored_groups() -> None:
     assert "| music | 1 | 0.000000 |" in table
     assert "| schedule | 1 | 1.000000 |" in table
     assert base.run_count == 1
+
+
+def test_slice_markdown_escapes_hostile_labels() -> None:
+    item = EvaluationRun("a", "<script>|x", "easy", 0.0, {}, {}, (), (), True, 1, 0, 0, 1, 2)
+    table = render_slice_markdown(slice_campaign((item,), SliceDimension.TASK_TYPE))
+    assert "<script>" not in table
+    assert "\\<script\\>\\|x" in table
+
+
+def test_slice_markdown_rejects_no_slices() -> None:
+    with pytest.raises(ValueError, match="at least one slice"):
+        render_slice_markdown(())
