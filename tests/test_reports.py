@@ -211,3 +211,20 @@ def test_heat_table_encodes_normalized_slice_values() -> None:
     assert "rgb(235,235,255)" in chart
     assert "rgb(85,85,255)" in chart
     assert "music" in chart and "1.000" in chart
+
+
+def test_heat_table_escapes_labels_and_title() -> None:
+    chart = heat_table_svg("<slices>", (("<music>", 0.5),))
+    assert "<slices>" not in chart and "<music>" not in chart
+    assert "&lt;slices&gt;" in chart and "&lt;music&gt;" in chart
+
+
+def test_heat_table_rejects_invalid_cells() -> None:
+    with pytest.raises(ValueError, match="title cannot be empty"):
+        heat_table_svg(" ", (("slice", 0.5),))
+    with pytest.raises(ValueError, match="at least one cell"):
+        heat_table_svg("Slices", ())
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        heat_table_svg("Slices", (("slice", 1.01),))
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        heat_table_svg("Slices", (("", 0.5),))
