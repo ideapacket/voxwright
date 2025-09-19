@@ -284,3 +284,20 @@ def test_session_summary_counts_ordered_event_kinds() -> None:
     )
     assert (summary.session_id, summary.event_count, summary.duration_ms) == ("session-1", 3, 30)
     assert summary.kinds == (("final-transcript", 2), ("partial-transcript", 1))
+
+
+def test_session_summary_rejects_empty_mixed_or_gapped_traces() -> None:
+    with pytest.raises(ValueError, match="at least one event"):
+        summarize_session(())
+    mixed = envelope_for(
+        Identifier("session-2"), 1, 20, EventKind.FINAL_TRANSCRIPT, Transcript("x", 1.0)
+    )
+    with pytest.raises(ValueError, match="share a session id"):
+        summarize_session((event(0, 10), mixed))
+    with pytest.raises(ValueError, match="contiguous"):
+        summarize_session((event(0, 10), event(2, 20)))
+
+
+def test_session_summary_rejects_time_reversal() -> None:
+    with pytest.raises(ValueError, match="cannot move backwards"):
+        summarize_session((event(0, 20), event(1, 10)))
