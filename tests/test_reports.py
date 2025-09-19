@@ -259,3 +259,13 @@ def test_report_digest_tracks_exact_rendered_bytes() -> None:
     report = render_markdown(report_spec())
     assert report_digest(report) == report_digest(render_markdown(report_spec()))
     assert report_digest(report + "\n") != report_digest(report)
+
+
+def test_report_digest_is_algorithm_qualified() -> None:
+    digest = report_digest("offline report\n")
+    assert digest.startswith("sha256:") and len(digest) == 71
+
+
+def test_report_digest_rejects_empty_content() -> None:
+    with pytest.raises(ValueError, match="nonempty content"):
+        report_digest("")
