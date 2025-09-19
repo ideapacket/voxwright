@@ -6,6 +6,8 @@ import pytest
 
 from voxwright.campaign import CampaignArtifact, SliceDimension, slice_campaign
 from voxwright.evaluation import EvaluationRun, score_runs
+from voxwright.events import EventKind, Transcript, envelope_for
+from voxwright.identifiers import Identifier
 from voxwright.reports import (
     CoverageFacts,
     ReportSpec,
@@ -17,6 +19,7 @@ from voxwright.reports import (
     render_markdown,
     render_slice_markdown,
     report_digest,
+    summarize_session,
 )
 
 
@@ -269,3 +272,15 @@ def test_report_digest_is_algorithm_qualified() -> None:
 def test_report_digest_rejects_empty_content() -> None:
     with pytest.raises(ValueError, match="nonempty content"):
         report_digest("")
+
+
+def event(sequence: int, at_ms: int, kind: EventKind = EventKind.FINAL_TRANSCRIPT):
+    return envelope_for(Identifier("session-1"), sequence, at_ms, kind, Transcript("hello", 1.0))
+
+
+def test_session_summary_counts_ordered_event_kinds() -> None:
+    summary = summarize_session(
+        (event(0, 10), event(1, 25, EventKind.PARTIAL_TRANSCRIPT), event(2, 40))
+    )
+    assert (summary.session_id, summary.event_count, summary.duration_ms) == ("session-1", 3, 30)
+    assert summary.kinds == (("final-transcript", 2), ("partial-transcript", 1))

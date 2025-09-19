@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import math
+from collections import Counter
 from dataclasses import dataclass
 from html import escape
 from itertools import pairwise
 
 from voxwright.campaign import CampaignArtifact, CampaignSlice
+from voxwright.events import EventEnvelope
 from voxwright.hashing import content_digest
 
 
@@ -251,3 +253,32 @@ def report_digest(report: str) -> str:
     if not report:
         raise ValueError("report digest requires nonempty content")
     return content_digest(report.encode("utf-8"))
+
+
+@dataclass(frozen=True, slots=True)
+class SessionSummary:
+    session_id: str
+    event_count: int
+    duration_ms: int
+    kinds: tuple[tuple[str, int], ...]
+
+
+def summarize_session(events: tuple[EventEnvelope, ...]) -> SessionSummary:
+    """Summarize one ordered recorded session without interpreting dialogue quality."""
+    if not events:
+        raise ValueError("session summary requires at least one event")
+    session_id = events[0].session_id
+    for index, event in enumerate(events):
+        if event.session_id != session_id:
+            raise ValueError("session summary events must share a session id")
+        if event.sequence != index:
+            raise ValueError("session summary events must have contiguous sequence numbers")
+        if index and event.at_ms < events[index - 1].at_ms:
+            raise ValueError("session summary event times cannot move backwards")
+    counts = Counter(event.kind.value for event in events)
+    return SessionSummary(
+        str(session_id),
+        len(events),
+        events[-1].at_ms - events[0].at_ms,
+        tuple(sorted(counts.items())),
+    )
