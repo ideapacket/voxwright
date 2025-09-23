@@ -17,6 +17,7 @@ from voxwright.reports import (
     heat_table_svg,
     render_html,
     render_markdown,
+    render_session_markdown,
     render_slice_markdown,
     report_digest,
     summarize_session,
@@ -301,3 +302,11 @@ def test_session_summary_rejects_empty_mixed_or_gapped_traces() -> None:
 def test_session_summary_rejects_time_reversal() -> None:
     with pytest.raises(ValueError, match="cannot move backwards"):
         summarize_session((event(0, 20), event(1, 10)))
+
+
+def test_session_markdown_reports_only_observed_mechanics() -> None:
+    report = render_session_markdown(summarize_session((event(0, 10), event(1, 40))))
+    assert report.startswith("# Session `session-1`")
+    assert "Events: `2`" in report
+    assert "Logical duration: `30 ms`" in report
+    assert "| final-transcript | 2 |" in report

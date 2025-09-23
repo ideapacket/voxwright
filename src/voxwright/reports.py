@@ -282,3 +282,18 @@ def summarize_session(events: tuple[EventEnvelope, ...]) -> SessionSummary:
         events[-1].at_ms - events[0].at_ms,
         tuple(sorted(counts.items())),
     )
+
+
+def render_session_markdown(summary: SessionSummary) -> str:
+    """Render a compact mechanics-only session report."""
+    lines = [
+        f"# Session `{_markdown_text(summary.session_id)}`",
+        "",
+        f"- Events: `{summary.event_count}`",
+        f"- Logical duration: `{summary.duration_ms} ms`",
+        "",
+        "| Event kind | Count |",
+        "| --- | ---: |",
+    ]
+    lines.extend(f"| {_markdown_text(kind)} | {count} |" for kind, count in summary.kinds)
+    return "\n".join(lines) + "\n"
