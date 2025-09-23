@@ -310,3 +310,11 @@ def test_session_markdown_reports_only_observed_mechanics() -> None:
     assert "Events: `2`" in report
     assert "Logical duration: `30 ms`" in report
     assert "| final-transcript | 2 |" in report
+
+
+def test_session_markdown_is_digest_stable() -> None:
+    summary = summarize_session((event(0, 0), event(1, 10)))
+    first = render_session_markdown(summary)
+    second = render_session_markdown(summary)
+    assert first == second
+    assert report_digest(first) == report_digest(second)
