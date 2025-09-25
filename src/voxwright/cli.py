@@ -4,14 +4,47 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 from voxwright import __version__
+from voxwright.core import canonical_json
+from voxwright.manifests import encode_manifest
+from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 
 CommandHandler = Callable[[argparse.Namespace], int]
 
 
 def _pending(args: argparse.Namespace) -> int:
     raise ValueError(f"command is not implemented: {args.command}")
+
+
+def _simulate(args: argparse.Namespace) -> int:
+    output: Path = args.output
+    if output.exists():
+        raise FileExistsError(f"output already exists: {output}")
+    scenarios = []
+    task_type = TaskType(args.task)
+    for offset in range(args.count):
+        seed = args.seed + offset
+        if task_type is TaskType.MULTI_TASK:
+            scenarios.append(composite_scenario(seed))
+        elif task_type is TaskType.NESTED:
+            scenarios.append(composite_scenario(seed, nested=True))
+        else:
+            scenarios.append(application_scenario(task_type, seed))
+    output.write_text(encode_manifest(scenarios), encoding="utf-8", newline="\n")
+    print(
+        canonical_json(
+            {
+                "artifact": "synthetic-scenario-manifest",
+                "count": len(scenarios),
+                "output": str(output),
+                "seed": args.seed,
+                "task": task_type.value,
+            }
+        )
+    )
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -22,6 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subcommands = parser.add_subparsers(dest="command", metavar="COMMAND")
+    commands: dict[str, argparse.ArgumentParser] = {}
     for name, help_text in (
         ("simulate", "生成带植入真值的离线合成场景"),
         ("run", "运行离线应用流程"),
@@ -35,6 +69,13 @@ def build_parser() -> argparse.ArgumentParser:
     ):
         command = subcommands.add_parser(name, help=help_text, description=help_text)
         command.set_defaults(handler=_pending)
+        commands[name] = command
+    simulate = commands["simulate"]
+    simulate.add_argument("output", type=Path, help="目标 JSONL 文件 (必须不存在)")
+    simulate.add_argument("--seed", type=int, default=0, help="首个非负种子")
+    simulate.add_argument("--count", type=int, default=1, help="场景数量")
+    simulate.add_argument("--task", choices=[item.value for item in TaskType], default="schedule")
+    simulate.set_defaults(handler=_simulate)
     return parser
 
 

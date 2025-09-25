@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 from voxwright.cli import build_parser, main
+from voxwright.manifests import read_manifest
 
 COMMANDS = (
     "simulate",
@@ -43,3 +44,13 @@ def test_module_help_is_successful_for_every_command() -> None:
         )
         assert result.returncode == 0, command
         assert f"usage: voxwright {command}" in result.stdout
+
+
+def test_simulate_writes_seeded_manifest(tmp_path: object, capsys: object) -> None:
+    path = tmp_path / "scenarios.jsonl"  # type: ignore[operator]
+    assert main(["simulate", str(path), "--seed", "10", "--count", "2", "--task", "music"]) == 0
+    scenarios = read_manifest(path)
+    assert [item.seed for item in scenarios] == [10, 11]
+    assert all(item.goals[0].task_type.value == "music" for item in scenarios)
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"artifact":"synthetic-scenario-manifest"' in output
