@@ -5,6 +5,8 @@ from __future__ import annotations
 import subprocess
 import sys
 
+import pytest
+
 from voxwright.cli import build_parser, main
 from voxwright.manifests import read_manifest
 
@@ -54,3 +56,15 @@ def test_simulate_writes_seeded_manifest(tmp_path: object, capsys: object) -> No
     assert all(item.goals[0].task_type.value == "music" for item in scenarios)
     output = capsys.readouterr().out  # type: ignore[attr-defined]
     assert '"artifact":"synthetic-scenario-manifest"' in output
+
+
+def test_simulate_rejects_destructive_or_invalid_requests(tmp_path: object) -> None:
+    path = tmp_path / "exists.jsonl"  # type: ignore[operator]
+    path.write_text("keep", encoding="utf-8")
+    with pytest.raises(FileExistsError, match="already exists"):
+        main(["simulate", str(path)])
+    assert path.read_text(encoding="utf-8") == "keep"
+    with pytest.raises(ValueError, match="seed must be non-negative"):
+        main(["simulate", str(tmp_path / "negative.jsonl"), "--seed", "-1"])  # type: ignore[operator]
+    with pytest.raises(ValueError, match="count must be positive"):
+        main(["simulate", str(tmp_path / "empty.jsonl"), "--count", "0"])  # type: ignore[operator]

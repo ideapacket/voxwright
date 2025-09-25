@@ -20,6 +20,10 @@ def _pending(args: argparse.Namespace) -> int:
 
 def _simulate(args: argparse.Namespace) -> int:
     output: Path = args.output
+    if args.seed < 0:
+        raise ValueError("seed must be non-negative")
+    if args.count < 1:
+        raise ValueError("count must be positive")
     if output.exists():
         raise FileExistsError(f"output already exists: {output}")
     scenarios = []
