@@ -8,7 +8,8 @@ from pathlib import Path
 
 from voxwright import __version__
 from voxwright.core import canonical_json
-from voxwright.manifests import encode_manifest
+from voxwright.manifests import encode_manifest, read_manifest
+from voxwright.recording import load_session, summarize
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 
 CommandHandler = Callable[[argparse.Namespace], int]
@@ -51,6 +52,24 @@ def _simulate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _validate(args: argparse.Namespace) -> int:
+    path: Path = args.path
+    if args.artifact == "manifest":
+        scenarios = read_manifest(path)
+        result = {"artifact": "manifest", "count": len(scenarios), "valid": True}
+    else:
+        records = load_session(path)
+        summary = summarize(records)
+        result = {
+            "artifact": "session",
+            "count": summary.event_count,
+            "digest": summary.final_digest,
+            "valid": True,
+        }
+    print(canonical_json(result))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the root command parser."""
     parser = argparse.ArgumentParser(
@@ -80,6 +99,10 @@ def build_parser() -> argparse.ArgumentParser:
     simulate.add_argument("--count", type=int, default=1, help="场景数量")
     simulate.add_argument("--task", choices=[item.value for item in TaskType], default="schedule")
     simulate.set_defaults(handler=_simulate)
+    validate = commands["validate"]
+    validate.add_argument("artifact", choices=("manifest", "session"))
+    validate.add_argument("path", type=Path)
+    validate.set_defaults(handler=_validate)
     return parser
 
 
