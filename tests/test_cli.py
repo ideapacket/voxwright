@@ -100,3 +100,13 @@ def test_validate_propagates_precise_artifact_errors(tmp_path: object) -> None:
         main(["validate", "session", str(broken)])
     with pytest.raises(ValueError, match="Expecting value"):
         main(["validate", "manifest", str(broken)])
+
+
+def test_replay_prints_canonical_trace(tmp_path: object, capsys: object) -> None:
+    session = tmp_path / "session.jsonl"  # type: ignore[operator]
+    write_session(session)
+    assert main(["replay", str(session), "--seed", "9"]) == 0
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"schema_version":1' in output
+    assert '"seed":9' in output
+    assert '"session_id":"session-cli"' in output

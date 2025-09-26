@@ -10,6 +10,7 @@ from voxwright import __version__
 from voxwright.core import canonical_json
 from voxwright.manifests import encode_manifest, read_manifest
 from voxwright.recording import load_session, summarize
+from voxwright.replay import replay
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 
 CommandHandler = Callable[[argparse.Namespace], int]
@@ -70,6 +71,14 @@ def _validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _replay(args: argparse.Namespace) -> int:
+    if args.seed < 0:
+        raise ValueError("replay seed must be non-negative")
+    trace = replay(load_session(args.path), args.seed)
+    print(trace.to_bytes().decode("utf-8"))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the root command parser."""
     parser = argparse.ArgumentParser(
@@ -103,6 +112,10 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("artifact", choices=("manifest", "session"))
     validate.add_argument("path", type=Path)
     validate.set_defaults(handler=_validate)
+    replay_command = commands["replay"]
+    replay_command.add_argument("path", type=Path)
+    replay_command.add_argument("--seed", type=int, default=0)
+    replay_command.set_defaults(handler=_replay)
     return parser
 
 
