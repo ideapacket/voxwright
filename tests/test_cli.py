@@ -91,3 +91,12 @@ def test_validate_reports_verified_artifact_facts(tmp_path: object, capsys: obje
     write_session(session)
     assert main(["validate", "session", str(session)]) == 0
     assert '"count":1' in capsys.readouterr().out  # type: ignore[attr-defined]
+
+
+def test_validate_propagates_precise_artifact_errors(tmp_path: object) -> None:
+    broken = tmp_path / "broken.jsonl"  # type: ignore[operator]
+    broken.write_text("not-json\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="line 1"):
+        main(["validate", "session", str(broken)])
+    with pytest.raises(ValueError, match="Expecting value"):
+        main(["validate", "manifest", str(broken)])
