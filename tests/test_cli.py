@@ -110,3 +110,24 @@ def test_replay_prints_canonical_trace(tmp_path: object, capsys: object) -> None
     assert '"schema_version":1' in output
     assert '"seed":9' in output
     assert '"session_id":"session-cli"' in output
+
+
+def test_replay_is_byte_deterministic_for_same_seed(tmp_path: object, capsys: object) -> None:
+    session = tmp_path / "session.jsonl"  # type: ignore[operator]
+    write_session(session)
+    main(["replay", str(session), "--seed", "4"])
+    first = capsys.readouterr().out  # type: ignore[attr-defined]
+    main(["replay", str(session), "--seed", "4"])
+    second = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert first.encode() == second.encode()
+
+
+def test_replay_rejects_negative_seed_and_empty_recording(tmp_path: object) -> None:
+    session = tmp_path / "session.jsonl"  # type: ignore[operator]
+    write_session(session)
+    with pytest.raises(ValueError, match="seed must be non-negative"):
+        main(["replay", str(session), "--seed", "-1"])
+    empty = tmp_path / "empty.jsonl"  # type: ignore[operator]
+    empty.write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match="empty recording"):
+        main(["replay", str(empty)])
