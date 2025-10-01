@@ -138,3 +138,14 @@ def test_diff_returns_zero_for_identical_sessions(tmp_path: object, capsys: obje
     write_session(session)
     assert main(["diff", str(session), str(session)]) == 0
     assert capsys.readouterr().out == "sessions are identical\n"  # type: ignore[attr-defined]
+
+
+def test_diff_returns_one_and_prints_first_changed_field(tmp_path: object, capsys: object) -> None:
+    left = tmp_path / "left.jsonl"  # type: ignore[operator]
+    right = tmp_path / "right.jsonl"  # type: ignore[operator]
+    write_session(left, text="left")
+    write_session(right, text="right")
+    assert main(["diff", str(left), str(right)]) == 1
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert output.startswith("event 0 payload:")
+    assert '"left"' in output and '"right"' in output
