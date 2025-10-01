@@ -12,6 +12,7 @@ from voxwright.manifests import encode_manifest, read_manifest
 from voxwright.recording import load_session, summarize
 from voxwright.replay import replay
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
+from voxwright.session_diff import diff_traces, format_differences
 
 CommandHandler = Callable[[argparse.Namespace], int]
 
@@ -79,6 +80,14 @@ def _replay(args: argparse.Namespace) -> int:
     return 0
 
 
+def _diff(args: argparse.Namespace) -> int:
+    left = replay(load_session(args.left), args.seed)
+    right = replay(load_session(args.right), args.seed)
+    differences = diff_traces(left, right)
+    print(format_differences(differences), end="")
+    return 1 if differences else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the root command parser."""
     parser = argparse.ArgumentParser(
@@ -116,6 +125,11 @@ def build_parser() -> argparse.ArgumentParser:
     replay_command.add_argument("path", type=Path)
     replay_command.add_argument("--seed", type=int, default=0)
     replay_command.set_defaults(handler=_replay)
+    diff_command = commands["diff"]
+    diff_command.add_argument("left", type=Path)
+    diff_command.add_argument("right", type=Path)
+    diff_command.add_argument("--seed", type=int, default=0)
+    diff_command.set_defaults(handler=_diff)
     return parser
 
 

@@ -131,3 +131,10 @@ def test_replay_rejects_negative_seed_and_empty_recording(tmp_path: object) -> N
     empty.write_text("", encoding="utf-8")
     with pytest.raises(ValueError, match="empty recording"):
         main(["replay", str(empty)])
+
+
+def test_diff_returns_zero_for_identical_sessions(tmp_path: object, capsys: object) -> None:
+    session = tmp_path / "session.jsonl"  # type: ignore[operator]
+    write_session(session)
+    assert main(["diff", str(session), str(session)]) == 0
+    assert capsys.readouterr().out == "sessions are identical\n"  # type: ignore[attr-defined]
