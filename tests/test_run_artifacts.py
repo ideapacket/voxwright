@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from voxwright.evaluation import EvaluationRun
-from voxwright.run_artifacts import run_from_dict, run_to_dict
+from voxwright.run_artifacts import decode_runs, encode_runs, run_from_dict, run_to_dict
 
 
 def observed_run() -> EvaluationRun:
@@ -34,6 +34,14 @@ def test_run_decoder_rejects_schema_and_nested_type_drift() -> None:
     value["extra"] = True
     with pytest.raises(ValueError, match="invalid evaluation run shape"):
         run_from_dict(value)
+
+
+def test_run_jsonl_is_checksummed_and_replayable() -> None:
+    runs = (observed_run(), observed_run())
+    encoded = encode_runs(runs)
+    assert encoded.count("\n") == 2
+    assert '"checksum":"sha256:' in encoded
+    assert decode_runs(encoded) == runs
     value = run_to_dict(observed_run())
     value["expected_slots"] = {"text": 1}
     with pytest.raises(TypeError, match="expected slots"):

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from voxwright.core import JSONValue
+from voxwright.core import JSONValue, canonical_json, parse_json
 from voxwright.evaluation import EvaluationRun
+from voxwright.hashing import object_digest
 
 RUN_SCHEMA_VERSION = 1
 RUN_FIELDS = {
@@ -104,3 +105,34 @@ def run_from_dict(value: object) -> EvaluationRun:
         int(value["latency_ms"]),
         int(value["latency_budget_ms"]),
     )
+
+
+def encode_runs(runs: tuple[EvaluationRun, ...]) -> str:
+    lines = []
+    for run in runs:
+        unsigned: dict[str, JSONValue] = {
+            "schema_version": RUN_SCHEMA_VERSION,
+            "run": run_to_dict(run),
+        }
+        lines.append(canonical_json({**unsigned, "checksum": object_digest(unsigned)}))
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
+def decode_runs(content: str) -> tuple[EvaluationRun, ...]:
+    if content and not content.endswith("\n"):
+        raise ValueError("run artifact ends with an incomplete line")
+    runs = []
+    for line_number, line in enumerate(content.splitlines(), 1):
+        value = parse_json(line)
+        if not isinstance(value, dict) or set(value) != {"schema_version", "run", "checksum"}:
+            raise ValueError(f"run line {line_number}: invalid envelope shape")
+        unsigned = {"schema_version": value["schema_version"], "run": value["run"]}
+        if value["schema_version"] != RUN_SCHEMA_VERSION:
+            raise ValueError(f"run line {line_number}: unsupported schema version")
+        if value["checksum"] != object_digest(unsigned):
+            raise ValueError(f"run line {line_number}: checksum mismatch")
+        try:
+            runs.append(run_from_dict(value["run"]))
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"run line {line_number}: {error}") from error
+    return tuple(runs)
