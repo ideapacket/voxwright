@@ -5,8 +5,6 @@ from __future__ import annotations
 import subprocess
 import sys
 
-import pytest
-
 from voxwright.cli import build_parser, main
 from voxwright.events import EventEnvelope, EventKind
 from voxwright.identifiers import Identifier
@@ -61,16 +59,18 @@ def test_simulate_writes_seeded_manifest(tmp_path: object, capsys: object) -> No
     assert '"artifact":"synthetic-scenario-manifest"' in output
 
 
-def test_simulate_rejects_destructive_or_invalid_requests(tmp_path: object) -> None:
+def test_simulate_rejects_destructive_or_invalid_requests(tmp_path: object, capsys: object) -> None:
     path = tmp_path / "exists.jsonl"  # type: ignore[operator]
     path.write_text("keep", encoding="utf-8")
-    with pytest.raises(FileExistsError, match="already exists"):
-        main(["simulate", str(path)])
+    assert main(["simulate", str(path)]) == 2
+    assert "already exists" in capsys.readouterr().err  # type: ignore[attr-defined]
     assert path.read_text(encoding="utf-8") == "keep"
-    with pytest.raises(ValueError, match="seed must be non-negative"):
-        main(["simulate", str(tmp_path / "negative.jsonl"), "--seed", "-1"])  # type: ignore[operator]
-    with pytest.raises(ValueError, match="count must be positive"):
-        main(["simulate", str(tmp_path / "empty.jsonl"), "--count", "0"])  # type: ignore[operator]
+    negative = tmp_path / "negative.jsonl"  # type: ignore[operator]
+    assert main(["simulate", str(negative), "--seed", "-1"]) == 2
+    assert "seed must be non-negative" in capsys.readouterr().err  # type: ignore[attr-defined]
+    empty = tmp_path / "empty.jsonl"  # type: ignore[operator]
+    assert main(["simulate", str(empty), "--count", "0"]) == 2
+    assert "count must be positive" in capsys.readouterr().err  # type: ignore[attr-defined]
 
 
 def write_session(path: object, *, text: str = "hello") -> None:
@@ -93,13 +93,13 @@ def test_validate_reports_verified_artifact_facts(tmp_path: object, capsys: obje
     assert '"count":1' in capsys.readouterr().out  # type: ignore[attr-defined]
 
 
-def test_validate_propagates_precise_artifact_errors(tmp_path: object) -> None:
+def test_validate_propagates_precise_artifact_errors(tmp_path: object, capsys: object) -> None:
     broken = tmp_path / "broken.jsonl"  # type: ignore[operator]
     broken.write_text("not-json\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="line 1"):
-        main(["validate", "session", str(broken)])
-    with pytest.raises(ValueError, match="Expecting value"):
-        main(["validate", "manifest", str(broken)])
+    assert main(["validate", "session", str(broken)]) == 2
+    assert "line 1" in capsys.readouterr().err  # type: ignore[attr-defined]
+    assert main(["validate", "manifest", str(broken)]) == 2
+    assert "Expecting value" in capsys.readouterr().err  # type: ignore[attr-defined]
 
 
 def test_replay_prints_canonical_trace(tmp_path: object, capsys: object) -> None:
@@ -122,15 +122,15 @@ def test_replay_is_byte_deterministic_for_same_seed(tmp_path: object, capsys: ob
     assert first.encode() == second.encode()
 
 
-def test_replay_rejects_negative_seed_and_empty_recording(tmp_path: object) -> None:
+def test_replay_rejects_negative_seed_and_empty_recording(tmp_path: object, capsys: object) -> None:
     session = tmp_path / "session.jsonl"  # type: ignore[operator]
     write_session(session)
-    with pytest.raises(ValueError, match="seed must be non-negative"):
-        main(["replay", str(session), "--seed", "-1"])
+    assert main(["replay", str(session), "--seed", "-1"]) == 2
+    assert "seed must be non-negative" in capsys.readouterr().err  # type: ignore[attr-defined]
     empty = tmp_path / "empty.jsonl"  # type: ignore[operator]
     empty.write_text("", encoding="utf-8")
-    with pytest.raises(ValueError, match="empty recording"):
-        main(["replay", str(empty)])
+    assert main(["replay", str(empty)]) == 2
+    assert "empty recording" in capsys.readouterr().err  # type: ignore[attr-defined]
 
 
 def test_diff_returns_zero_for_identical_sessions(tmp_path: object, capsys: object) -> None:
@@ -149,3 +149,11 @@ def test_diff_returns_one_and_prints_first_changed_field(tmp_path: object, capsy
     output = capsys.readouterr().out  # type: ignore[attr-defined]
     assert output.startswith("event 0 payload:")
     assert '"left"' in output and '"right"' in output
+
+
+def test_cli_converts_missing_artifact_to_exit_two(tmp_path: object, capsys: object) -> None:
+    missing = tmp_path / "missing.jsonl"  # type: ignore[operator]
+    assert main(["validate", "session", str(missing)]) == 2
+    error = capsys.readouterr().err  # type: ignore[attr-defined]
+    assert error.startswith("voxwright: error:")
+    assert "missing.jsonl" in error

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
@@ -141,7 +142,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if handler is None:
         parser.print_help()
         return 0
-    return handler(args)
+    try:
+        return handler(args)
+    except (OSError, TypeError, ValueError) as error:
+        print(f"voxwright: error: {error}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":
