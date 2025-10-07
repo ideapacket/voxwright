@@ -157,3 +157,11 @@ def test_cli_converts_missing_artifact_to_exit_two(tmp_path: object, capsys: obj
     error = capsys.readouterr().err  # type: ignore[attr-defined]
     assert error.startswith("voxwright: error:")
     assert "missing.jsonl" in error
+
+
+def test_cli_pending_command_fails_without_traceback(capsys: object) -> None:
+    assert main(["run"]) == 2
+    captured = capsys.readouterr()  # type: ignore[attr-defined]
+    assert captured.out == ""
+    assert captured.err == "voxwright: error: command is not implemented: run\n"
+    assert "Traceback" not in captured.err
