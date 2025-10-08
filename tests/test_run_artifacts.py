@@ -69,6 +69,13 @@ def test_scripted_run_copies_only_planted_synthetic_truth() -> None:
     assert run.expected_slots == run.predicted_slots
     assert run.expected_tools == run.selected_tools
     assert run.goal_satisfied and run.false_executes == 0
+
+
+def test_scripted_run_latency_and_repairs_come_from_fixture_facts() -> None:
+    clean = scripted_run(schedule_scenario(3))
+    assert clean.latency_ms == 40 + schedule_scenario(3).difficulty * 10
+    assert clean.latency_budget_ms == 120
+    assert clean.repairs == 0
     value = run_to_dict(observed_run())
     value["expected_slots"] = {"text": 1}
     with pytest.raises(TypeError, match="expected slots"):
