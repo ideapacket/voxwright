@@ -5,7 +5,14 @@ import json
 import pytest
 
 from voxwright.evaluation import EvaluationRun
-from voxwright.run_artifacts import decode_runs, encode_runs, run_from_dict, run_to_dict
+from voxwright.run_artifacts import (
+    decode_runs,
+    encode_runs,
+    run_from_dict,
+    run_to_dict,
+    scripted_run,
+)
+from voxwright.scenarios import schedule_scenario
 
 
 def observed_run() -> EvaluationRun:
@@ -53,6 +60,15 @@ def test_run_stream_detects_tampering_and_truncation() -> None:
         decode_runs(json.dumps(value) + "\n")
     with pytest.raises(ValueError, match="incomplete line"):
         decode_runs(encode_runs((observed_run(),)).rstrip())
+
+
+def test_scripted_run_copies_only_planted_synthetic_truth() -> None:
+    scenario = schedule_scenario(7)
+    run = scripted_run(scenario)
+    assert run.run_id == str(scenario.scenario_id)
+    assert run.expected_slots == run.predicted_slots
+    assert run.expected_tools == run.selected_tools
+    assert run.goal_satisfied and run.false_executes == 0
     value = run_to_dict(observed_run())
     value["expected_slots"] = {"text": 1}
     with pytest.raises(TypeError, match="expected slots"):

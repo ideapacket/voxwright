@@ -5,6 +5,7 @@ from __future__ import annotations
 from voxwright.core import JSONValue, canonical_json, parse_json
 from voxwright.evaluation import EvaluationRun
 from voxwright.hashing import object_digest
+from voxwright.scenarios import SyntheticScenario
 
 RUN_SCHEMA_VERSION = 1
 RUN_FIELDS = {
@@ -136,3 +137,28 @@ def decode_runs(content: str) -> tuple[EvaluationRun, ...]:
         except (TypeError, ValueError) as error:
             raise ValueError(f"run line {line_number}: {error}") from error
     return tuple(runs)
+
+
+def scripted_run(scenario: SyntheticScenario) -> EvaluationRun:
+    """Create an observation for a scripted fixture that follows its planted truth."""
+    slots = {
+        name: item if isinstance(item, str) else canonical_json(item)
+        for name, item in scenario.planted_slots.items()
+    }
+    tools = tuple(str(call.tool_name) for call in scenario.planted_calls)
+    return EvaluationRun(
+        str(scenario.scenario_id),
+        scenario.goals[0].task_type.value,
+        f"level-{scenario.difficulty}",
+        scenario.noise_rate,
+        slots,
+        dict(slots),
+        tools,
+        tools,
+        True,
+        max(1, len(scenario.goals)),
+        int(scenario.noise_rate > 0),
+        0,
+        40 + scenario.difficulty * 10,
+        120,
+    )
