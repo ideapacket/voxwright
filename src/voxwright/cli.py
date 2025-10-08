@@ -12,6 +12,7 @@ from voxwright.core import canonical_json
 from voxwright.manifests import encode_manifest, read_manifest
 from voxwright.recording import load_session, summarize
 from voxwright.replay import replay
+from voxwright.run_artifacts import encode_runs, scripted_run
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 from voxwright.session_diff import diff_traces, format_differences
 
@@ -89,6 +90,24 @@ def _diff(args: argparse.Namespace) -> int:
     return 1 if differences else 0
 
 
+def _run(args: argparse.Namespace) -> int:
+    if args.output.exists():
+        raise FileExistsError(f"output already exists: {args.output}")
+    scenarios = read_manifest(args.manifest)
+    encoded = encode_runs(tuple(scripted_run(item) for item in scenarios))
+    args.output.write_text(encoded, encoding="utf-8")
+    print(
+        canonical_json(
+            {
+                "artifact": "synthetic-runs",
+                "count": len(scenarios),
+                "output": str(args.output),
+            }
+        )
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the root command parser."""
     parser = argparse.ArgumentParser(
@@ -131,6 +150,10 @@ def build_parser() -> argparse.ArgumentParser:
     diff_command.add_argument("right", type=Path)
     diff_command.add_argument("--seed", type=int, default=0)
     diff_command.set_defaults(handler=_diff)
+    run_command = commands["run"]
+    run_command.add_argument("manifest", type=Path)
+    run_command.add_argument("output", type=Path)
+    run_command.set_defaults(handler=_run)
     return parser
 
 

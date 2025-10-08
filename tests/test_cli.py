@@ -10,6 +10,7 @@ from voxwright.events import EventEnvelope, EventKind
 from voxwright.identifiers import Identifier
 from voxwright.manifests import read_manifest
 from voxwright.recording import SessionRecorder
+from voxwright.run_artifacts import decode_runs
 
 COMMANDS = (
     "simulate",
@@ -160,8 +161,19 @@ def test_cli_converts_missing_artifact_to_exit_two(tmp_path: object, capsys: obj
 
 
 def test_cli_pending_command_fails_without_traceback(capsys: object) -> None:
-    assert main(["run"]) == 2
+    assert main(["demo"]) == 2
     captured = capsys.readouterr()  # type: ignore[attr-defined]
     assert captured.out == ""
-    assert captured.err == "voxwright: error: command is not implemented: run\n"
+    assert captured.err == "voxwright: error: command is not implemented: demo\n"
     assert "Traceback" not in captured.err
+
+
+def test_run_executes_scripted_manifest_offline(tmp_path: object, capsys: object) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    output = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    assert main(["simulate", str(manifest), "--count", "2"]) == 0
+    capsys.readouterr()  # type: ignore[attr-defined]
+    assert main(["run", str(manifest), str(output)]) == 0
+    runs = decode_runs(output.read_text(encoding="utf-8"))
+    assert len(runs) == 2 and all(run.goal_satisfied for run in runs)
+    assert '"artifact":"synthetic-runs"' in capsys.readouterr().out  # type: ignore[attr-defined]
