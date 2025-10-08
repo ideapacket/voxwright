@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from voxwright.evaluation import EvaluationRun
@@ -42,6 +44,15 @@ def test_run_jsonl_is_checksummed_and_replayable() -> None:
     assert encoded.count("\n") == 2
     assert '"checksum":"sha256:' in encoded
     assert decode_runs(encoded) == runs
+
+
+def test_run_stream_detects_tampering_and_truncation() -> None:
+    value = json.loads(encode_runs((observed_run(),)))
+    value["run"]["goal_satisfied"] = False
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        decode_runs(json.dumps(value) + "\n")
+    with pytest.raises(ValueError, match="incomplete line"):
+        decode_runs(encode_runs((observed_run(),)).rstrip())
     value = run_to_dict(observed_run())
     value["expected_slots"] = {"text": 1}
     with pytest.raises(TypeError, match="expected slots"):
