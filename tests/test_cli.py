@@ -177,3 +177,13 @@ def test_run_executes_scripted_manifest_offline(tmp_path: object, capsys: object
     runs = decode_runs(output.read_text(encoding="utf-8"))
     assert len(runs) == 2 and all(run.goal_satisfied for run in runs)
     assert '"artifact":"synthetic-runs"' in capsys.readouterr().out  # type: ignore[attr-defined]
+
+
+def test_run_refuses_to_overwrite_observations(tmp_path: object, capsys: object) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    output = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    main(["simulate", str(manifest)])
+    output.write_text("keep", encoding="utf-8")
+    assert main(["run", str(manifest), str(output)]) == 2
+    assert output.read_text(encoding="utf-8") == "keep"
+    assert "already exists" in capsys.readouterr().err  # type: ignore[attr-defined]
