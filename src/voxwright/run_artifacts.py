@@ -27,13 +27,15 @@ RUN_FIELDS = {
 
 
 def run_to_dict(run: EvaluationRun) -> dict[str, JSONValue]:
+    expected_slots: dict[str, JSONValue] = dict(run.expected_slots)
+    predicted_slots: dict[str, JSONValue] = dict(run.predicted_slots)
     return {
         "run_id": run.run_id,
         "task_type": run.task_type,
         "difficulty": run.difficulty,
         "noise_rate": run.noise_rate,
-        "expected_slots": run.expected_slots,
-        "predicted_slots": run.predicted_slots,
+        "expected_slots": expected_slots,
+        "predicted_slots": predicted_slots,
         "expected_tools": list(run.expected_tools),
         "selected_tools": list(run.selected_tools),
         "goal_satisfied": run.goal_satisfied,
