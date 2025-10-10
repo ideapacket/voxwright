@@ -198,3 +198,10 @@ def test_score_prints_metrics_from_executed_runs(tmp_path: object, capsys: objec
     assert main(["score", str(output)]) == 0
     scored = capsys.readouterr().out  # type: ignore[attr-defined]
     assert '"task_success":1.0' in scored and '"false_execute_count":0' in scored
+
+
+def test_score_rejects_empty_or_tampered_run_streams(tmp_path: object, capsys: object) -> None:
+    empty = tmp_path / "empty.jsonl"  # type: ignore[operator]
+    empty.write_text("", encoding="utf-8")
+    assert main(["score", str(empty)]) == 2
+    assert "at least one run" in capsys.readouterr().err  # type: ignore[attr-defined]
