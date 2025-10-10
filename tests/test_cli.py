@@ -187,3 +187,14 @@ def test_run_refuses_to_overwrite_observations(tmp_path: object, capsys: object)
     assert main(["run", str(manifest), str(output)]) == 2
     assert output.read_text(encoding="utf-8") == "keep"
     assert "already exists" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
+def test_score_prints_metrics_from_executed_runs(tmp_path: object, capsys: object) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    output = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    main(["simulate", str(manifest)])
+    main(["run", str(manifest), str(output)])
+    capsys.readouterr()  # type: ignore[attr-defined]
+    assert main(["score", str(output)]) == 0
+    scored = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"task_success":1.0' in scored and '"false_execute_count":0' in scored

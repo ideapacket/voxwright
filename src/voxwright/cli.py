@@ -9,10 +9,11 @@ from pathlib import Path
 
 from voxwright import __version__
 from voxwright.core import canonical_json
+from voxwright.evaluation import score_runs
 from voxwright.manifests import encode_manifest, read_manifest
 from voxwright.recording import load_session, summarize
 from voxwright.replay import replay
-from voxwright.run_artifacts import encode_runs, scripted_run
+from voxwright.run_artifacts import decode_runs, encode_runs, scripted_run
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 from voxwright.session_diff import diff_traces, format_differences
 
@@ -108,6 +109,12 @@ def _run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _score(args: argparse.Namespace) -> int:
+    runs = decode_runs(args.path.read_text(encoding="utf-8"))
+    print(canonical_json(score_runs(runs).to_dict()))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the root command parser."""
     parser = argparse.ArgumentParser(
@@ -154,6 +161,9 @@ def build_parser() -> argparse.ArgumentParser:
     run_command.add_argument("manifest", type=Path)
     run_command.add_argument("output", type=Path)
     run_command.set_defaults(handler=_run)
+    score_command = commands["score"]
+    score_command.add_argument("path", type=Path)
+    score_command.set_defaults(handler=_score)
     return parser
 
 
