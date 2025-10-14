@@ -222,3 +222,28 @@ def test_report_renders_executed_runs_without_external_services(
     assert "Synthetic &lt;facts&gt;" in content
     assert "No real speech recording was evaluated" in content
     assert '"artifact":"html-report"' in capsys.readouterr().out  # type: ignore[attr-defined]
+
+
+def test_report_supports_markdown_and_protects_existing_files(
+    tmp_path: object, capsys: object
+) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    report = tmp_path / "report.md"  # type: ignore[operator]
+    main(["simulate", str(manifest)])
+    main(["run", str(manifest), str(runs)])
+    assert main(["report", str(runs), str(report), "--format", "markdown"]) == 0
+    assert report.read_text(encoding="utf-8").startswith("# voxwright")
+    original = report.read_bytes()
+    assert main(["report", str(runs), str(report), "--format", "markdown"]) == 2
+    assert report.read_bytes() == original
+    assert "already exists" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
+def test_report_rejects_invalid_campaign_identity(tmp_path: object, capsys: object) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    main(["simulate", str(manifest)])
+    main(["run", str(manifest), str(runs)])
+    assert main(["report", str(runs), str(tmp_path / "bad.html"), "--seed", "-1"]) == 2
+    assert "seed must be a non-negative" in capsys.readouterr().err  # type: ignore[attr-defined]
