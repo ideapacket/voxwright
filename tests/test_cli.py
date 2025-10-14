@@ -205,3 +205,20 @@ def test_score_rejects_empty_or_tampered_run_streams(tmp_path: object, capsys: o
     empty.write_text("", encoding="utf-8")
     assert main(["score", str(empty)]) == 2
     assert "at least one run" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
+def test_report_renders_executed_runs_without_external_services(
+    tmp_path: object, capsys: object
+) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    report = tmp_path / "report.html"  # type: ignore[operator]
+    main(["simulate", str(manifest), "--task", "notes"])
+    main(["run", str(manifest), str(runs)])
+    capsys.readouterr()  # type: ignore[attr-defined]
+    assert main(["report", str(runs), str(report), "--title", "Synthetic <facts>"]) == 0
+    content = report.read_text(encoding="utf-8")
+    assert content.startswith("<!doctype html>")
+    assert "Synthetic &lt;facts&gt;" in content
+    assert "No real speech recording was evaluated" in content
+    assert '"artifact":"html-report"' in capsys.readouterr().out  # type: ignore[attr-defined]

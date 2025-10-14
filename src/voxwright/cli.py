@@ -8,11 +8,13 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from voxwright import __version__
+from voxwright.campaign import CampaignArtifact
 from voxwright.core import canonical_json
 from voxwright.evaluation import score_runs
 from voxwright.manifests import encode_manifest, read_manifest
 from voxwright.recording import load_session, summarize
 from voxwright.replay import replay
+from voxwright.reports import CoverageFacts, ReportSpec, render_html, render_markdown
 from voxwright.run_artifacts import decode_runs, encode_runs, scripted_run
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 from voxwright.session_diff import diff_traces, format_differences
@@ -115,6 +117,33 @@ def _score(args: argparse.Namespace) -> int:
     return 0
 
 
+def _report(args: argparse.Namespace) -> int:
+    if args.output.exists():
+        raise FileExistsError(f"output already exists: {args.output}")
+    runs = decode_runs(args.path.read_text(encoding="utf-8"))
+    metrics = score_runs(runs)
+    campaign = CampaignArtifact(
+        args.name,
+        args.seed,
+        {"adapter": "scripted", "source": "synthetic-runs"},
+        metrics,
+    )
+    coverage = CoverageFacts(
+        len(runs),
+        tuple(sorted({run.task_type for run in runs})),
+        ("scripted",),
+    )
+    spec = ReportSpec(args.title, campaign, coverage)
+    content = render_html(spec) if args.format == "html" else render_markdown(spec)
+    args.output.write_text(content, encoding="utf-8", newline="\n")
+    print(
+        canonical_json(
+            {"artifact": f"{args.format}-report", "output": str(args.output), "runs": len(runs)}
+        )
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the root command parser."""
     parser = argparse.ArgumentParser(
@@ -164,6 +193,14 @@ def build_parser() -> argparse.ArgumentParser:
     score_command = commands["score"]
     score_command.add_argument("path", type=Path)
     score_command.set_defaults(handler=_score)
+    report_command = commands["report"]
+    report_command.add_argument("path", type=Path, help="校验过的运行 JSONL")
+    report_command.add_argument("output", type=Path, help="目标报告文件 (必须不存在)")
+    report_command.add_argument("--format", choices=("markdown", "html"), default="html")
+    report_command.add_argument("--title", default="voxwright 离线合成评估")
+    report_command.add_argument("--name", default="offline-campaign")
+    report_command.add_argument("--seed", type=int, default=0)
+    report_command.set_defaults(handler=_report)
     return parser
 
 
