@@ -247,3 +247,16 @@ def test_report_rejects_invalid_campaign_identity(tmp_path: object, capsys: obje
     main(["run", str(manifest), str(runs)])
     assert main(["report", str(runs), str(tmp_path / "bad.html"), "--seed", "-1"]) == 2
     assert "seed must be a non-negative" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
+def test_bench_measures_latency_curves_from_observed_runs(tmp_path: object, capsys: object) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    main(["simulate", str(manifest), "--count", "3"])
+    main(["run", str(manifest), str(runs)])
+    capsys.readouterr()  # type: ignore[attr-defined]
+    assert main(["bench", str(runs), "--budgets", "40", "60", "120"]) == 0
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"artifact":"synthetic-latency-benchmark"' in output
+    assert '"budget_ms":40' in output and '"budget_ms":120' in output
+    assert '"run_count":3' in output

@@ -11,6 +11,7 @@ from voxwright import __version__
 from voxwright.campaign import CampaignArtifact
 from voxwright.core import canonical_json
 from voxwright.evaluation import score_runs
+from voxwright.latency import RunOutcome, latency_success_curve
 from voxwright.manifests import encode_manifest, read_manifest
 from voxwright.recording import load_session, summarize
 from voxwright.replay import replay
@@ -144,6 +145,31 @@ def _report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _bench(args: argparse.Namespace) -> int:
+    runs = decode_runs(args.path.read_text(encoding="utf-8"))
+    outcomes = tuple(RunOutcome(run.latency_ms, run.goal_satisfied) for run in runs)
+    points = latency_success_curve(outcomes, tuple(args.budgets))
+    print(
+        canonical_json(
+            {
+                "artifact": "synthetic-latency-benchmark",
+                "run_count": len(runs),
+                "points": [
+                    {
+                        "budget_ms": point.budget_ms,
+                        "completed": point.completed,
+                        "successes": point.successes,
+                        "adherence_rate": point.adherence_rate,
+                        "success_rate": point.success_rate,
+                    }
+                    for point in points
+                ],
+            }
+        )
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the root command parser."""
     parser = argparse.ArgumentParser(
@@ -201,6 +227,12 @@ def build_parser() -> argparse.ArgumentParser:
     report_command.add_argument("--name", default="offline-campaign")
     report_command.add_argument("--seed", type=int, default=0)
     report_command.set_defaults(handler=_report)
+    bench_command = commands["bench"]
+    bench_command.add_argument("path", type=Path, help="校验过的运行 JSONL")
+    bench_command.add_argument(
+        "--budgets", nargs="+", type=int, default=[50, 75, 100, 150], metavar="MS"
+    )
+    bench_command.set_defaults(handler=_bench)
     return parser
 
 
