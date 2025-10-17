@@ -170,6 +170,54 @@ def _bench(args: argparse.Namespace) -> int:
     return 0
 
 
+def _demo(args: argparse.Namespace) -> int:
+    if args.output.exists():
+        raise FileExistsError(f"output already exists: {args.output}")
+    if args.seed < 0:
+        raise ValueError("demo seed must be non-negative")
+    if args.count < 1:
+        raise ValueError("demo count must be positive")
+    task_types = (TaskType.SCHEDULE, TaskType.MUSIC, TaskType.SMART_HOME, TaskType.NOTES)
+    scenarios = tuple(
+        application_scenario(task_types[offset % len(task_types)], args.seed + offset)
+        for offset in range(args.count)
+    )
+    runs = tuple(scripted_run(item) for item in scenarios)
+    metrics = score_runs(runs)
+    campaign = CampaignArtifact(
+        "offline-demo",
+        args.seed,
+        {"adapter": "scripted", "scenario_count": args.count},
+        metrics,
+    )
+    coverage = CoverageFacts(
+        len(runs), tuple(sorted({run.task_type for run in runs})), ("scripted",)
+    )
+    args.output.mkdir()
+    (args.output / "scenarios.jsonl").write_text(
+        encode_manifest(scenarios), encoding="utf-8", newline="\n"
+    )
+    (args.output / "runs.jsonl").write_text(encode_runs(runs), encoding="utf-8", newline="\n")
+    (args.output / "report.html").write_text(
+        render_html(ReportSpec("voxwright 离线演示", campaign, coverage)),
+        encoding="utf-8",
+        newline="\n",
+    )
+    summary = {
+        "artifact": "offline-demo",
+        "latency_adherence": metrics.efficiency.latency_adherence,
+        "output": str(args.output),
+        "run_count": metrics.run_count,
+        "seed": args.seed,
+        "task_success": metrics.task_success,
+    }
+    (args.output / "summary.json").write_text(
+        canonical_json(summary) + "\n", encoding="utf-8", newline="\n"
+    )
+    print(canonical_json(summary))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the root command parser."""
     parser = argparse.ArgumentParser(
@@ -233,6 +281,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--budgets", nargs="+", type=int, default=[50, 75, 100, 150], metavar="MS"
     )
     bench_command.set_defaults(handler=_bench)
+    demo_command = commands["demo"]
+    demo_command.add_argument("output", type=Path, help="新建的演示制品目录")
+    demo_command.add_argument("--seed", type=int, default=0)
+    demo_command.add_argument("--count", type=int, default=4)
+    demo_command.set_defaults(handler=_demo)
     return parser
 
 

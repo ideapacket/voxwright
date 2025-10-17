@@ -160,12 +160,16 @@ def test_cli_converts_missing_artifact_to_exit_two(tmp_path: object, capsys: obj
     assert "missing.jsonl" in error
 
 
-def test_cli_pending_command_fails_without_traceback(capsys: object) -> None:
-    assert main(["demo"]) == 2
-    captured = capsys.readouterr()  # type: ignore[attr-defined]
-    assert captured.out == ""
-    assert captured.err == "voxwright: error: command is not implemented: demo\n"
-    assert "Traceback" not in captured.err
+def test_cli_requires_demo_output_without_traceback() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "voxwright.cli", "demo"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2
+    assert "arguments are required: output" in result.stderr
+    assert "Traceback" not in result.stderr
 
 
 def test_run_executes_scripted_manifest_offline(tmp_path: object, capsys: object) -> None:
@@ -290,3 +294,19 @@ def test_bench_rejects_duplicate_negative_or_empty_inputs(tmp_path: object, caps
     assert "unique" in capsys.readouterr().err  # type: ignore[attr-defined]
     assert main(["bench", str(runs), "--budgets", "-1"]) == 2
     assert "non-negative" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
+def test_demo_runs_the_complete_offline_artifact_loop(tmp_path: object, capsys: object) -> None:
+    output = tmp_path / "demo"  # type: ignore[operator]
+    assert main(["demo", str(output), "--seed", "19", "--count", "4"]) == 0
+    assert sorted(path.name for path in output.iterdir()) == [
+        "report.html",
+        "runs.jsonl",
+        "scenarios.jsonl",
+        "summary.json",
+    ]
+    assert len(read_manifest(output / "scenarios.jsonl")) == 4
+    assert len(decode_runs((output / "runs.jsonl").read_text(encoding="utf-8"))) == 4
+    summary = (output / "summary.json").read_text(encoding="utf-8")
+    assert '"task_success":1.0' in summary and '"seed":19' in summary
+    assert capsys.readouterr().out.endswith(summary)  # type: ignore[attr-defined]
