@@ -260,3 +260,33 @@ def test_bench_measures_latency_curves_from_observed_runs(tmp_path: object, caps
     assert '"artifact":"synthetic-latency-benchmark"' in output
     assert '"budget_ms":40' in output and '"budget_ms":120' in output
     assert '"run_count":3' in output
+
+
+def test_bench_output_is_ordered_and_byte_deterministic(tmp_path: object, capsys: object) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    main(["simulate", str(manifest)])
+    main(["run", str(manifest), str(runs)])
+    capsys.readouterr()  # type: ignore[attr-defined]
+    arguments = ["bench", str(runs), "--budgets", "120", "40", "80"]
+    assert main(arguments) == 0
+    first = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert main(arguments) == 0
+    second = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert first.encode() == second.encode()
+    assert first.index('"budget_ms":40') < first.index('"budget_ms":120')
+
+
+def test_bench_rejects_duplicate_negative_or_empty_inputs(tmp_path: object, capsys: object) -> None:
+    empty = tmp_path / "empty.jsonl"  # type: ignore[operator]
+    empty.write_text("", encoding="utf-8")
+    assert main(["bench", str(empty)]) == 2
+    assert "at least one outcome" in capsys.readouterr().err  # type: ignore[attr-defined]
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    main(["simulate", str(manifest)])
+    main(["run", str(manifest), str(runs)])
+    assert main(["bench", str(runs), "--budgets", "10", "10"]) == 2
+    assert "unique" in capsys.readouterr().err  # type: ignore[attr-defined]
+    assert main(["bench", str(runs), "--budgets", "-1"]) == 2
+    assert "non-negative" in capsys.readouterr().err  # type: ignore[attr-defined]
