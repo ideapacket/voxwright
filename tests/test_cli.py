@@ -310,3 +310,29 @@ def test_demo_runs_the_complete_offline_artifact_loop(tmp_path: object, capsys: 
     summary = (output / "summary.json").read_text(encoding="utf-8")
     assert '"task_success":1.0' in summary and '"seed":19' in summary
     assert capsys.readouterr().out.endswith(summary)  # type: ignore[attr-defined]
+
+
+def test_demo_artifacts_are_reproducible_for_the_same_seed(
+    tmp_path: object, capsys: object
+) -> None:
+    left = tmp_path / "left"  # type: ignore[operator]
+    right = tmp_path / "right"  # type: ignore[operator]
+    assert main(["demo", str(left), "--seed", "23", "--count", "3"]) == 0
+    capsys.readouterr()  # type: ignore[attr-defined]
+    assert main(["demo", str(right), "--seed", "23", "--count", "3"]) == 0
+    for name in ("scenarios.jsonl", "runs.jsonl", "report.html"):
+        assert (left / name).read_bytes() == (right / name).read_bytes()
+
+
+def test_demo_rejects_invalid_or_destructive_requests(tmp_path: object, capsys: object) -> None:
+    existing = tmp_path / "existing"  # type: ignore[operator]
+    existing.mkdir()
+    marker = existing / "keep.txt"
+    marker.write_text("keep", encoding="utf-8")
+    assert main(["demo", str(existing)]) == 2
+    assert marker.read_text(encoding="utf-8") == "keep"
+    assert "already exists" in capsys.readouterr().err  # type: ignore[attr-defined]
+    assert main(["demo", str(tmp_path / "negative"), "--seed", "-1"]) == 2  # type: ignore[operator]
+    assert "seed must be non-negative" in capsys.readouterr().err  # type: ignore[attr-defined]
+    assert main(["demo", str(tmp_path / "empty"), "--count", "0"]) == 2  # type: ignore[operator]
+    assert "count must be positive" in capsys.readouterr().err  # type: ignore[attr-defined]
