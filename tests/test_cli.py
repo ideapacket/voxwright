@@ -93,6 +93,12 @@ def test_validate_reports_verified_artifact_facts(tmp_path: object, capsys: obje
     assert main(["validate", "session", str(session)]) == 0
     assert '"count":1' in capsys.readouterr().out  # type: ignore[attr-defined]
 
+    runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    assert main(["run", str(manifest), str(runs)]) == 0
+    capsys.readouterr()  # type: ignore[attr-defined]
+    assert main(["validate", "runs", str(runs)]) == 0
+    assert capsys.readouterr().out == '{"artifact":"runs","count":1,"valid":true}\n'  # type: ignore[attr-defined]
+
 
 def test_validate_propagates_precise_artifact_errors(tmp_path: object, capsys: object) -> None:
     broken = tmp_path / "broken.jsonl"  # type: ignore[operator]

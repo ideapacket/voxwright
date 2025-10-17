@@ -65,7 +65,7 @@ def _validate(args: argparse.Namespace) -> int:
     if args.artifact == "manifest":
         scenarios = read_manifest(path)
         result = {"artifact": "manifest", "count": len(scenarios), "valid": True}
-    else:
+    elif args.artifact == "session":
         records = load_session(path)
         summary = summarize(records)
         result = {
@@ -74,6 +74,9 @@ def _validate(args: argparse.Namespace) -> int:
             "digest": summary.final_digest,
             "valid": True,
         }
+    else:
+        runs = decode_runs(path.read_text(encoding="utf-8"))
+        result = {"artifact": "runs", "count": len(runs), "valid": True}
     print(canonical_json(result))
     return 0
 
@@ -248,7 +251,7 @@ def build_parser() -> argparse.ArgumentParser:
     simulate.add_argument("--task", choices=[item.value for item in TaskType], default="schedule")
     simulate.set_defaults(handler=_simulate)
     validate = commands["validate"]
-    validate.add_argument("artifact", choices=("manifest", "session"))
+    validate.add_argument("artifact", choices=("manifest", "session", "runs"))
     validate.add_argument("path", type=Path)
     validate.set_defaults(handler=_validate)
     replay_command = commands["replay"]
