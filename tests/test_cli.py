@@ -107,6 +107,26 @@ def test_validate_propagates_precise_artifact_errors(tmp_path: object, capsys: o
     assert "line 1" in capsys.readouterr().err  # type: ignore[attr-defined]
     assert main(["validate", "manifest", str(broken)]) == 2
     assert "Expecting value" in capsys.readouterr().err  # type: ignore[attr-defined]
+    assert main(["validate", "runs", str(broken)]) == 2
+    assert "Expecting value" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
+def test_validate_runs_detects_checksum_and_truncation_errors(
+    tmp_path: object, capsys: object
+) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    main(["simulate", str(manifest)])
+    main(["run", str(manifest), str(runs)])
+    content = runs.read_text(encoding="utf-8")
+    runs.write_text(
+        content.replace('"goal_satisfied":true', '"goal_satisfied":false'), encoding="utf-8"
+    )
+    assert main(["validate", "runs", str(runs)]) == 2
+    assert "checksum mismatch" in capsys.readouterr().err  # type: ignore[attr-defined]
+    runs.write_text(content.rstrip("\n"), encoding="utf-8")
+    assert main(["validate", "runs", str(runs)]) == 2
+    assert "incomplete line" in capsys.readouterr().err  # type: ignore[attr-defined]
 
 
 def test_replay_prints_canonical_trace(tmp_path: object, capsys: object) -> None:
