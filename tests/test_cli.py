@@ -270,6 +270,25 @@ def test_report_supports_markdown_and_protects_existing_files(
     assert "already exists" in capsys.readouterr().err  # type: ignore[attr-defined]
 
 
+def test_cli_file_commands_reject_existing_symlink_targets(
+    tmp_path: object, capsys: object
+) -> None:
+    protected = tmp_path / "protected.txt"  # type: ignore[operator]
+    protected.write_text("unchanged", encoding="utf-8")
+    simulated = tmp_path / "simulated.jsonl"  # type: ignore[operator]
+    simulated.symlink_to(protected)
+    assert main(["simulate", str(simulated)]) == 2
+    assert protected.read_text(encoding="utf-8") == "unchanged"
+    assert "already exists" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    main(["simulate", str(manifest)])
+    runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    runs.symlink_to(protected)
+    assert main(["run", str(manifest), str(runs)]) == 2
+    assert protected.read_text(encoding="utf-8") == "unchanged"
+
+
 def test_report_rejects_invalid_campaign_identity(tmp_path: object, capsys: object) -> None:
     manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
     runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
