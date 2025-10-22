@@ -27,14 +27,21 @@ def _pending(args: argparse.Namespace) -> int:
     raise ValueError(f"command is not implemented: {args.command}")
 
 
+def _write_new_text(path: Path, content: str) -> None:
+    """Write text without a check-then-overwrite race."""
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(content)
+    except FileExistsError as error:
+        raise FileExistsError(f"output already exists: {path}") from error
+
+
 def _simulate(args: argparse.Namespace) -> int:
     output: Path = args.output
     if args.seed < 0:
         raise ValueError("seed must be non-negative")
     if args.count < 1:
         raise ValueError("count must be positive")
-    if output.exists():
-        raise FileExistsError(f"output already exists: {output}")
     scenarios = []
     task_type = TaskType(args.task)
     for offset in range(args.count):
@@ -45,7 +52,7 @@ def _simulate(args: argparse.Namespace) -> int:
             scenarios.append(composite_scenario(seed, nested=True))
         else:
             scenarios.append(application_scenario(task_type, seed))
-    output.write_text(encode_manifest(scenarios), encoding="utf-8", newline="\n")
+    _write_new_text(output, encode_manifest(scenarios))
     print(
         canonical_json(
             {
@@ -98,11 +105,9 @@ def _diff(args: argparse.Namespace) -> int:
 
 
 def _run(args: argparse.Namespace) -> int:
-    if args.output.exists():
-        raise FileExistsError(f"output already exists: {args.output}")
     scenarios = read_manifest(args.manifest)
     encoded = encode_runs(tuple(scripted_run(item) for item in scenarios))
-    args.output.write_text(encoded, encoding="utf-8")
+    _write_new_text(args.output, encoded)
     print(
         canonical_json(
             {
@@ -122,8 +127,6 @@ def _score(args: argparse.Namespace) -> int:
 
 
 def _report(args: argparse.Namespace) -> int:
-    if args.output.exists():
-        raise FileExistsError(f"output already exists: {args.output}")
     runs = decode_runs(args.path.read_text(encoding="utf-8"))
     metrics = score_runs(runs)
     campaign = CampaignArtifact(
@@ -139,7 +142,7 @@ def _report(args: argparse.Namespace) -> int:
     )
     spec = ReportSpec(args.title, campaign, coverage)
     content = render_html(spec) if args.format == "html" else render_markdown(spec)
-    args.output.write_text(content, encoding="utf-8", newline="\n")
+    _write_new_text(args.output, content)
     print(
         canonical_json(
             {"artifact": f"{args.format}-report", "output": str(args.output), "runs": len(runs)}
