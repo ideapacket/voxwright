@@ -33,3 +33,22 @@ def test_model_example_rejects_misaligned_or_empty_records() -> None:
 def test_composite_scenarios_are_not_silently_flattened() -> None:
     with pytest.raises(ValueError, match="exactly one synthetic task goal"):
         scenario_example(composite_scenario(4))
+
+
+@pytest.mark.parametrize("seed", range(12))
+@pytest.mark.parametrize(
+    "task_type",
+    (TaskType.SCHEDULE, TaskType.MUSIC, TaskType.SMART_HOME, TaskType.NOTES),
+)
+def test_planted_tags_align_with_every_factory_task(task_type: TaskType, seed: int) -> None:
+    scenario = application_scenario(task_type, seed)
+    example = scenario_example(scenario)
+    assert len(example.tokens) == len(example.slot_tags)
+    assert any(tag.startswith("B-") for tag in example.slot_tags)
+    for slot_name, value in scenario.goals[0].slots.items():
+        planted = tokenize(str(value))
+        begin = example.slot_tags.index(f"B-{slot_name}")
+        assert example.tokens[begin : begin + len(planted)] == planted
+        assert example.slot_tags[begin + 1 : begin + len(planted)] == tuple(
+            f"I-{slot_name}" for _ in planted[1:]
+        )
