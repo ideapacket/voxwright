@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.model_data import ModelExample, scenario_example, tokenize
+from voxwright.model_data import ModelExample, TokenVocabulary, scenario_example, tokenize
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 
 
@@ -52,3 +52,14 @@ def test_planted_tags_align_with_every_factory_task(task_type: TaskType, seed: i
         assert example.slot_tags[begin + 1 : begin + len(planted)] == tuple(
             f"I-{slot_name}" for _ in planted[1:]
         )
+
+
+def test_vocabulary_builds_a_sorted_reproducible_index() -> None:
+    examples = tuple(
+        scenario_example(application_scenario(task_type, 3))
+        for task_type in (TaskType.MUSIC, TaskType.NOTES)
+    )
+    vocabulary = TokenVocabulary.build(examples)
+    assert vocabulary.tokens[0] == "<unk>"
+    assert vocabulary.tokens[1:] == tuple(sorted(vocabulary.tokens[1:]))
+    assert vocabulary.decode(vocabulary.encode(examples[0].tokens)) == examples[0].tokens

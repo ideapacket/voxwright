@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from dataclasses import dataclass
 
 from voxwright.scenarios import SyntheticScenario
@@ -69,3 +70,37 @@ def scenario_example(scenario: SyntheticScenario) -> ModelExample:
         tuple(tags),
         str(goal.tool_calls[0].tool_name),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class TokenVocabulary:
+    """Stable token-to-index map with an explicit unknown token."""
+
+    tokens: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not self.tokens or self.tokens[0] != "<unk>":
+            raise ValueError("token vocabulary must start with <unk>")
+        if any(not token for token in self.tokens) or len(set(self.tokens)) != len(self.tokens):
+            raise ValueError("token vocabulary entries must be nonempty and unique")
+
+    @classmethod
+    def build(
+        cls, examples: tuple[ModelExample, ...], *, minimum_count: int = 1
+    ) -> TokenVocabulary:
+        if not examples:
+            raise ValueError("token vocabulary requires examples")
+        if isinstance(minimum_count, bool) or minimum_count < 1:
+            raise ValueError("minimum token count must be positive")
+        counts = Counter(token for example in examples for token in example.tokens)
+        retained = tuple(sorted(token for token, count in counts.items() if count >= minimum_count))
+        return cls(("<unk>", *retained))
+
+    def encode(self, tokens: tuple[str, ...]) -> tuple[int, ...]:
+        positions = {token: index for index, token in enumerate(self.tokens)}
+        return tuple(positions.get(token, 0) for token in tokens)
+
+    def decode(self, indices: tuple[int, ...]) -> tuple[str, ...]:
+        if any(isinstance(index, bool) or not 0 <= index < len(self.tokens) for index in indices):
+            raise ValueError("token index is outside vocabulary")
+        return tuple(self.tokens[index] for index in indices)
