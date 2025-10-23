@@ -184,10 +184,10 @@ def _demo(args: argparse.Namespace) -> int:
     if args.count < 1:
         raise ValueError("demo count must be positive")
     task_types = (TaskType.SCHEDULE, TaskType.MUSIC, TaskType.SMART_HOME, TaskType.NOTES)
-    scenarios = tuple(
+    scenarios = [
         application_scenario(task_types[offset % len(task_types)], args.seed + offset)
         for offset in range(args.count)
-    )
+    ]
     runs = tuple(scripted_run(item) for item in scenarios)
     metrics = score_runs(runs)
     campaign = CampaignArtifact(
