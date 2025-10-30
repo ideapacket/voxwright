@@ -103,3 +103,22 @@ def test_class_inventories_cover_planted_tags_and_tools() -> None:
     assert slots.names[0] == "O"
     assert set(tools.names) == {"calendar.create", "home.set-light", "music.play", "notes.add"}
     assert all(slots.label(slots.index(tag)) == tag for item in examples for tag in item.slot_tags)
+
+
+def test_class_inventory_has_precise_unknown_boundaries() -> None:
+    inventory = ClassInventory(("O", "B-room"))
+    assert inventory.index("B-room") == 1
+    assert inventory.label(0) == "O"
+    with pytest.raises(ValueError, match="unknown class label: I-room"):
+        inventory.index("I-room")
+    with pytest.raises(ValueError, match="outside inventory"):
+        inventory.label(2)
+    with pytest.raises(ValueError, match="must be unique"):
+        ClassInventory(("O", "O"))
+    with pytest.raises(ValueError, match="cannot be empty"):
+        ClassInventory(())
+
+
+def test_slot_inventory_keeps_outside_first_when_no_token_is_outside() -> None:
+    example = ModelExample("blue sky", ("blue", "sky"), ("B-track", "I-track"), "music.play")
+    assert ClassInventory.for_slot_tags((example,)).names == ("O", "B-track", "I-track")
