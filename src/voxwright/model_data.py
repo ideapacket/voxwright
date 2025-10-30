@@ -7,6 +7,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from voxwright.scenarios import SyntheticScenario
+from voxwright.seeding import SeedStream
 
 TOKEN_PATTERN = re.compile(r"[\w'-]+", re.UNICODE)
 
@@ -141,3 +142,26 @@ class ClassInventory:
         if isinstance(index, bool) or not 0 <= index < len(self.names):
             raise ValueError("class index is outside inventory")
         return self.names[index]
+
+
+@dataclass(frozen=True, slots=True)
+class DatasetSplit:
+    train: tuple[ModelExample, ...]
+    validation: tuple[ModelExample, ...]
+
+    def __post_init__(self) -> None:
+        if not self.train or not self.validation:
+            raise ValueError("model split partitions cannot be empty")
+
+
+def split_examples(
+    examples: tuple[ModelExample, ...], *, seed: int, validation_fraction: float = 0.25
+) -> DatasetSplit:
+    """Create a seeded, stable split without consulting global randomness."""
+    if len(examples) < 2:
+        raise ValueError("model split requires at least two examples")
+    if not 0.0 < validation_fraction < 1.0:
+        raise ValueError("validation fraction must be between zero and one")
+    shuffled = SeedStream(seed, "model-split").shuffled(examples)
+    validation_count = min(len(examples) - 1, max(1, round(len(examples) * validation_fraction)))
+    return DatasetSplit(tuple(shuffled[validation_count:]), tuple(shuffled[:validation_count]))

@@ -6,9 +6,11 @@ import pytest
 
 from voxwright.model_data import (
     ClassInventory,
+    DatasetSplit,
     ModelExample,
     TokenVocabulary,
     scenario_example,
+    split_examples,
     tokenize,
 )
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
@@ -122,3 +124,14 @@ def test_class_inventory_has_precise_unknown_boundaries() -> None:
 def test_slot_inventory_keeps_outside_first_when_no_token_is_outside() -> None:
     example = ModelExample("blue sky", ("blue", "sky"), ("B-track", "I-track"), "music.play")
     assert ClassInventory.for_slot_tags((example,)).names == ("O", "B-track", "I-track")
+
+
+def test_seeded_split_is_reproducible_and_nonempty() -> None:
+    examples = tuple(
+        scenario_example(application_scenario(TaskType.NOTES, seed)) for seed in range(8)
+    )
+    first = split_examples(examples, seed=42)
+    second = split_examples(examples, seed=42)
+    assert first == second
+    assert isinstance(first, DatasetSplit)
+    assert len(first.train) == 6 and len(first.validation) == 2
