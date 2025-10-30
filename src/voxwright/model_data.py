@@ -104,3 +104,40 @@ class TokenVocabulary:
         if any(isinstance(index, bool) or not 0 <= index < len(self.tokens) for index in indices):
             raise ValueError("token index is outside vocabulary")
         return tuple(self.tokens[index] for index in indices)
+
+
+@dataclass(frozen=True, slots=True)
+class ClassInventory:
+    """Ordered labels for token tags or tool selection."""
+
+    names: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not self.names or any(not name for name in self.names):
+            raise ValueError("class inventory names cannot be empty")
+        if len(set(self.names)) != len(self.names):
+            raise ValueError("class inventory names must be unique")
+
+    @classmethod
+    def for_slot_tags(cls, examples: tuple[ModelExample, ...]) -> ClassInventory:
+        if not examples:
+            raise ValueError("slot inventory requires examples")
+        observed = {tag for example in examples for tag in example.slot_tags}
+        return cls(("O", *sorted(observed - {"O"})))
+
+    @classmethod
+    def for_tools(cls, examples: tuple[ModelExample, ...]) -> ClassInventory:
+        if not examples:
+            raise ValueError("tool inventory requires examples")
+        return cls(tuple(sorted({example.tool_label for example in examples})))
+
+    def index(self, name: str) -> int:
+        try:
+            return self.names.index(name)
+        except ValueError as error:
+            raise ValueError(f"unknown class label: {name}") from error
+
+    def label(self, index: int) -> str:
+        if isinstance(index, bool) or not 0 <= index < len(self.names):
+            raise ValueError("class index is outside inventory")
+        return self.names[index]

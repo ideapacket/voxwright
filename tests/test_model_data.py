@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.model_data import ModelExample, TokenVocabulary, scenario_example, tokenize
+from voxwright.model_data import (
+    ClassInventory,
+    ModelExample,
+    TokenVocabulary,
+    scenario_example,
+    tokenize,
+)
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 
 
@@ -85,3 +91,15 @@ def test_vocabulary_rejects_invalid_counts_and_indices() -> None:
     assert vocabulary.tokens == ("<unk>",)
     with pytest.raises(ValueError, match="outside vocabulary"):
         vocabulary.decode((1,))
+
+
+def test_class_inventories_cover_planted_tags_and_tools() -> None:
+    examples = tuple(
+        scenario_example(application_scenario(task_type, 5))
+        for task_type in (TaskType.SCHEDULE, TaskType.MUSIC, TaskType.SMART_HOME, TaskType.NOTES)
+    )
+    slots = ClassInventory.for_slot_tags(examples)
+    tools = ClassInventory.for_tools(examples)
+    assert slots.names[0] == "O"
+    assert set(tools.names) == {"calendar.create", "home.set-light", "music.play", "notes.add"}
+    assert all(slots.label(slots.index(tag)) == tag for item in examples for tag in item.slot_tags)
