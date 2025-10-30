@@ -63,3 +63,25 @@ def test_vocabulary_builds_a_sorted_reproducible_index() -> None:
     assert vocabulary.tokens[0] == "<unk>"
     assert vocabulary.tokens[1:] == tuple(sorted(vocabulary.tokens[1:]))
     assert vocabulary.decode(vocabulary.encode(examples[0].tokens)) == examples[0].tokens
+
+
+def test_vocabulary_maps_unseen_tokens_without_mutating_itself() -> None:
+    example = scenario_example(application_scenario(TaskType.NOTES, 8))
+    vocabulary = TokenVocabulary.build((example,))
+    before = vocabulary.tokens
+    encoded = vocabulary.encode(("unseen", *example.tokens))
+    assert encoded[0] == 0
+    assert vocabulary.decode((encoded[0],)) == ("<unk>",)
+    assert vocabulary.tokens == before
+
+
+def test_vocabulary_rejects_invalid_counts_and_indices() -> None:
+    example = scenario_example(application_scenario(TaskType.NOTES, 2))
+    with pytest.raises(ValueError, match="requires examples"):
+        TokenVocabulary.build(())
+    with pytest.raises(ValueError, match="must be positive"):
+        TokenVocabulary.build((example,), minimum_count=0)
+    vocabulary = TokenVocabulary.build((example,), minimum_count=2)
+    assert vocabulary.tokens == ("<unk>",)
+    with pytest.raises(ValueError, match="outside vocabulary"):
+        vocabulary.decode((1,))
