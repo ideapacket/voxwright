@@ -135,3 +135,24 @@ def test_seeded_split_is_reproducible_and_nonempty() -> None:
     assert first == second
     assert isinstance(first, DatasetSplit)
     assert len(first.train) == 6 and len(first.validation) == 2
+
+
+def test_split_preserves_every_example_without_overlap() -> None:
+    examples = tuple(
+        scenario_example(application_scenario(TaskType.MUSIC, seed)) for seed in range(7)
+    )
+    split = split_examples(examples, seed=9, validation_fraction=0.4)
+    assert set(split.train).isdisjoint(split.validation)
+    assert set((*split.train, *split.validation)) == set(examples)
+    assert split_examples(examples, seed=10) != split_examples(examples, seed=11)
+
+
+def test_split_rejects_degenerate_partitions() -> None:
+    example = scenario_example(application_scenario(TaskType.MUSIC, 1))
+    with pytest.raises(ValueError, match="at least two"):
+        split_examples((example,), seed=0)
+    for fraction in (0.0, 1.0, -0.1, 1.1):
+        with pytest.raises(ValueError, match="between zero and one"):
+            split_examples((example, example), seed=0, validation_fraction=fraction)
+    with pytest.raises(ValueError, match="partitions cannot be empty"):
+        DatasetSplit((), (example,))
