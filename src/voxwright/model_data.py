@@ -6,6 +6,9 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 
+import numpy as np
+import numpy.typing as npt
+
 from voxwright.scenarios import SyntheticScenario
 from voxwright.seeding import SeedStream
 
@@ -165,3 +168,44 @@ def split_examples(
     shuffled = SeedStream(seed, "model-split").shuffled(examples)
     validation_count = min(len(examples) - 1, max(1, round(len(examples) * validation_fraction)))
     return DatasetSplit(tuple(shuffled[validation_count:]), tuple(shuffled[:validation_count]))
+
+
+@dataclass(frozen=True, slots=True)
+class EncodedBatch:
+    """Padded arrays consumed by the optional model implementation."""
+
+    token_ids: npt.NDArray[np.int64]
+    slot_ids: npt.NDArray[np.int64]
+    mask: npt.NDArray[np.bool_]
+    tool_ids: npt.NDArray[np.int64]
+
+    def __post_init__(self) -> None:
+        if self.token_ids.ndim != 2 or self.slot_ids.shape != self.token_ids.shape:
+            raise ValueError("batch token and slot arrays must share a two-dimensional shape")
+        if self.mask.shape != self.token_ids.shape:
+            raise ValueError("batch mask must match token shape")
+        if self.tool_ids.shape != (self.token_ids.shape[0],):
+            raise ValueError("batch tool labels must match the example count")
+
+
+def encode_batch(
+    examples: tuple[ModelExample, ...],
+    tokens: TokenVocabulary,
+    slots: ClassInventory,
+    tools: ClassInventory,
+) -> EncodedBatch:
+    """Pad examples deterministically while keeping padding out of the mask."""
+    if not examples:
+        raise ValueError("model batch requires examples")
+    width = max(len(example.tokens) for example in examples)
+    token_ids = np.zeros((len(examples), width), dtype=np.int64)
+    slot_ids = np.zeros((len(examples), width), dtype=np.int64)
+    mask = np.zeros((len(examples), width), dtype=np.bool_)
+    tool_ids = np.zeros((len(examples),), dtype=np.int64)
+    for row, example in enumerate(examples):
+        length = len(example.tokens)
+        token_ids[row, :length] = tokens.encode(example.tokens)
+        slot_ids[row, :length] = tuple(slots.index(tag) for tag in example.slot_tags)
+        mask[row, :length] = True
+        tool_ids[row] = tools.index(example.tool_label)
+    return EncodedBatch(token_ids, slot_ids, mask, tool_ids)

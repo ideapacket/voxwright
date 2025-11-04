@@ -7,8 +7,10 @@ import pytest
 from voxwright.model_data import (
     ClassInventory,
     DatasetSplit,
+    EncodedBatch,
     ModelExample,
     TokenVocabulary,
+    encode_batch,
     scenario_example,
     split_examples,
     tokenize,
@@ -156,3 +158,18 @@ def test_split_rejects_degenerate_partitions() -> None:
             split_examples((example, example), seed=0, validation_fraction=fraction)
     with pytest.raises(ValueError, match="partitions cannot be empty"):
         DatasetSplit((), (example,))
+
+
+def test_batch_encoder_pads_variable_transcripts_with_an_explicit_mask() -> None:
+    examples = (
+        scenario_example(application_scenario(TaskType.MUSIC, 1)),
+        scenario_example(application_scenario(TaskType.NOTES, 2)),
+    )
+    tokens = TokenVocabulary.build(examples)
+    slots = ClassInventory.for_slot_tags(examples)
+    tools = ClassInventory.for_tools(examples)
+    batch = encode_batch(examples, tokens, slots, tools)
+    assert isinstance(batch, EncodedBatch)
+    assert batch.token_ids.shape == batch.slot_ids.shape == batch.mask.shape
+    assert batch.tool_ids.shape == (2,)
+    assert batch.mask.sum(axis=1).tolist() == [len(item.tokens) for item in examples]
