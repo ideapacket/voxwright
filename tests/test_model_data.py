@@ -13,6 +13,7 @@ from voxwright.model_data import (
     encode_batch,
     scenario_example,
     split_examples,
+    synthetic_model_corpus,
     tokenize,
 )
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
@@ -203,3 +204,15 @@ def test_batch_encoder_rejects_empty_and_unknown_labels() -> None:
     unknown = ModelExample("play blue", ("play", "blue"), ("O", "B-track"), "unknown.tool")
     with pytest.raises(ValueError, match="unknown class label"):
         encode_batch((unknown,), vocabulary, slots, tools)
+
+
+def test_synthetic_model_corpus_is_balanced_and_seeded() -> None:
+    corpus = synthetic_model_corpus(17, samples_per_task=3)
+    assert len(corpus) == 12
+    counts = {
+        label: sum(item.tool_label == label for item in corpus)
+        for label in set(item.tool_label for item in corpus)
+    }
+    assert set(counts.values()) == {3}
+    assert corpus == synthetic_model_corpus(17, samples_per_task=3)
+    assert corpus != synthetic_model_corpus(18, samples_per_task=3)

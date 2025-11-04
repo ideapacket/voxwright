@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 
-from voxwright.scenarios import SyntheticScenario
+from voxwright.scenarios import SyntheticScenario, TaskType, application_scenario
 from voxwright.seeding import SeedStream
 
 TOKEN_PATTERN = re.compile(r"[\w'-]+", re.UNICODE)
@@ -74,6 +74,20 @@ def scenario_example(scenario: SyntheticScenario) -> ModelExample:
         tuple(tags),
         str(goal.tool_calls[0].tool_name),
     )
+
+
+def synthetic_model_corpus(seed: int, *, samples_per_task: int = 8) -> tuple[ModelExample, ...]:
+    """Build a balanced, seeded corpus from the offline scenario factory."""
+    stream = SeedStream(seed, "model-corpus")
+    if isinstance(samples_per_task, bool) or samples_per_task < 1:
+        raise ValueError("samples per task must be positive")
+    task_types = (TaskType.SCHEDULE, TaskType.MUSIC, TaskType.SMART_HOME, TaskType.NOTES)
+    examples = [
+        scenario_example(application_scenario(task_type, stream.next_int() % 1_000_000))
+        for _ in range(samples_per_task)
+        for task_type in task_types
+    ]
+    return tuple(stream.shuffled(examples))
 
 
 @dataclass(frozen=True, slots=True)
