@@ -173,3 +173,33 @@ def test_batch_encoder_pads_variable_transcripts_with_an_explicit_mask() -> None
     assert batch.token_ids.shape == batch.slot_ids.shape == batch.mask.shape
     assert batch.tool_ids.shape == (2,)
     assert batch.mask.sum(axis=1).tolist() == [len(item.tokens) for item in examples]
+
+
+def test_batch_encoder_preserves_labels_in_both_directions() -> None:
+    examples = tuple(
+        scenario_example(application_scenario(task_type, 6))
+        for task_type in (TaskType.SCHEDULE, TaskType.SMART_HOME, TaskType.NOTES)
+    )
+    tokens = TokenVocabulary.build(examples)
+    slots = ClassInventory.for_slot_tags(examples)
+    tools = ClassInventory.for_tools(examples)
+    batch = encode_batch(examples, tokens, slots, tools)
+    for row, example in enumerate(examples):
+        length = len(example.tokens)
+        decoded_tokens = tokens.decode(tuple(int(item) for item in batch.token_ids[row, :length]))
+        decoded_slots = tuple(slots.label(int(item)) for item in batch.slot_ids[row, :length])
+        assert decoded_tokens == example.tokens
+        assert decoded_slots == example.slot_tags
+        assert tools.label(int(batch.tool_ids[row])) == example.tool_label
+
+
+def test_batch_encoder_rejects_empty_and_unknown_labels() -> None:
+    example = scenario_example(application_scenario(TaskType.MUSIC, 3))
+    vocabulary = TokenVocabulary.build((example,))
+    slots = ClassInventory.for_slot_tags((example,))
+    tools = ClassInventory.for_tools((example,))
+    with pytest.raises(ValueError, match="requires examples"):
+        encode_batch((), vocabulary, slots, tools)
+    unknown = ModelExample("play blue", ("play", "blue"), ("O", "B-track"), "unknown.tool")
+    with pytest.raises(ValueError, match="unknown class label"):
+        encode_batch((unknown,), vocabulary, slots, tools)
