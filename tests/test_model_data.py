@@ -216,3 +216,20 @@ def test_synthetic_model_corpus_is_balanced_and_seeded() -> None:
     assert set(counts.values()) == {3}
     assert corpus == synthetic_model_corpus(17, samples_per_task=3)
     assert corpus != synthetic_model_corpus(18, samples_per_task=3)
+
+
+def test_synthetic_corpus_retains_only_planted_factory_facts() -> None:
+    corpus = synthetic_model_corpus(31, samples_per_task=5)
+    expected_tools = {"calendar.create", "home.set-light", "music.play", "notes.add"}
+    assert {example.tool_label for example in corpus} == expected_tools
+    assert all(len(example.tokens) == len(example.slot_tags) for example in corpus)
+    assert all(any(tag != "O" for tag in example.slot_tags) for example in corpus)
+    assert all(example.transcript for example in corpus)
+
+
+def test_synthetic_corpus_rejects_invalid_generation_requests() -> None:
+    for count in (0, -1, True):
+        with pytest.raises(ValueError, match="samples per task must be positive"):
+            synthetic_model_corpus(0, samples_per_task=count)
+    with pytest.raises(ValueError, match="seed must be a non-negative"):
+        synthetic_model_corpus(-1)
