@@ -32,3 +32,21 @@ def test_optional_torch_model_constructs_on_cpu() -> None:
     assert tuple(model.embedding.weight.shape) == (len(vocabulary.tokens), 8)
     assert tuple(model.slot_head.weight.shape) == (len(slots.names), 8)
     assert tuple(model.tool_head.weight.shape) == (len(tools.names), 8)
+
+
+def test_model_initialization_is_seeded_without_sharing_parameters() -> None:
+    vocabulary, slots, tools = model_parts()
+    first = TorchJointModel(vocabulary, slots, tools, seed=11)
+    second = TorchJointModel(vocabulary, slots, tools, seed=11)
+    third = TorchJointModel(vocabulary, slots, tools, seed=12)
+    assert first.embedding.weight.tolist() == second.embedding.weight.tolist()
+    assert first.embedding.weight.tolist() != third.embedding.weight.tolist()
+    assert first.embedding.weight.data_ptr() != second.embedding.weight.data_ptr()
+
+
+def test_model_rejects_invalid_architecture_parameters() -> None:
+    vocabulary, slots, tools = model_parts()
+    with pytest.raises(ValueError, match="embedding size must be positive"):
+        TorchJointModel(vocabulary, slots, tools, embedding_size=0)
+    with pytest.raises(ValueError, match="seed must be non-negative"):
+        TorchJointModel(vocabulary, slots, tools, seed=-1)
