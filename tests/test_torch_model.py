@@ -15,6 +15,8 @@ from voxwright.model_data import (  # noqa: E402
 from voxwright.torch_model import (  # noqa: E402
     ModelPrediction,
     TorchJointModel,
+    TrainingConfig,
+    TrainingHistory,
     predict,
     torch_available,
 )
@@ -89,3 +91,16 @@ def test_prediction_rejects_tokenless_input_and_invalid_records() -> None:
         ModelPrediction(("play",), ("O",), (), "music.play", 0.5)
     with pytest.raises(ValueError, match="tool output is invalid"):
         ModelPrediction(("play",), ("O",), (0.5,), "", 0.5)
+
+
+def test_training_configuration_rejects_invalid_optimization_ranges() -> None:
+    for epochs in (0, -1, True):
+        with pytest.raises(ValueError, match="epochs must be positive"):
+            TrainingConfig(epochs=epochs)
+    for rate in (0.0, -0.1, 1.1):
+        with pytest.raises(ValueError, match="learning rate"):
+            TrainingConfig(learning_rate=rate)
+    with pytest.raises(ValueError, match="seed must be non-negative"):
+        TrainingConfig(seed=-1)
+    with pytest.raises(ValueError, match="non-negative losses"):
+        TrainingHistory(())

@@ -7,7 +7,13 @@ import importlib.util
 from dataclasses import dataclass
 from typing import Any
 
-from voxwright.model_data import ClassInventory, TokenVocabulary, tokenize
+from voxwright.model_data import (
+    ClassInventory,
+    ModelExample,
+    TokenVocabulary,
+    encode_batch,
+    tokenize,
+)
 
 
 def torch_available() -> bool:
@@ -112,3 +118,55 @@ def predict(model: TorchJointModel, text: str) -> ModelPrediction:
         model.tool_classes.label(tool_index),
         round(tool_confidence, 6),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class TrainingConfig:
+    epochs: int = 60
+    learning_rate: float = 0.03
+    seed: int = 0
+
+    def __post_init__(self) -> None:
+        if isinstance(self.epochs, bool) or self.epochs < 1:
+            raise ValueError("training epochs must be positive")
+        if not 0.0 < self.learning_rate <= 1.0:
+            raise ValueError("training learning rate must be between zero and one")
+        if isinstance(self.seed, bool) or self.seed < 0:
+            raise ValueError("training seed must be non-negative")
+
+
+@dataclass(frozen=True, slots=True)
+class TrainingHistory:
+    losses: tuple[float, ...]
+
+    def __post_init__(self) -> None:
+        if not self.losses or any(value < 0.0 for value in self.losses):
+            raise ValueError("training history requires non-negative losses")
+
+
+def train_model(
+    model: TorchJointModel,
+    examples: tuple[ModelExample, ...],
+    config: TrainingConfig | None = None,
+) -> TrainingHistory:
+    """Optimize both heads on planted synthetic labels using CPU tensors."""
+    settings = TrainingConfig() if config is None else config
+    torch = require_torch()
+    torch.manual_seed(settings.seed)
+    batch = encode_batch(examples, model.vocabulary, model.slot_classes, model.tool_classes)
+    token_ids = torch.tensor(batch.token_ids, dtype=torch.long)
+    slot_ids = torch.tensor(batch.slot_ids, dtype=torch.long)
+    mask = torch.tensor(batch.mask, dtype=torch.bool)
+    tool_ids = torch.tensor(batch.tool_ids, dtype=torch.long)
+    optimizer = torch.optim.Adam(model.parameters(), lr=settings.learning_rate)
+    losses: list[float] = []
+    for _ in range(settings.epochs):
+        optimizer.zero_grad()
+        slot_logits, tool_logits = model.forward(token_ids, mask)
+        slot_loss = torch.nn.functional.cross_entropy(slot_logits[mask], slot_ids[mask])
+        tool_loss = torch.nn.functional.cross_entropy(tool_logits, tool_ids)
+        loss = slot_loss + tool_loss
+        loss.backward()
+        optimizer.step()
+        losses.append(round(float(loss.detach().item()), 6))
+    return TrainingHistory(tuple(losses))
