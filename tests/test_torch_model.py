@@ -19,6 +19,7 @@ from voxwright.torch_model import (  # noqa: E402
     TrainingHistory,
     predict,
     torch_available,
+    train_model,
 )
 
 
@@ -104,3 +105,16 @@ def test_training_configuration_rejects_invalid_optimization_ranges() -> None:
         TrainingConfig(seed=-1)
     with pytest.raises(ValueError, match="non-negative losses"):
         TrainingHistory(())
+
+
+@pytest.mark.slow
+def test_training_produces_real_loss_decrease_on_synthetic_data() -> None:
+    examples = synthetic_model_corpus(13, samples_per_task=8)
+    vocabulary = TokenVocabulary.build(examples)
+    slots = ClassInventory.for_slot_tags(examples)
+    tools = ClassInventory.for_tools(examples)
+    model = TorchJointModel(vocabulary, slots, tools, embedding_size=12, seed=13)
+    history = train_model(model, examples, TrainingConfig(epochs=50, seed=13))
+    assert len(history.losses) == 50
+    assert history.losses[-1] < history.losses[0] * 0.2
+    assert min(history.losses[-5:]) < min(history.losses[:5])
