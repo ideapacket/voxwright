@@ -170,3 +170,48 @@ def train_model(
         optimizer.step()
         losses.append(round(float(loss.detach().item()), 6))
     return TrainingHistory(tuple(losses))
+
+
+@dataclass(frozen=True, slots=True)
+class ModelQuality:
+    token_count: int
+    correct_tokens: int
+    slot_accuracy: float
+    example_count: int
+    correct_tools: int
+    tool_accuracy: float
+
+    def __post_init__(self) -> None:
+        if self.token_count < 1 or self.example_count < 1:
+            raise ValueError("model quality requires observed examples and tokens")
+        if not 0 <= self.correct_tokens <= self.token_count:
+            raise ValueError("model quality token count is inconsistent")
+        if not 0 <= self.correct_tools <= self.example_count:
+            raise ValueError("model quality tool count is inconsistent")
+        if not 0.0 <= self.slot_accuracy <= 1.0 or not 0.0 <= self.tool_accuracy <= 1.0:
+            raise ValueError("model quality accuracy must be between zero and one")
+
+
+def evaluate_model(model: TorchJointModel, examples: tuple[ModelExample, ...]) -> ModelQuality:
+    """Measure exact planted-label accuracy without claiming real-model quality."""
+    if not examples:
+        raise ValueError("model evaluation requires examples")
+    predictions = tuple(predict(model, example.transcript) for example in examples)
+    token_count = sum(len(example.slot_tags) for example in examples)
+    correct_tokens = sum(
+        expected == predicted
+        for example, prediction in zip(examples, predictions, strict=True)
+        for expected, predicted in zip(example.slot_tags, prediction.slot_tags, strict=True)
+    )
+    correct_tools = sum(
+        example.tool_label == prediction.tool_label
+        for example, prediction in zip(examples, predictions, strict=True)
+    )
+    return ModelQuality(
+        token_count,
+        correct_tokens,
+        round(correct_tokens / token_count, 6),
+        len(examples),
+        correct_tools,
+        round(correct_tools / len(examples), 6),
+    )

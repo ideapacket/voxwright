@@ -14,9 +14,11 @@ from voxwright.model_data import (  # noqa: E402
 )
 from voxwright.torch_model import (  # noqa: E402
     ModelPrediction,
+    ModelQuality,
     TorchJointModel,
     TrainingConfig,
     TrainingHistory,
+    evaluate_model,
     predict,
     torch_available,
     train_model,
@@ -118,3 +120,16 @@ def test_training_produces_real_loss_decrease_on_synthetic_data() -> None:
     assert len(history.losses) == 50
     assert history.losses[-1] < history.losses[0] * 0.2
     assert min(history.losses[-5:]) < min(history.losses[:5])
+
+
+def test_quality_counts_match_public_accuracy_fields() -> None:
+    examples = synthetic_model_corpus(21, samples_per_task=2)
+    vocabulary = TokenVocabulary.build(examples)
+    slots = ClassInventory.for_slot_tags(examples)
+    tools = ClassInventory.for_tools(examples)
+    quality = evaluate_model(TorchJointModel(vocabulary, slots, tools, seed=21), examples)
+    assert isinstance(quality, ModelQuality)
+    assert quality.token_count == sum(len(item.tokens) for item in examples)
+    assert quality.example_count == len(examples)
+    assert quality.slot_accuracy == round(quality.correct_tokens / quality.token_count, 6)
+    assert quality.tool_accuracy == round(quality.correct_tools / quality.example_count, 6)
