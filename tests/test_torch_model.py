@@ -67,3 +67,25 @@ def test_untrained_model_prediction_has_aligned_bounded_outputs() -> None:
     assert prediction.tool_label in tools.names
     assert all(0.0 <= confidence <= 1.0 for confidence in prediction.slot_confidences)
     assert 0.0 <= prediction.tool_confidence <= 1.0
+
+
+def test_prediction_is_repeatable_and_handles_unknown_tokens() -> None:
+    vocabulary, slots, tools = model_parts()
+    model = TorchJointModel(vocabulary, slots, tools, seed=23)
+    first = predict(model, "entirely unseen request")
+    second = predict(model, "entirely unseen request")
+    assert first == second
+    assert first.tokens == ("entirely", "unseen", "request")
+    assert vocabulary.encode(first.tokens) == (0, 0, 0)
+
+
+def test_prediction_rejects_tokenless_input_and_invalid_records() -> None:
+    vocabulary, slots, tools = model_parts()
+    with pytest.raises(ValueError, match="requires transcript tokens"):
+        predict(TorchJointModel(vocabulary, slots, tools), "... ")
+    with pytest.raises(ValueError, match="nonempty and aligned"):
+        ModelPrediction((), (), (), "music.play", 0.5)
+    with pytest.raises(ValueError, match="confidences must align"):
+        ModelPrediction(("play",), ("O",), (), "music.play", 0.5)
+    with pytest.raises(ValueError, match="tool output is invalid"):
+        ModelPrediction(("play",), ("O",), (0.5,), "", 0.5)
