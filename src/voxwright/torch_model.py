@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+from dataclasses import dataclass
 from typing import Any
 
-from voxwright.model_data import ClassInventory, TokenVocabulary
+from voxwright.model_data import ClassInventory, TokenVocabulary, tokenize
 
 
 def torch_available() -> bool:
@@ -67,3 +68,47 @@ class TorchJointModel:
         weights = mask.unsqueeze(-1).to(dtype=embedded.dtype)
         pooled = (embedded * weights).sum(dim=1) / weights.sum(dim=1).clamp(min=1)
         return slot_logits, self.tool_head(pooled)
+
+
+@dataclass(frozen=True, slots=True)
+class ModelPrediction:
+    tokens: tuple[str, ...]
+    slot_tags: tuple[str, ...]
+    slot_confidences: tuple[float, ...]
+    tool_label: str
+    tool_confidence: float
+
+    def __post_init__(self) -> None:
+        if not self.tokens or len(self.tokens) != len(self.slot_tags):
+            raise ValueError("prediction tokens and slot tags must be nonempty and aligned")
+        if len(self.slot_confidences) != len(self.tokens):
+            raise ValueError("prediction slot confidences must align with tokens")
+        if any(not 0.0 <= value <= 1.0 for value in self.slot_confidences):
+            raise ValueError("prediction slot confidences must be between zero and one")
+        if not self.tool_label or not 0.0 <= self.tool_confidence <= 1.0:
+            raise ValueError("prediction tool output is invalid")
+
+
+def predict(model: TorchJointModel, text: str) -> ModelPrediction:
+    """Run deterministic CPU inference and quantize public confidences."""
+    torch = require_torch()
+    tokens = tokenize(text)
+    if not tokens:
+        raise ValueError("model prediction requires transcript tokens")
+    token_ids = torch.tensor([model.vocabulary.encode(tokens)], dtype=torch.long)
+    mask = torch.ones_like(token_ids, dtype=torch.bool)
+    with torch.no_grad():
+        slot_logits, tool_logits = model.forward(token_ids, mask)
+        slot_probabilities = torch.softmax(slot_logits, dim=-1)
+        tool_probabilities = torch.softmax(tool_logits, dim=-1)
+    slot_indices = slot_probabilities.argmax(dim=-1)[0].tolist()
+    slot_confidences = slot_probabilities.max(dim=-1).values[0].tolist()
+    tool_index = int(tool_probabilities.argmax(dim=-1)[0].item())
+    tool_confidence = float(tool_probabilities[0, tool_index].item())
+    return ModelPrediction(
+        tokens,
+        tuple(model.slot_classes.label(int(index)) for index in slot_indices),
+        tuple(round(float(value), 6) for value in slot_confidences),
+        model.tool_classes.label(tool_index),
+        round(tool_confidence, 6),
+    )

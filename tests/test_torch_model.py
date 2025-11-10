@@ -12,7 +12,12 @@ from voxwright.model_data import (  # noqa: E402
     TokenVocabulary,
     synthetic_model_corpus,
 )
-from voxwright.torch_model import TorchJointModel, torch_available  # noqa: E402
+from voxwright.torch_model import (  # noqa: E402
+    ModelPrediction,
+    TorchJointModel,
+    predict,
+    torch_available,
+)
 
 
 def model_parts() -> tuple[TokenVocabulary, ClassInventory, ClassInventory]:
@@ -50,3 +55,15 @@ def test_model_rejects_invalid_architecture_parameters() -> None:
         TorchJointModel(vocabulary, slots, tools, embedding_size=0)
     with pytest.raises(ValueError, match="seed must be non-negative"):
         TorchJointModel(vocabulary, slots, tools, seed=-1)
+
+
+def test_untrained_model_prediction_has_aligned_bounded_outputs() -> None:
+    vocabulary, slots, tools = model_parts()
+    prediction = predict(TorchJointModel(vocabulary, slots, tools, seed=3), "play Blue Sky")
+    assert isinstance(prediction, ModelPrediction)
+    assert prediction.tokens == ("play", "blue", "sky")
+    assert len(prediction.slot_tags) == len(prediction.slot_confidences) == 3
+    assert set(prediction.slot_tags) <= set(slots.names)
+    assert prediction.tool_label in tools.names
+    assert all(0.0 <= confidence <= 1.0 for confidence in prediction.slot_confidences)
+    assert 0.0 <= prediction.tool_confidence <= 1.0
