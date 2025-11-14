@@ -133,3 +133,29 @@ def test_quality_counts_match_public_accuracy_fields() -> None:
     assert quality.example_count == len(examples)
     assert quality.slot_accuracy == round(quality.correct_tokens / quality.token_count, 6)
     assert quality.tool_accuracy == round(quality.correct_tools / quality.example_count, 6)
+
+
+def test_quality_rejects_empty_or_inconsistent_measurements() -> None:
+    vocabulary, slots, tools = model_parts()
+    model = TorchJointModel(vocabulary, slots, tools)
+    with pytest.raises(ValueError, match="evaluation requires examples"):
+        evaluate_model(model, ())
+    with pytest.raises(ValueError, match="requires observed"):
+        ModelQuality(0, 0, 0.0, 1, 0, 0.0)
+    with pytest.raises(ValueError, match="token count is inconsistent"):
+        ModelQuality(1, 2, 1.0, 1, 0, 0.0)
+    with pytest.raises(ValueError, match="tool count is inconsistent"):
+        ModelQuality(1, 1, 1.0, 1, 2, 1.0)
+
+
+@pytest.mark.slow
+def test_trained_model_learns_the_embedded_synthetic_task_structure() -> None:
+    examples = synthetic_model_corpus(8, samples_per_task=10)
+    vocabulary = TokenVocabulary.build(examples)
+    slots = ClassInventory.for_slot_tags(examples)
+    tools = ClassInventory.for_tools(examples)
+    model = TorchJointModel(vocabulary, slots, tools, embedding_size=16, seed=8)
+    train_model(model, examples, TrainingConfig(epochs=70, seed=8))
+    quality = evaluate_model(model, examples)
+    assert quality.slot_accuracy >= 0.95
+    assert quality.tool_accuracy >= 0.95
