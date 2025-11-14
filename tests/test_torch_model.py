@@ -13,12 +13,14 @@ from voxwright.model_data import (  # noqa: E402
     synthetic_model_corpus,
 )
 from voxwright.torch_model import (  # noqa: E402
+    FitResult,
     ModelPrediction,
     ModelQuality,
     TorchJointModel,
     TrainingConfig,
     TrainingHistory,
     evaluate_model,
+    fit_synthetic_model,
     predict,
     torch_available,
     train_model,
@@ -159,3 +161,15 @@ def test_trained_model_learns_the_embedded_synthetic_task_structure() -> None:
     quality = evaluate_model(model, examples)
     assert quality.slot_accuracy >= 0.95
     assert quality.tool_accuracy >= 0.95
+
+
+@pytest.mark.slow
+def test_fit_pipeline_keeps_validation_examples_held_out() -> None:
+    corpus = synthetic_model_corpus(44, samples_per_task=6)
+    result = fit_synthetic_model(corpus, config=TrainingConfig(epochs=40, seed=44))
+    assert isinstance(result, FitResult)
+    assert result.train_count + result.validation_count == len(corpus)
+    assert result.validation_count == round(len(corpus) * 0.25)
+    assert len(result.history.losses) == 40
+    assert 0.0 <= result.validation.slot_accuracy <= 1.0
+    assert 0.0 <= result.validation.tool_accuracy <= 1.0

@@ -12,6 +12,7 @@ from voxwright.model_data import (
     ModelExample,
     TokenVocabulary,
     encode_batch,
+    split_examples,
     tokenize,
 )
 
@@ -214,4 +215,40 @@ def evaluate_model(model: TorchJointModel, examples: tuple[ModelExample, ...]) -
         len(examples),
         correct_tools,
         round(correct_tools / len(examples), 6),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class FitResult:
+    """Artifacts and measured synthetic validation facts from one seeded fit."""
+
+    model: TorchJointModel
+    history: TrainingHistory
+    validation: ModelQuality
+    train_count: int
+    validation_count: int
+
+
+def fit_synthetic_model(
+    examples: tuple[ModelExample, ...],
+    *,
+    config: TrainingConfig | None = None,
+    embedding_size: int = 16,
+) -> FitResult:
+    """Fit from a seeded train split and score only its held-out synthetic partition."""
+    settings = TrainingConfig() if config is None else config
+    split = split_examples(examples, seed=settings.seed)
+    vocabulary = TokenVocabulary.build(split.train)
+    slots = ClassInventory.for_slot_tags(examples)
+    tools = ClassInventory.for_tools(examples)
+    model = TorchJointModel(
+        vocabulary, slots, tools, embedding_size=embedding_size, seed=settings.seed
+    )
+    history = train_model(model, split.train, settings)
+    return FitResult(
+        model,
+        history,
+        evaluate_model(model, split.validation),
+        len(split.train),
+        len(split.validation),
     )
