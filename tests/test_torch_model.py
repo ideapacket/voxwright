@@ -16,12 +16,14 @@ from voxwright.torch_model import (  # noqa: E402
     FitResult,
     ModelPrediction,
     ModelQuality,
+    PredictedSlot,
     TorchJointModel,
     TrainingConfig,
     TrainingHistory,
     evaluate_model,
     fit_synthetic_model,
     predict,
+    prediction_slots,
     torch_available,
     train_model,
 )
@@ -96,6 +98,17 @@ def test_prediction_rejects_tokenless_input_and_invalid_records() -> None:
         ModelPrediction(("play",), ("O",), (), "music.play", 0.5)
     with pytest.raises(ValueError, match="tool output is invalid"):
         ModelPrediction(("play",), ("O",), (0.5,), "", 0.5)
+
+
+def test_prediction_slots_recover_contiguous_bio_spans() -> None:
+    prediction = ModelPrediction(
+        ("play", "blue", "sky", "now"),
+        ("O", "B-track", "I-track", "O"),
+        (0.8, 0.7, 0.9, 0.6),
+        "music.play",
+        0.9,
+    )
+    assert prediction_slots(prediction) == (PredictedSlot("track", "blue sky", 0.8),)
 
 
 def test_training_configuration_rejects_invalid_optimization_ranges() -> None:

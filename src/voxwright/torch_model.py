@@ -96,6 +96,65 @@ class ModelPrediction:
             raise ValueError("prediction tool output is invalid")
 
 
+@dataclass(frozen=True, slots=True)
+class PredictedSlot:
+    name: str
+    value: str
+    confidence: float
+
+    def __post_init__(self) -> None:
+        if not self.name or not self.value:
+            raise ValueError("predicted slot name and value cannot be empty")
+        if not 0.0 <= self.confidence <= 1.0:
+            raise ValueError("predicted slot confidence must be between zero and one")
+
+
+def prediction_slots(prediction: ModelPrediction) -> tuple[PredictedSlot, ...]:
+    """Convert valid BIO runs to grounded slot spans, discarding orphan I-tags."""
+    result: list[PredictedSlot] = []
+    current_name: str | None = None
+    current_tokens: list[str] = []
+    current_confidences: list[float] = []
+
+    def flush() -> None:
+        nonlocal current_name, current_tokens, current_confidences
+        if current_name is not None:
+            result.append(
+                PredictedSlot(
+                    current_name,
+                    " ".join(current_tokens),
+                    round(sum(current_confidences) / len(current_confidences), 6),
+                )
+            )
+        current_name = None
+        current_tokens = []
+        current_confidences = []
+
+    for token, tag, confidence in zip(
+        prediction.tokens,
+        prediction.slot_tags,
+        prediction.slot_confidences,
+        strict=True,
+    ):
+        if tag == "O":
+            flush()
+        elif tag.startswith("B-") and len(tag) > 2:
+            flush()
+            current_name = tag[2:]
+            current_tokens = [token]
+            current_confidences = [confidence]
+        elif tag.startswith("I-") and len(tag) > 2:
+            if current_name == tag[2:]:
+                current_tokens.append(token)
+                current_confidences.append(confidence)
+            else:
+                flush()
+        else:
+            raise ValueError(f"invalid prediction slot tag: {tag}")
+    flush()
+    return tuple(result)
+
+
 def predict(model: TorchJointModel, text: str) -> ModelPrediction:
     """Run deterministic CPU inference and quantize public confidences."""
     torch = require_torch()
