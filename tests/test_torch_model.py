@@ -173,3 +173,17 @@ def test_fit_pipeline_keeps_validation_examples_held_out() -> None:
     assert len(result.history.losses) == 40
     assert 0.0 <= result.validation.slot_accuracy <= 1.0
     assert 0.0 <= result.validation.tool_accuracy <= 1.0
+
+
+@pytest.mark.slow
+def test_fit_pipeline_is_reproducible_for_one_seed() -> None:
+    corpus = synthetic_model_corpus(27, samples_per_task=4)
+    config = TrainingConfig(epochs=25, seed=27)
+    first = fit_synthetic_model(corpus, config=config, embedding_size=10)
+    second = fit_synthetic_model(corpus, config=config, embedding_size=10)
+    assert first.history == second.history
+    assert first.validation == second.validation
+    probes = ("play Blue Sky", "remember buy milk", "set study True")
+    assert [predict(first.model, text) for text in probes] == [
+        predict(second.model, text) for text in probes
+    ]
