@@ -17,6 +17,7 @@ make test
 ```
 
 完整的离线命令链、制品约束与退出码见 [`docs/cli.md`](docs/cli.md)。
+可选 CPU 训练层的范围与验证方式见 [`docs/model-extra.md`](docs/model-extra.md)。
 
 ## 时间线说明
 
