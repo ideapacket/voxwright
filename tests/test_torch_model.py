@@ -111,6 +111,24 @@ def test_prediction_slots_recover_contiguous_bio_spans() -> None:
     assert prediction_slots(prediction) == (PredictedSlot("track", "blue sky", 0.8),)
 
 
+def test_prediction_slots_discard_orphans_and_reject_unknown_tags() -> None:
+    orphan = ModelPrediction(
+        ("blue", "play", "sky"),
+        ("I-track", "B-action", "I-track"),
+        (0.9, 0.8, 0.7),
+        "music.play",
+        0.9,
+    )
+    assert prediction_slots(orphan) == (PredictedSlot("action", "play", 0.8),)
+    invalid = ModelPrediction(("play",), ("S-track",), (0.5,), "music.play", 0.5)
+    with pytest.raises(ValueError, match="invalid prediction slot tag"):
+        prediction_slots(invalid)
+    with pytest.raises(ValueError, match="name and value cannot be empty"):
+        PredictedSlot("", "value", 0.5)
+    with pytest.raises(ValueError, match="between zero and one"):
+        PredictedSlot("track", "value", 1.1)
+
+
 def test_training_configuration_rejects_invalid_optimization_ranges() -> None:
     for epochs in (0, -1, True):
         with pytest.raises(ValueError, match="epochs must be positive"):
