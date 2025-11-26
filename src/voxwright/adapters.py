@@ -17,6 +17,7 @@ from voxwright.events import (
 )
 from voxwright.identifiers import Identifier
 from voxwright.replay import EventReplayer, ReplayTrace
+from voxwright.torch_model import TorchJointModel, predict, prediction_slots
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,6 +190,73 @@ class TemplateAdapter:
                 ),
             )
         self._observed = ()
+        return AdapterTurn(events)
+
+
+class TorchAdapter:
+    """Offline adapter backed by a caller-trained synthetic joint model."""
+
+    name = Identifier("torch-synthetic")
+    capabilities = AdapterCapabilities(
+        False,
+        False,
+        True,
+        False,
+        True,
+        "caller-trained CPU model over seeded synthetic text",
+    )
+
+    def __init__(self, model: TorchJointModel) -> None:
+        self._model = model
+        self._source: EventEnvelope | None = None
+        self._transcript: Transcript | None = None
+
+    def observe(self, events: Sequence[EventEnvelope]) -> None:
+        if self._source is not None:
+            raise RuntimeError("act must consume the previous model observation")
+        batch = tuple(events)
+        if not batch:
+            raise ValueError("model adapter observation cannot be empty")
+        source = next(
+            (event for event in reversed(batch) if event.kind is EventKind.FINAL_TRANSCRIPT),
+            None,
+        )
+        if source is None:
+            raise ValueError("model adapter requires a final transcript event")
+        self._source = source
+        self._transcript = Transcript.from_payload(source.payload)
+
+    def act(self) -> AdapterTurn:
+        if self._source is None or self._transcript is None:
+            raise RuntimeError("observe must be called before act")
+        source = self._source
+        prediction = predict(self._model, self._transcript.text)
+        slots: dict[str, JSONValue] = {
+            item.name: item.value for item in prediction_slots(prediction)
+        }
+        intent = Intent(Identifier(prediction.tool_label), prediction.tool_confidence, slots)
+        utterance = AgentUtterance(
+            f"Synthetic fixture selected {prediction.tool_label}",
+            Identifier("response-torch-synthetic"),
+        )
+        events = (
+            envelope_for(
+                source.session_id,
+                source.sequence + 1,
+                source.at_ms,
+                EventKind.INTENT,
+                intent,
+            ),
+            envelope_for(
+                source.session_id,
+                source.sequence + 2,
+                source.at_ms,
+                EventKind.AGENT_UTTERANCE,
+                utterance,
+            ),
+        )
+        self._source = None
+        self._transcript = None
         return AdapterTurn(events)
 
 

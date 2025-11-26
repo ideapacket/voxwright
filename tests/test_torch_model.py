@@ -7,6 +7,15 @@ import pytest
 pytestmark = pytest.mark.model
 pytest.importorskip("torch")
 
+from voxwright.adapters import TorchAdapter  # noqa: E402
+from voxwright.events import (  # noqa: E402
+    EventKind,
+    Intent,
+    Transcript,
+    decode_payload,
+    envelope_for,
+)
+from voxwright.identifiers import Identifier  # noqa: E402
 from voxwright.model_data import (  # noqa: E402
     ClassInventory,
     TokenVocabulary,
@@ -127,6 +136,29 @@ def test_prediction_slots_discard_orphans_and_reject_unknown_tags() -> None:
         PredictedSlot("", "value", 0.5)
     with pytest.raises(ValueError, match="between zero and one"):
         PredictedSlot("track", "value", 1.1)
+
+
+def transcript_event(text: str = "play Blue Sky") -> object:
+    return envelope_for(
+        Identifier("session-model"),
+        4,
+        30,
+        EventKind.FINAL_TRANSCRIPT,
+        Transcript(text, 1.0),
+    )
+
+
+def test_torch_adapter_emits_grounded_intent_and_utterance() -> None:
+    vocabulary, slots, tools = model_parts()
+    adapter = TorchAdapter(TorchJointModel(vocabulary, slots, tools, seed=9))
+    source = transcript_event()
+    adapter.observe([source])  # type: ignore[list-item]
+    turn = adapter.act()
+    assert [event.kind for event in turn.events] == [EventKind.INTENT, EventKind.AGENT_UTTERANCE]
+    intent = decode_payload(turn.events[0])
+    assert isinstance(intent, Intent)
+    assert intent.name.value in tools.names
+    assert turn.events[0].sequence == 5 and turn.events[1].sequence == 6
 
 
 def test_training_configuration_rejects_invalid_optimization_ranges() -> None:
