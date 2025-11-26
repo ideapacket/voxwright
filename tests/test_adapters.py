@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
+
 import pytest
 
 import voxwright.adapters as adapters
@@ -255,3 +258,15 @@ def test_descriptors_never_claim_network_model_evaluation() -> None:
     for capabilities in adapters.ADAPTER_CAPABILITIES.values():
         lowered = capabilities.description.lower()
         assert all(word not in lowered for word in forbidden)
+
+
+def test_capability_discovery_does_not_import_optional_torch() -> None:
+    command = (
+        "import sys; import voxwright.adapters as a; "
+        "print(a.capability_descriptor('torch-synthetic')['offline']); "
+        "print('torch' in sys.modules)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", command], check=True, capture_output=True, text=True
+    )
+    assert result.stdout.splitlines() == ["True", "False"]
