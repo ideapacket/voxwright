@@ -7,7 +7,7 @@ import pytest
 pytestmark = pytest.mark.model
 pytest.importorskip("torch")
 
-from voxwright.adapters import TorchAdapter  # noqa: E402
+from voxwright.adapters import TorchAdapter, conformance_issues  # noqa: E402
 from voxwright.events import (  # noqa: E402
     EventKind,
     Intent,
@@ -159,6 +159,32 @@ def test_torch_adapter_emits_grounded_intent_and_utterance() -> None:
     assert isinstance(intent, Intent)
     assert intent.name.value in tools.names
     assert turn.events[0].sequence == 5 and turn.events[1].sequence == 6
+
+
+def test_torch_adapter_observe_act_contract_is_strict() -> None:
+    vocabulary, slots, tools = model_parts()
+    adapter = TorchAdapter(TorchJointModel(vocabulary, slots, tools, seed=1))
+    assert conformance_issues(adapter) == []
+    with pytest.raises(RuntimeError, match="observe must"):
+        adapter.act()
+    with pytest.raises(ValueError, match="cannot be empty"):
+        adapter.observe([])
+    partial = envelope_for(
+        Identifier("session-model"),
+        0,
+        0,
+        EventKind.PARTIAL_TRANSCRIPT,
+        Transcript("play", 0.5),
+    )
+    with pytest.raises(ValueError, match="requires a final transcript"):
+        adapter.observe([partial])
+    source = transcript_event()
+    adapter.observe([source])  # type: ignore[list-item]
+    with pytest.raises(RuntimeError, match="consume the previous"):
+        adapter.observe([source])  # type: ignore[list-item]
+    adapter.act()
+    adapter.observe([source])  # type: ignore[list-item]
+    assert adapter.act().events
 
 
 def test_training_configuration_rejects_invalid_optimization_ranges() -> None:
