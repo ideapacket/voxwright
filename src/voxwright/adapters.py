@@ -281,6 +281,7 @@ ADAPTER_CAPABILITIES: dict[str, AdapterCapabilities] = {
     str(ScriptedAdapter.name): ScriptedAdapter.capabilities,
     str(RecordedReplayAdapter.name): RecordedReplayAdapter.capabilities,
     str(TemplateAdapter.name): TemplateAdapter.capabilities,
+    str(TorchAdapter.name): TorchAdapter.capabilities,
 }
 
 

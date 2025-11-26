@@ -212,7 +212,12 @@ def test_rule_slot_defaults_are_explicit() -> None:
 
 
 def test_capability_registry_covers_builtin_adapters() -> None:
-    assert set(adapters.ADAPTER_CAPABILITIES) == {"scripted", "recorded-replay", "template"}
+    assert set(adapters.ADAPTER_CAPABILITIES) == {
+        "scripted",
+        "recorded-replay",
+        "template",
+        "torch-synthetic",
+    }
     for name in adapters.ADAPTER_CAPABILITIES:
         descriptor = adapters.capability_descriptor(name)
         assert descriptor["offline"] is True
@@ -240,8 +245,9 @@ def test_each_builtin_adapter_uses_a_distinct_identifier() -> None:
         adapters.ScriptedAdapter.name,
         adapters.RecordedReplayAdapter.name,
         adapters.TemplateAdapter.name,
+        adapters.TorchAdapter.name,
     }
-    assert len(identifiers) == 3
+    assert len(identifiers) == 4
 
 
 def test_descriptors_never_claim_network_model_evaluation() -> None:
