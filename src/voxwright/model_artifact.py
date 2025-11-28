@@ -10,6 +10,7 @@ import numpy as np
 from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
 from voxwright.hashing import object_digest
 from voxwright.model_data import ClassInventory, TokenVocabulary
+from voxwright.torch_model import TorchJointModel
 
 MODEL_ARTIFACT_VERSION = 1
 PARAMETER_NAMES = (
@@ -127,3 +128,26 @@ def decode_model_artifact(content: str) -> ModelArtifact:
     if value["checksum"] != object_digest(unsigned):
         raise ValueError("model artifact checksum mismatch")
     return model_artifact_from_dict(value["model"])
+
+
+def export_model(model: TorchJointModel) -> ModelArtifact:
+    """Snapshot model parameters as inspectable CPU JSON values."""
+    tensors = {
+        "embedding.weight": model.embedding.weight,
+        "slot_head.weight": model.slot_head.weight,
+        "slot_head.bias": model.slot_head.bias,
+        "tool_head.weight": model.tool_head.weight,
+        "tool_head.bias": model.tool_head.bias,
+    }
+    parameters: dict[str, JSONValue] = {}
+    for name, tensor in tensors.items():
+        value = ensure_json_value(tensor.detach().cpu().tolist(), f"$.parameters.{name}")
+        parameters[name] = value
+    return ModelArtifact(
+        model.vocabulary.tokens,
+        model.slot_classes.names,
+        model.tool_classes.names,
+        model.embedding_size,
+        model.seed,
+        parameters,
+    )

@@ -16,6 +16,7 @@ from voxwright.events import (  # noqa: E402
     envelope_for,
 )
 from voxwright.identifiers import Identifier  # noqa: E402
+from voxwright.model_artifact import encode_model_artifact, export_model  # noqa: E402
 from voxwright.model_data import (  # noqa: E402
     ClassInventory,
     TokenVocabulary,
@@ -185,6 +186,16 @@ def test_torch_adapter_observe_act_contract_is_strict() -> None:
     adapter.act()
     adapter.observe([source])  # type: ignore[list-item]
     assert adapter.act().events
+
+
+def test_model_export_is_deterministic_and_checksummed() -> None:
+    vocabulary, slots, tools = model_parts()
+    model = TorchJointModel(vocabulary, slots, tools, embedding_size=6, seed=15)
+    first = encode_model_artifact(export_model(model))
+    second = encode_model_artifact(export_model(model))
+    assert first.encode() == second.encode()
+    assert '"embedding_size":6' in first
+    assert '"checksum":"sha256:' in first
 
 
 def test_training_configuration_rejects_invalid_optimization_ranges() -> None:
