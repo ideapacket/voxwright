@@ -198,6 +198,22 @@ def test_model_export_is_deterministic_and_checksummed() -> None:
     assert '"checksum":"sha256:' in first
 
 
+@pytest.mark.slow
+def test_model_export_changes_after_actual_training() -> None:
+    examples = synthetic_model_corpus(3, samples_per_task=3)
+    vocabulary = TokenVocabulary.build(examples)
+    slots = ClassInventory.for_slot_tags(examples)
+    tools = ClassInventory.for_tools(examples)
+    model = TorchJointModel(vocabulary, slots, tools, seed=3)
+    before = encode_model_artifact(export_model(model))
+    train_model(model, examples, TrainingConfig(epochs=3, seed=3))
+    after = encode_model_artifact(export_model(model))
+    assert before != after
+    assert len(before) == len(
+        encode_model_artifact(export_model(TorchJointModel(vocabulary, slots, tools, seed=3)))
+    )
+
+
 def test_training_configuration_rejects_invalid_optimization_ranges() -> None:
     for epochs in (0, -1, True):
         with pytest.raises(ValueError, match="epochs must be positive"):
