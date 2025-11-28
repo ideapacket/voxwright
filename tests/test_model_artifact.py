@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import json
+
+import pytest
+
 from voxwright.model_artifact import (
     ModelArtifact,
     decode_model_artifact,
@@ -35,3 +39,40 @@ def test_model_artifact_roundtrips_canonical_json() -> None:
     assert '"checksum":"sha256:' in encoded
     assert decode_model_artifact(encoded) == artifact
     assert model_artifact_from_dict(artifact.to_dict()) == artifact
+
+
+def test_model_artifact_rejects_envelope_drift_and_tampering() -> None:
+    encoded = encode_model_artifact(tiny_artifact())
+    value = json.loads(encoded)
+    value["model"]["seed"] = 8
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        decode_model_artifact(json.dumps(value) + "\n")
+    with pytest.raises(ValueError, match="one complete JSON line"):
+        decode_model_artifact(encoded.rstrip("\n"))
+    value = json.loads(encoded)
+    value["schema_version"] = 2
+    with pytest.raises(ValueError, match="unsupported"):
+        decode_model_artifact(json.dumps(value) + "\n")
+
+
+def test_model_artifact_validates_names_shapes_and_types() -> None:
+    artifact = tiny_artifact()
+    value = artifact.to_dict()
+    value["extra"] = True
+    with pytest.raises(ValueError, match="invalid model artifact shape"):
+        model_artifact_from_dict(value)
+    parameters = dict(artifact.parameters)
+    parameters["embedding.weight"] = [[0.0]]
+    with pytest.raises(ValueError, match=r"shape .* expected"):
+        ModelArtifact(
+            artifact.vocabulary,
+            artifact.slot_classes,
+            artifact.tool_classes,
+            artifact.embedding_size,
+            artifact.seed,
+            parameters,
+        )
+    value = artifact.to_dict()
+    value["vocabulary"] = [1]
+    with pytest.raises(TypeError, match="string array"):
+        model_artifact_from_dict(value)
