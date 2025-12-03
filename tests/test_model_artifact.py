@@ -76,3 +76,40 @@ def test_model_artifact_validates_names_shapes_and_types() -> None:
     value["vocabulary"] = [1]
     with pytest.raises(TypeError, match="string array"):
         model_artifact_from_dict(value)
+
+
+def test_model_artifact_rejects_nonfinite_and_missing_parameters() -> None:
+    artifact = tiny_artifact()
+    parameters = dict(artifact.parameters)
+    parameters["slot_head.bias"] = [float("inf"), 0.0]
+    with pytest.raises(ValueError, match="non-finite number"):
+        ModelArtifact(
+            artifact.vocabulary,
+            artifact.slot_classes,
+            artifact.tool_classes,
+            artifact.embedding_size,
+            artifact.seed,
+            parameters,
+        )
+    parameters = dict(artifact.parameters)
+    parameters.pop("tool_head.bias")
+    with pytest.raises(ValueError, match="parameter names are invalid"):
+        ModelArtifact(
+            artifact.vocabulary,
+            artifact.slot_classes,
+            artifact.tool_classes,
+            artifact.embedding_size,
+            artifact.seed,
+            parameters,
+        )
+    parameters = dict(artifact.parameters)
+    parameters["tool_head.bias"] = ["not-a-number"]
+    with pytest.raises(ValueError, match="must be numeric"):
+        ModelArtifact(
+            artifact.vocabulary,
+            artifact.slot_classes,
+            artifact.tool_classes,
+            artifact.embedding_size,
+            artifact.seed,
+            parameters,
+        )
