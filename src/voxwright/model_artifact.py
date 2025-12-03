@@ -10,7 +10,7 @@ import numpy as np
 from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
 from voxwright.hashing import object_digest
 from voxwright.model_data import ClassInventory, TokenVocabulary
-from voxwright.torch_model import TorchJointModel
+from voxwright.torch_model import TorchJointModel, require_torch
 
 MODEL_ARTIFACT_VERSION = 1
 PARAMETER_NAMES = (
@@ -151,3 +151,27 @@ def export_model(model: TorchJointModel) -> ModelArtifact:
         model.seed,
         parameters,
     )
+
+
+def restore_model(artifact: ModelArtifact) -> TorchJointModel:
+    """Restore an exported model on CPU without using pickle."""
+    torch = require_torch()
+    model = TorchJointModel(
+        TokenVocabulary(artifact.vocabulary),
+        ClassInventory(artifact.slot_classes),
+        ClassInventory(artifact.tool_classes),
+        embedding_size=artifact.embedding_size,
+        seed=artifact.seed,
+    )
+    targets = {
+        "embedding.weight": model.embedding.weight,
+        "slot_head.weight": model.slot_head.weight,
+        "slot_head.bias": model.slot_head.bias,
+        "tool_head.weight": model.tool_head.weight,
+        "tool_head.bias": model.tool_head.bias,
+    }
+    with torch.no_grad():
+        for name, target in targets.items():
+            source = torch.tensor(artifact.parameters[name], dtype=target.dtype, device="cpu")
+            target.copy_(source)
+    return model

@@ -16,7 +16,12 @@ from voxwright.events import (  # noqa: E402
     envelope_for,
 )
 from voxwright.identifiers import Identifier  # noqa: E402
-from voxwright.model_artifact import encode_model_artifact, export_model  # noqa: E402
+from voxwright.model_artifact import (  # noqa: E402
+    decode_model_artifact,
+    encode_model_artifact,
+    export_model,
+    restore_model,
+)
 from voxwright.model_data import (  # noqa: E402
     ClassInventory,
     TokenVocabulary,
@@ -212,6 +217,16 @@ def test_model_export_changes_after_actual_training() -> None:
     assert len(before) == len(
         encode_model_artifact(export_model(TorchJointModel(vocabulary, slots, tools, seed=3)))
     )
+
+
+def test_restored_model_preserves_predictions_exactly() -> None:
+    vocabulary, slots, tools = model_parts()
+    model = TorchJointModel(vocabulary, slots, tools, embedding_size=7, seed=5)
+    artifact = decode_model_artifact(encode_model_artifact(export_model(model)))
+    restored = restore_model(artifact)
+    probes = ("play Blue Sky", "set kitchen True", "remember call home")
+    assert [predict(model, text) for text in probes] == [predict(restored, text) for text in probes]
+    assert all(parameter.device.type == "cpu" for parameter in restored.parameters())
 
 
 def test_training_configuration_rejects_invalid_optimization_ranges() -> None:
