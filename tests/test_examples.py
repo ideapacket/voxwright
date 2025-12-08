@@ -51,3 +51,16 @@ def test_scenario_replay_outputs_are_seed_deterministic(tmp_path: Path) -> None:
     changed = tmp_path / "changed"
     assert run_example("scenario_replay", changed, "--seed", "30").returncode == 0
     assert (left / "scenarios.jsonl").read_bytes() != (changed / "scenarios.jsonl").read_bytes()
+
+
+def test_scenario_replay_refuses_destructive_requests(tmp_path: Path) -> None:
+    output = tmp_path / "existing"
+    output.mkdir()
+    marker = output / "keep.txt"
+    marker.write_text("keep", encoding="utf-8")
+    result = run_example("scenario_replay", output)
+    assert result.returncode != 0
+    assert marker.read_text(encoding="utf-8") == "keep"
+    negative = run_example("scenario_replay", tmp_path / "negative", "--seed", "-1")
+    assert negative.returncode != 0
+    assert not (tmp_path / "negative").exists()
