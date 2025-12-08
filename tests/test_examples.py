@@ -64,3 +64,15 @@ def test_scenario_replay_refuses_destructive_requests(tmp_path: Path) -> None:
     negative = run_example("scenario_replay", tmp_path / "negative", "--seed", "-1")
     assert negative.returncode != 0
     assert not (tmp_path / "negative").exists()
+
+
+def test_workflow_recovery_example_renders_executed_graph(tmp_path: Path) -> None:
+    output = tmp_path / "workflow"
+    result = run_example("workflow_recovery", output)
+    assert result.returncode == 0, result.stderr
+    summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+    assert summary["visited"] == ["reserve", "charge", "finish"]
+    assert summary["final_state"] == {"reserved": True, "charged": True, "complete": True}
+    svg = (output / "workflow.svg").read_text(encoding="utf-8")
+    assert svg.startswith('<svg xmlns="http://www.w3.org/2000/svg"')
+    assert "reserve [action]" in svg and "finish [end]" in svg
