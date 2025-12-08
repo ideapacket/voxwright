@@ -76,3 +76,12 @@ def test_workflow_recovery_example_renders_executed_graph(tmp_path: Path) -> Non
     svg = (output / "workflow.svg").read_text(encoding="utf-8")
     assert svg.startswith('<svg xmlns="http://www.w3.org/2000/svg"')
     assert "reserve [action]" in svg and "finish [end]" in svg
+
+
+def test_workflow_example_resumes_from_a_verified_prefix(tmp_path: Path) -> None:
+    output = tmp_path / "resume"
+    assert run_example("workflow_recovery", output).returncode == 0
+    summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+    assert summary["resume_matches_straight"] is True
+    assert summary["resumed_steps"] == ["charge", "finish"]
+    assert str(summary["checkpoint_digest"]).startswith("sha256:")
