@@ -85,3 +85,21 @@ def test_workflow_example_resumes_from_a_verified_prefix(tmp_path: Path) -> None
     assert summary["resume_matches_straight"] is True
     assert summary["resumed_steps"] == ["charge", "finish"]
     assert str(summary["checkpoint_digest"]).startswith("sha256:")
+
+
+def test_workflow_resume_artifacts_are_byte_deterministic(tmp_path: Path) -> None:
+    left = tmp_path / "left-workflow"
+    right = tmp_path / "right-workflow"
+    assert run_example("workflow_recovery", left).returncode == 0
+    assert run_example("workflow_recovery", right).returncode == 0
+    assert (left / "summary.json").read_bytes() == (right / "summary.json").read_bytes()
+    assert (left / "workflow.svg").read_bytes() == (right / "workflow.svg").read_bytes()
+
+
+def test_workflow_example_refuses_to_overwrite_output(tmp_path: Path) -> None:
+    output = tmp_path / "existing-workflow"
+    output.mkdir()
+    marker = output / "keep"
+    marker.write_text("safe", encoding="utf-8")
+    assert run_example("workflow_recovery", output).returncode != 0
+    assert marker.read_text(encoding="utf-8") == "safe"
