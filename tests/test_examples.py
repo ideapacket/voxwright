@@ -38,3 +38,16 @@ def test_scenario_replay_example_runs_offline(tmp_path: Path) -> None:
     assert summary["synthetic"] is True and summary["adapter"] == "scripted"
     assert len(read_manifest(output / "scenarios.jsonl")) == 1
     assert len(load_session(output / "session.jsonl")) == 3
+
+
+def test_scenario_replay_outputs_are_seed_deterministic(tmp_path: Path) -> None:
+    left = tmp_path / "left"
+    right = tmp_path / "right"
+    first = run_example("scenario_replay", left, "--seed", "29")
+    second = run_example("scenario_replay", right, "--seed", "29")
+    assert first.returncode == second.returncode == 0
+    for name in ("scenarios.jsonl", "session.jsonl", "trace.json", "summary.json"):
+        assert (left / name).read_bytes() == (right / name).read_bytes()
+    changed = tmp_path / "changed"
+    assert run_example("scenario_replay", changed, "--seed", "30").returncode == 0
+    assert (left / "scenarios.jsonl").read_bytes() != (changed / "scenarios.jsonl").read_bytes()
