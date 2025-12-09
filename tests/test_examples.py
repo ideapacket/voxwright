@@ -111,3 +111,15 @@ def test_workflow_example_compensates_in_reverse_completion_order(tmp_path: Path
     summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
     assert summary["compensated_steps"] == ["charge", "reserve"]
     assert summary["rollback_state"] == {"charged": False, "reserved": False}
+
+
+def test_repair_comparison_measures_planted_noise(tmp_path: Path) -> None:
+    output = tmp_path / "repair"
+    result = run_example("repair_comparison", output, "--seed", "7", "--samples", "12")
+    assert result.returncode == 0, result.stderr
+    metrics = json.loads((output / "metrics.json").read_text(encoding="utf-8"))
+    assert metrics["synthetic"] is True
+    assert metrics["samples_per_noise"] == 12
+    assert metrics["noise_rates"] == [0.0, 0.2, 0.4, 0.6]
+    assert set(metrics["curves"]) == {"cautious", "permissive"}
+    assert all(len(points) == 4 for points in metrics["curves"].values())
