@@ -103,3 +103,11 @@ def test_workflow_example_refuses_to_overwrite_output(tmp_path: Path) -> None:
     marker.write_text("safe", encoding="utf-8")
     assert run_example("workflow_recovery", output).returncode != 0
     assert marker.read_text(encoding="utf-8") == "safe"
+
+
+def test_workflow_example_compensates_in_reverse_completion_order(tmp_path: Path) -> None:
+    output = tmp_path / "compensate"
+    assert run_example("workflow_recovery", output).returncode == 0
+    summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+    assert summary["compensated_steps"] == ["charge", "reserve"]
+    assert summary["rollback_state"] == {"charged": False, "reserved": False}
