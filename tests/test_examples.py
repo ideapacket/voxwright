@@ -123,3 +123,32 @@ def test_repair_comparison_measures_planted_noise(tmp_path: Path) -> None:
     assert metrics["noise_rates"] == [0.0, 0.2, 0.4, 0.6]
     assert set(metrics["curves"]) == {"cautious", "permissive"}
     assert all(len(points) == 4 for points in metrics["curves"].values())
+
+
+def test_repair_metrics_are_bounded_and_reproducible(tmp_path: Path) -> None:
+    left = tmp_path / "repair-left"
+    right = tmp_path / "repair-right"
+    arguments = ("--seed", "13", "--samples", "16")
+    assert run_example("repair_comparison", left, *arguments).returncode == 0
+    assert run_example("repair_comparison", right, *arguments).returncode == 0
+    assert (left / "metrics.json").read_bytes() == (right / "metrics.json").read_bytes()
+    metrics = json.loads((left / "metrics.json").read_text(encoding="utf-8"))
+    for points in metrics["curves"].values():
+        for point in points:
+            assert 0.0 <= point["task_success"] <= 1.0
+            assert 0.0 <= point["repair_rate"] <= 1.0
+            assert 0.0 <= point["handoff_rate"] <= 1.0
+    for policy in metrics["curves"].values():
+        assert policy[0]["task_success"] == 1.0
+        assert policy[0]["repair_rate"] == 0.0
+
+
+def test_repair_example_rejects_invalid_or_existing_outputs(tmp_path: Path) -> None:
+    existing = tmp_path / "repair-existing"
+    existing.mkdir()
+    marker = existing / "keep"
+    marker.write_text("keep", encoding="utf-8")
+    assert run_example("repair_comparison", existing).returncode != 0
+    assert marker.read_text(encoding="utf-8") == "keep"
+    assert run_example("repair_comparison", tmp_path / "bad", "--samples", "0").returncode != 0
+    assert not (tmp_path / "bad").exists()
