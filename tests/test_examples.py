@@ -184,3 +184,16 @@ def test_mini_voice_app_executes_only_granted_synthetic_tools(tmp_path: Path) ->
     assert summary["home_executed"] is True
     assert summary["calendar"] == [{"event_id": "event-1", "title": "synthetic review", "hour": 14}]
     assert summary["home"] == {"study": True}
+    assert summary["ledger_entries"] == 3
+
+
+def test_mini_app_is_deterministic_and_refuses_overwrite(tmp_path: Path) -> None:
+    left = tmp_path / "mini-left"
+    right = tmp_path / "mini-right"
+    assert run_example("mini_voice_app", left).returncode == 0
+    assert run_example("mini_voice_app", right).returncode == 0
+    assert (left / "summary.json").read_bytes() == (right / "summary.json").read_bytes()
+    marker = left / "summary.json"
+    before = marker.read_bytes()
+    assert run_example("mini_voice_app", left).returncode != 0
+    assert marker.read_bytes() == before
