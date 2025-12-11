@@ -169,3 +169,18 @@ def test_repair_example_draws_measured_success_and_repair_curves(tmp_path: Path)
         content = path.read_text(encoding="utf-8")
         assert content.startswith('<svg xmlns="http://www.w3.org/2000/svg"')
         assert "<script" not in content
+
+
+def test_mini_voice_app_executes_only_granted_synthetic_tools(tmp_path: Path) -> None:
+    output = tmp_path / "mini-app"
+    result = run_example("mini_voice_app", output)
+    assert result.returncode == 0, result.stderr
+    summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+    assert summary["synthetic"] is True and summary["ledger_valid"] is True
+    assert summary["calendar_prompt"] == "Confirm tool calendar.create"
+    assert summary["home_prompt"] == "Confirm tool home.set-light"
+    assert summary["calendar_executed"] is True
+    assert summary["music_executed"] is True
+    assert summary["home_executed"] is True
+    assert summary["calendar"] == [{"event_id": "event-1", "title": "synthetic review", "hour": 14}]
+    assert summary["home"] == {"study": True}
