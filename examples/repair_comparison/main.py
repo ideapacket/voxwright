@@ -9,6 +9,7 @@ from pathlib import Path
 
 from voxwright.core import JSONValue, canonical_json
 from voxwright.repair import RepairConfig, RepairOutcome, RepairStrategy, run_repair
+from voxwright.reports import curve_chart_svg
 from voxwright.scenarios import edit_tokens, schedule_scenario
 
 NOISE_RATES = (0.0, 0.2, 0.4, 0.6)
@@ -94,6 +95,23 @@ def run(output: Path, seed: int, samples: int) -> dict[str, JSONValue]:
     (output / "metrics.json").write_text(
         canonical_json(summary) + "\n", encoding="utf-8", newline="\n"
     )
+    for policy_name, points in curves.items():
+        success_points = tuple(
+            (float(point["noise_rate"]), float(point["task_success"])) for point in points
+        )
+        repair_points = tuple(
+            (float(point["noise_rate"]), float(point["repair_rate"])) for point in points
+        )
+        (output / f"{policy_name}-success.svg").write_text(
+            curve_chart_svg(f"{policy_name} synthetic task success", success_points),
+            encoding="utf-8",
+            newline="\n",
+        )
+        (output / f"{policy_name}-repair.svg").write_text(
+            curve_chart_svg(f"{policy_name} repair rate", repair_points),
+            encoding="utf-8",
+            newline="\n",
+        )
     return summary
 
 

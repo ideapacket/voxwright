@@ -152,3 +152,20 @@ def test_repair_example_rejects_invalid_or_existing_outputs(tmp_path: Path) -> N
     assert marker.read_text(encoding="utf-8") == "keep"
     assert run_example("repair_comparison", tmp_path / "bad", "--samples", "0").returncode != 0
     assert not (tmp_path / "bad").exists()
+
+
+def test_repair_example_draws_measured_success_and_repair_curves(tmp_path: Path) -> None:
+    output = tmp_path / "repair-charts"
+    assert run_example("repair_comparison", output, "--samples", "8").returncode == 0
+    names = {path.name for path in output.iterdir()}
+    assert names == {
+        "cautious-repair.svg",
+        "cautious-success.svg",
+        "metrics.json",
+        "permissive-repair.svg",
+        "permissive-success.svg",
+    }
+    for path in output.glob("*.svg"):
+        content = path.read_text(encoding="utf-8")
+        assert content.startswith('<svg xmlns="http://www.w3.org/2000/svg"')
+        assert "<script" not in content
