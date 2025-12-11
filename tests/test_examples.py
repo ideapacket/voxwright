@@ -197,3 +197,13 @@ def test_mini_app_is_deterministic_and_refuses_overwrite(tmp_path: Path) -> None
     before = marker.read_bytes()
     assert run_example("mini_voice_app", left).returncode != 0
     assert marker.read_bytes() == before
+
+
+def test_mini_app_applies_atomic_barge_in_semantics(tmp_path: Path) -> None:
+    output = tmp_path / "mini-interrupt"
+    assert run_example("mini_voice_app", output).returncode == 0
+    summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+    assert summary["music_resolution"] == "finished"
+    assert summary["calendar_resolution"] == "rolled-back"
+    assert summary["calendar_terminal"] == "rolled-back"
+    assert summary["calendar_committed"] is False

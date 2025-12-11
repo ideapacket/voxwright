@@ -6,6 +6,14 @@ import argparse
 from collections.abc import Sequence
 from pathlib import Path
 
+from voxwright.barge_in import (
+    BargePolicy,
+    InFlightOperation,
+    InterruptResolution,
+    OperationState,
+    atomic_outcome,
+    resolve_interrupt,
+)
 from voxwright.core import JSONValue, canonical_json
 from voxwright.identifiers import Identifier
 from voxwright.sandbox import PermissionDecision, PermissionPolicy, ToolSandbox
@@ -43,11 +51,40 @@ def run_tools() -> tuple[ToolSandbox, dict[str, JSONValue]]:
     return sandbox, facts
 
 
+def run_interrupts() -> dict[str, JSONValue]:
+    music = InFlightOperation(
+        Identifier("music-operation"),
+        Identifier("music.play"),
+        {"track": "Blue Sky"},
+        idempotent=True,
+    ).start()
+    finished_music, music_resolution = resolve_interrupt(music, BargePolicy.FINISH_IF_IDEMPOTENT)
+    calendar = InFlightOperation(
+        Identifier("calendar-operation"),
+        Identifier("calendar.create"),
+        {"title": "synthetic review", "hour": 14},
+        idempotent=False,
+    ).start()
+    rolled_calendar, calendar_resolution = resolve_interrupt(calendar, BargePolicy.CANCEL)
+    calendar_atomic = atomic_outcome(rolled_calendar)
+    if music_resolution is not InterruptResolution.FINISHED:
+        raise RuntimeError("idempotent music operation did not finish")
+    if finished_music.state is not OperationState.COMPLETED:
+        raise RuntimeError("music operation is not complete")
+    return {
+        "music_resolution": music_resolution.value,
+        "calendar_resolution": calendar_resolution.value,
+        "calendar_terminal": calendar_atomic.terminal_state.value,
+        "calendar_committed": calendar_atomic.committed,
+    }
+
+
 def run(output: Path) -> dict[str, JSONValue]:
     output.mkdir()
     sandbox, facts = run_tools()
     summary: dict[str, JSONValue] = {
         **facts,
+        **run_interrupts(),
         "calendar": sandbox.state.calendar,
         "home": sandbox.state.home,
         "music": sandbox.state.music,
