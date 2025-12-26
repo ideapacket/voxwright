@@ -231,3 +231,17 @@ def test_mini_app_report_contains_only_executed_synthetic_metrics(tmp_path: Path
     assert "离线合成评估" in report
     assert "No real speech recording was evaluated" in report
     assert "Synthetic logical latency" in report
+
+
+def test_mini_app_report_is_self_contained_and_deterministic(tmp_path: Path) -> None:
+    left = tmp_path / "mini-report-left"
+    right = tmp_path / "mini-report-right"
+    assert run_example("mini_voice_app", left).returncode == 0
+    assert run_example("mini_voice_app", right).returncode == 0
+    first = (left / "report.html").read_bytes()
+    second = (right / "report.html").read_bytes()
+    assert first == second
+    text = first.decode("utf-8")
+    assert "<svg " in text and "<style>" in text
+    assert "http://" not in text.replace('xmlns="http://www.w3.org/2000/svg"', "")
+    assert "https://" not in text
