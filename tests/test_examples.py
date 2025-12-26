@@ -207,3 +207,12 @@ def test_mini_app_applies_atomic_barge_in_semantics(tmp_path: Path) -> None:
     assert summary["calendar_resolution"] == "rolled-back"
     assert summary["calendar_terminal"] == "rolled-back"
     assert summary["calendar_committed"] is False
+
+
+def test_mini_app_reports_no_partial_non_idempotent_commit(tmp_path: Path) -> None:
+    output = tmp_path / "mini-atomic"
+    assert run_example("mini_voice_app", output).returncode == 0
+    summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+    terminal = summary["calendar_terminal"]
+    assert terminal in {"completed", "rolled-back"}
+    assert summary["calendar_committed"] is (terminal == "completed")
