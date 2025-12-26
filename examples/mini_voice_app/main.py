@@ -14,8 +14,11 @@ from voxwright.barge_in import (
     atomic_outcome,
     resolve_interrupt,
 )
+from voxwright.campaign import CampaignArtifact
 from voxwright.core import JSONValue, canonical_json
+from voxwright.evaluation import EvaluationRun, score_runs
 from voxwright.identifiers import Identifier
+from voxwright.reports import CoverageFacts, ReportSpec, bar_chart_svg, render_html
 from voxwright.sandbox import PermissionDecision, PermissionPolicy, ToolSandbox
 
 
@@ -79,17 +82,87 @@ def run_interrupts() -> dict[str, JSONValue]:
     }
 
 
+def render_campaign_report() -> tuple[str, dict[str, JSONValue]]:
+    runs = (
+        EvaluationRun(
+            "calendar-run",
+            "schedule",
+            "level-1",
+            0.0,
+            {"title": "synthetic review", "hour": "14"},
+            {"title": "synthetic review", "hour": "14"},
+            ("calendar.create",),
+            ("calendar.create",),
+            True,
+            2,
+            0,
+            0,
+            70,
+            120,
+        ),
+        EvaluationRun(
+            "music-run",
+            "music",
+            "level-1",
+            0.0,
+            {"track": "Blue Sky"},
+            {"track": "Blue Sky"},
+            ("music.play",),
+            ("music.play",),
+            True,
+            1,
+            0,
+            0,
+            45,
+            120,
+        ),
+        EvaluationRun(
+            "home-run",
+            "smart-home",
+            "level-1",
+            0.0,
+            {"room": "study", "on": "true"},
+            {"room": "study", "on": "true"},
+            ("home.set-light",),
+            ("home.set-light",),
+            True,
+            2,
+            0,
+            0,
+            60,
+            120,
+        ),
+    )
+    metrics = score_runs(runs)
+    campaign = CampaignArtifact(
+        "mini-voice-app", 0, {"adapter": "scripted", "synthetic": True}, metrics
+    )
+    spec = ReportSpec(
+        "voxwright mini voice app",
+        campaign,
+        CoverageFacts(3, ("music", "schedule", "smart-home"), ("scripted",)),
+    )
+    chart = bar_chart_svg(
+        "Synthetic logical latency (ms)",
+        tuple((run.task_type, float(run.latency_ms)) for run in runs),
+    )
+    return render_html(spec, charts=(chart,)), metrics.to_dict()
+
+
 def run(output: Path) -> dict[str, JSONValue]:
     output.mkdir()
     sandbox, facts = run_tools()
+    report, metrics = render_campaign_report()
     summary: dict[str, JSONValue] = {
         **facts,
         **run_interrupts(),
         "calendar": sandbox.state.calendar,
         "home": sandbox.state.home,
         "music": sandbox.state.music,
+        "metrics": metrics,
         "synthetic": True,
     }
+    (output / "report.html").write_text(report, encoding="utf-8", newline="\n")
     (output / "summary.json").write_text(
         canonical_json(summary) + "\n", encoding="utf-8", newline="\n"
     )

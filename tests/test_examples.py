@@ -216,3 +216,18 @@ def test_mini_app_reports_no_partial_non_idempotent_commit(tmp_path: Path) -> No
     terminal = summary["calendar_terminal"]
     assert terminal in {"completed", "rolled-back"}
     assert summary["calendar_committed"] is (terminal == "completed")
+
+
+def test_mini_app_report_contains_only_executed_synthetic_metrics(tmp_path: Path) -> None:
+    output = tmp_path / "mini-report"
+    assert run_example("mini_voice_app", output).returncode == 0
+    summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+    metrics = summary["metrics"]
+    assert metrics["run_count"] == 3
+    assert metrics["task_success"] == 1.0
+    assert metrics["efficiency"]["false_execute_count"] == 0
+    report = (output / "report.html").read_text(encoding="utf-8")
+    assert report.startswith("<!doctype html>")
+    assert "离线合成评估" in report
+    assert "No real speech recording was evaluated" in report
+    assert "Synthetic logical latency" in report
