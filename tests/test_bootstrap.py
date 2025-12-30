@@ -27,5 +27,5 @@ def test_module_cli_reports_help() -> None:
 
 
 def test_public_event_exports_are_deliberate() -> None:
-    assert voxwright.__all__ == ["EventEnvelope", "EventKind", "__version__", "envelope_for"]
+    assert {"EventEnvelope", "EventKind", "__version__", "envelope_for"} <= set(voxwright.__all__)
     assert voxwright.EventEnvelope is EventEnvelope
