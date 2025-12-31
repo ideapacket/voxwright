@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
+from voxwright.core import canonical_json
 from voxwright.schemas import ARTIFACT_SCHEMAS, ArtifactSchema, artifact_schema, schema_catalog
 
 
@@ -24,3 +27,14 @@ def test_schema_lookup_and_descriptor_boundaries() -> None:
         ArtifactSchema("event", 1, "text/json", ("id",), False)
     with pytest.raises(ValueError, match="nonempty and unique"):
         ArtifactSchema("event", 1, "application/json", ("id", "id"), False)
+
+
+def test_schema_catalog_matches_reviewed_golden_bytes() -> None:
+    golden = Path(__file__).parent / "golden" / "schema_catalog.json"
+    assert canonical_json(schema_catalog()) + "\n" == golden.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("schema", ARTIFACT_SCHEMAS, ids=lambda item: item.name)
+def test_checksummed_schemas_declare_integrity_fields(schema: ArtifactSchema) -> None:
+    integrity = {"checksum", "digest"}.intersection(schema.required_fields)
+    assert bool(integrity) is schema.checksummed
