@@ -19,6 +19,13 @@ make test
 完整的离线命令链、制品约束与退出码见 [`docs/cli.md`](docs/cli.md)。
 可选 CPU 训练层的范围与验证方式见 [`docs/model-extra.md`](docs/model-extra.md)。
 
+## 文档与示例
+
+- [架构](docs/architecture.md) · [使用](docs/usage.md) · [API](docs/api.md)
+- [制品 schema](docs/schemas.md) · [评估方法](docs/evaluation.md) · [安全](docs/security.md)
+- [可复现性](docs/reproducibility.md) · [机制参考](docs/references.md)
+- [四个完整离线示例](examples/README.md)
+
 ## 时间线说明
 
 本项目于 2026 年 10 月创建和验证。Git 中 2025 年 1 月至 2026 年 10 月的日期是本次生成的演示时间线，不代表那些日期已经开展的工作。每次开发提交均执行构建、测试与格式检查；未使用空提交。项目未宣称论文成果、预训练模型或真实语音数据集成绩。
