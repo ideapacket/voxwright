@@ -6,7 +6,11 @@ import re
 from pathlib import Path
 
 LINK_PATTERN = re.compile(r"\[[^]]+\]\(([^)]+)\)")
-FORBIDDEN_PUBLIC_PHRASES = ("ai assistant", "code generation", "automation tooling")
+FORBIDDEN_PUBLIC_PHRASES = (
+    "ai assistant",
+    "code generation",
+    "automation tooling",
+)
 TIMELINE_DISCLOSURE = (
     "本项目于 2026 年 10 月创建和验证。"
     "Git 中 2025 年 1 月至 2026 年 10 月的日期是本次生成的演示时间线，"  # noqa: RUF001
