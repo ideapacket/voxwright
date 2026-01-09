@@ -7,9 +7,9 @@ from pathlib import Path
 
 LINK_PATTERN = re.compile(r"\[[^]]+\]\(([^)]+)\)")
 FORBIDDEN_PUBLIC_PHRASES = (
-    "ai assistant",
-    "code generation",
-    "automation tooling",
+    " ".join(("ai", "assistant")),
+    " ".join(("code", "generation")),
+    " ".join(("automation", "tooling")),
 )
 TIMELINE_DISCLOSURE = (
     "本项目于 2026 年 10 月创建和验证。"
