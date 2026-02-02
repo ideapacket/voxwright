@@ -1,0 +1,27 @@
+name: Security hardening
+description: Suggest a non-sensitive defense improvement.
+title: "security: "
+labels: [security]
+body:
+  - type: markdown
+    attributes:
+      value: Use a private security advisory for exploitable vulnerabilities.
+  - type: dropdown
+    id: boundary
+    attributes:
+      label: Affected boundary
+      options:
+        - Tool-call grammar
+        - Permission sandbox
+        - Context privacy filter
+        - Artifact validation
+        - Report escaping
+        - Other application boundary
+    validations:
+      required: true
+  - type: textarea
+    id: invariant
+    attributes:
+      label: Desired invariant and offline test
+    validations:
+      required: true

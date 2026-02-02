@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose a focused voice-application mechanism or integration improvement.
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Application problem
+      description: Describe the state, safety, determinism, or integration gap.
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Proposed behavior contract
+      description: State observable inputs, outputs, errors, and invariants.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Offline verification
+      description: Explain how seeded synthetic cases could verify the behavior.
+    validations:
+      required: true
