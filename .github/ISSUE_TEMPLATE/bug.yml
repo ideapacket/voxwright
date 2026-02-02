@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a reproducible defect in the offline toolkit.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, private audio, or personal data.
+  - type: input
+    id: version
+    attributes:
+      label: Voxwright version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: python
+    attributes:
+      label: Python version
+      options: ["3.11", "3.12", "3.13"]
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal offline reproduction
+      description: Include seed, command, and synthetic inputs when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: checks
+    attributes:
+      label: Validation output
+      description: Paste relevant output from make test or another focused check.
