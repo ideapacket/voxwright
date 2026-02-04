@@ -38,6 +38,7 @@ def test_makefile_exposes_required_validation_commands() -> None:
     assert ".venv/bin/python -m build --wheel --no-isolation" in MAKEFILE
     assert ".venv/bin/mypy src" in MAKEFILE
     assert ".venv/bin/ruff format --check src tests examples scripts" in MAKEFILE
+    assert "docs-check:\n\t.venv/bin/python scripts/check_docs.py" in MAKEFILE
 
 
 def test_reproducibility_locks_pin_direct_tooling() -> None:
