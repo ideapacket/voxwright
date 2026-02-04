@@ -18,6 +18,8 @@ def test_tracked_documentation_has_valid_links_and_disclosures() -> None:
     assert check_docs(ROOT) == ()
     names = {path.relative_to(ROOT).as_posix() for path in markdown_files(ROOT)}
     assert "README.md" in names
+    assert {"CHANGELOG.md", "CONTRIBUTING.md", "SECURITY.md"} < names
+    assert ".github/pull_request_template.md" in names
     assert "docs/architecture.md" in names
     assert "examples/mini_voice_app/README.md" in names
 

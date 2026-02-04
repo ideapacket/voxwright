@@ -18,12 +18,14 @@ TIMELINE_DISCLOSURE = (
     "每次开发提交均执行构建、测试与格式检查；未使用空提交。"  # noqa: RUF001
     "项目未宣称论文成果、预训练模型或真实语音数据集成绩。"
 )
+ROOT_DOC_NAMES = ("CHANGELOG.md", "CONTRIBUTING.md", "README.md", "SECURITY.md")
 
 
 def markdown_files(root: Path) -> tuple[Path, ...]:
-    candidates = [root / "README.md", *sorted((root / "docs").glob("*.md"))]
+    candidates = [*(root / name for name in ROOT_DOC_NAMES), *sorted((root / "docs").glob("*.md"))]
     candidates.extend(sorted((root / "examples").glob("*/README.md")))
     candidates.append(root / "examples" / "README.md")
+    candidates.extend(sorted((root / ".github").glob("*.md")))
     return tuple(dict.fromkeys(path for path in candidates if path.is_file()))
 
 
