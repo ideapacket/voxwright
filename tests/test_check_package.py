@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from importlib.metadata import version
+from pathlib import Path
 
 import voxwright
 from scripts.check_package import contract_issues
 from voxwright.schemas import ARTIFACT_SCHEMAS
+
+ROOT = Path(__file__).parents[1]
 
 
 def test_installed_metadata_matches_imported_package() -> None:
@@ -39,3 +44,25 @@ def test_package_contract_rejects_missing_or_unsorted_schemas() -> None:
     assert contract_issues("1", "1", ("a",), ("run", "event")) == (
         "artifact schema names must be nonempty, sorted, and unique",
     )
+
+
+def test_package_smoke_checks_cli_without_loading_optional_model() -> None:
+    result = subprocess.run(
+        [sys.executable, "scripts/check_package.py"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_base_import_keeps_optional_model_runtime_lazy() -> None:
+    result = subprocess.run(
+        [sys.executable, "-c", "import sys, voxwright; print('torch' in sys.modules)"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert result.stdout.strip() == "False"

@@ -37,14 +37,17 @@ def main() -> int:
     )
     if issues:
         raise RuntimeError("; ".join(issues))
-    result = subprocess.run(
-        [sys.executable, "-m", "voxwright.cli", "--version"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0 or voxwright.__version__ not in result.stdout:
-        raise RuntimeError("CLI smoke check failed")
+    if "torch" in sys.modules:
+        raise RuntimeError("base package import loaded optional torch")
+    for arguments, marker in ((["--version"], voxwright.__version__), (["--help"], "simulate")):
+        result = subprocess.run(
+            [sys.executable, "-m", "voxwright.cli", *arguments],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0 or marker not in result.stdout:
+            raise RuntimeError(f"CLI smoke check failed for {arguments[0]}")
     return 0
 
 
