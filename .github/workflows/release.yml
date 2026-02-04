@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv --python 3.11 .venv
+      - name: Install release tools
+        run: uv pip install --python .venv/bin/python -e ".[dev]"
+      - name: Build and verify artifacts
+        run: make release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distribution
+          path: dist/*
+          if-no-files-found: error
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
