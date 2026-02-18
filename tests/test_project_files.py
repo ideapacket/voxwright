@@ -39,6 +39,7 @@ def test_makefile_exposes_required_validation_commands() -> None:
     assert ".venv/bin/mypy src" in MAKEFILE
     assert ".venv/bin/ruff format --check src tests examples scripts" in MAKEFILE
     assert "docs-check:\n\t.venv/bin/python scripts/check_docs.py" in MAKEFILE
+    assert "examples-check:\n\t.venv/bin/python -m pytest -q tests/test_examples.py" in MAKEFILE
 
 
 def test_reproducibility_locks_pin_direct_tooling() -> None:
