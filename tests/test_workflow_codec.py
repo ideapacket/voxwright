@@ -51,3 +51,29 @@ def test_step_decoder_rejects_unknown_fields_and_kinds() -> None:
     encoded["kind"] = "fork"
     with pytest.raises(ValueError, match="unknown step kind 'fork'"):
         step_from_dict(encoded)
+
+
+def test_step_decoder_reports_missing_fields_at_the_supplied_path() -> None:
+    encoded = step_to_dict(sample_step())
+    encoded.pop("effects")
+    with pytest.raises(ValueError, match=r"\$\.steps\[4\].*missing=\['effects'\]"):
+        step_from_dict(encoded, "$.steps[4]")
+
+
+def test_step_decoder_does_not_coerce_scalar_types() -> None:
+    encoded = step_to_dict(sample_step())
+    encoded["next"] = "done"
+    with pytest.raises(TypeError, match=r"\$\.step\.next: expected string array"):
+        step_from_dict(encoded)
+    encoded = step_to_dict(sample_step())
+    encoded["max_iterations"] = True
+    with pytest.raises(TypeError, match="expected integer"):
+        step_from_dict(encoded)
+
+
+def test_step_decoder_requires_nullable_maps_to_be_objects() -> None:
+    for field in ("preconditions", "effects", "compensation"):
+        encoded = step_to_dict(sample_step())
+        encoded[field] = ["not", "an", "object"]
+        with pytest.raises(TypeError, match=rf"{field}: expected object or null"):
+            step_from_dict(encoded)
