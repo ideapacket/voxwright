@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from voxwright.core import JSONValue
+from voxwright.core import JSONValue, canonical_json, parse_json
 from voxwright.identifiers import Identifier
 from voxwright.workflow import (
     StepKind,
@@ -117,3 +117,15 @@ def workflow_from_dict(value: JSONValue) -> WorkflowDefinition:
     validate_references(definition)
     validate_acyclic(definition)
     return definition
+
+
+def encode_workflow(definition: WorkflowDefinition) -> str:
+    """Return canonical UTF-8-compatible JSON with one terminal newline."""
+    return canonical_json(workflow_to_dict(definition)) + "\n"
+
+
+def decode_workflow(text: str) -> WorkflowDefinition:
+    """Parse workflow JSON while rejecting empty input and trailing documents."""
+    if not text.strip():
+        raise ValueError("workflow document is empty")
+    return workflow_from_dict(parse_json(text))

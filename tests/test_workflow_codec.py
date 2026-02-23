@@ -7,6 +7,8 @@ import pytest
 from voxwright.identifiers import Identifier
 from voxwright.workflow import StepKind, WorkflowDefinition, WorkflowStep
 from voxwright.workflow_codec import (
+    decode_workflow,
+    encode_workflow,
     step_from_dict,
     step_to_dict,
     workflow_from_dict,
@@ -151,3 +153,18 @@ def test_workflow_decoder_preserves_declaration_order() -> None:
         Identifier("reserve"),
         Identifier("done"),
     )
+
+
+def test_workflow_text_codec_is_canonical_and_byte_deterministic() -> None:
+    encoded = encode_workflow(sample_workflow())
+    assert encoded.endswith("\n") and not encoded.endswith("\n\n")
+    assert " " not in encoded
+    assert decode_workflow(encoded) == sample_workflow()
+    assert encode_workflow(decode_workflow(encoded)).encode() == encoded.encode()
+
+
+def test_workflow_text_decoder_rejects_empty_and_multiple_documents() -> None:
+    with pytest.raises(ValueError, match="document is empty"):
+        decode_workflow(" \n")
+    with pytest.raises(ValueError):
+        decode_workflow(encode_workflow(sample_workflow()) + "{}")
