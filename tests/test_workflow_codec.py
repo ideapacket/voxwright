@@ -6,7 +6,12 @@ import pytest
 
 from voxwright.identifiers import Identifier
 from voxwright.workflow import StepKind, WorkflowDefinition, WorkflowStep
-from voxwright.workflow_codec import step_from_dict, step_to_dict, workflow_to_dict
+from voxwright.workflow_codec import (
+    step_from_dict,
+    step_to_dict,
+    workflow_from_dict,
+    workflow_to_dict,
+)
 
 
 def sample_step() -> WorkflowStep:
@@ -96,3 +101,19 @@ def test_workflow_encoding_declares_schema_and_graph_identity() -> None:
     assert encoded["version"] == 2
     assert encoded["start"] == "reserve"
     assert [item["id"] for item in encoded["steps"]] == ["reserve", "done"]  # type: ignore[index]
+
+
+def test_workflow_definition_roundtrips_after_graph_validation() -> None:
+    original = sample_workflow()
+    assert workflow_from_dict(workflow_to_dict(original)) == original
+
+
+def test_workflow_decoder_rejects_future_schema_and_empty_graph() -> None:
+    encoded = workflow_to_dict(sample_workflow())
+    encoded["schema_version"] = 2
+    with pytest.raises(ValueError, match="unsupported version 2"):
+        workflow_from_dict(encoded)
+    encoded = workflow_to_dict(sample_workflow())
+    encoded["steps"] = []
+    with pytest.raises(ValueError, match="expected nonempty array"):
+        workflow_from_dict(encoded)
