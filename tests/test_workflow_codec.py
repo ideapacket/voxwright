@@ -117,3 +117,37 @@ def test_workflow_decoder_rejects_future_schema_and_empty_graph() -> None:
     encoded["steps"] = []
     with pytest.raises(ValueError, match="expected nonempty array"):
         workflow_from_dict(encoded)
+
+
+def test_workflow_decoder_rejects_dangling_and_cyclic_graphs() -> None:
+    encoded = workflow_to_dict(sample_workflow())
+    first = encoded["steps"][0]  # type: ignore[index]
+    first["next"] = ["missing"]  # type: ignore[index]
+    with pytest.raises(ValueError, match="dangling reference missing"):
+        workflow_from_dict(encoded)
+    encoded = workflow_to_dict(sample_workflow())
+    last = encoded["steps"][1]  # type: ignore[index]
+    last["kind"] = "action"  # type: ignore[index]
+    last["next"] = ["reserve"]  # type: ignore[index]
+    with pytest.raises(ValueError, match="unbounded workflow cycle"):
+        workflow_from_dict(encoded)
+
+
+def test_workflow_decoder_rejects_envelope_field_drift() -> None:
+    encoded = workflow_to_dict(sample_workflow())
+    encoded["description"] = "not in version one"
+    with pytest.raises(ValueError, match=r"unknown=\['description'\]"):
+        workflow_from_dict(encoded)
+    encoded.pop("description")
+    encoded.pop("start")
+    with pytest.raises(ValueError, match=r"missing=\['start'\]"):
+        workflow_from_dict(encoded)
+
+
+def test_workflow_decoder_preserves_declaration_order() -> None:
+    original = sample_workflow()
+    decoded = workflow_from_dict(workflow_to_dict(original))
+    assert tuple(item.step_id for item in decoded.steps) == (
+        Identifier("reserve"),
+        Identifier("done"),
+    )
