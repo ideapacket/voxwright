@@ -11,6 +11,7 @@ from voxwright.workflow import StepKind, WorkflowDefinition, WorkflowStep
 from voxwright.workflow_codec import (
     decode_workflow,
     encode_workflow,
+    load_workflow,
     step_from_dict,
     step_to_dict,
     workflow_from_dict,
@@ -177,3 +178,18 @@ def test_workflow_text_decoder_rejects_empty_and_multiple_documents() -> None:
 def test_workflow_encoding_matches_reviewed_golden_bytes() -> None:
     assert encode_workflow(sample_workflow()).encode() == GOLDEN.read_bytes()
     assert decode_workflow(GOLDEN.read_text(encoding="utf-8")) == sample_workflow()
+
+
+def test_workflow_loader_reads_complete_utf8_artifact(tmp_path: Path) -> None:
+    artifact = tmp_path / "workflow.json"
+    artifact.write_text(encode_workflow(sample_workflow()), encoding="utf-8")
+    assert load_workflow(artifact) == sample_workflow()
+
+
+def test_workflow_loader_rejects_truncated_or_missing_files(tmp_path: Path) -> None:
+    artifact = tmp_path / "workflow.json"
+    artifact.write_text(encode_workflow(sample_workflow()).rstrip("\n"), encoding="utf-8")
+    with pytest.raises(ValueError, match="missing terminal newline"):
+        load_workflow(artifact)
+    with pytest.raises(FileNotFoundError):
+        load_workflow(tmp_path / "missing.json")

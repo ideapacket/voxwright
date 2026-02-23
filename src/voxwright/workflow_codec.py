@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from voxwright.core import JSONValue, canonical_json, parse_json
 from voxwright.identifiers import Identifier
 from voxwright.workflow import (
@@ -129,3 +131,11 @@ def decode_workflow(text: str) -> WorkflowDefinition:
     if not text.strip():
         raise ValueError("workflow document is empty")
     return workflow_from_dict(parse_json(text))
+
+
+def load_workflow(path: Path) -> WorkflowDefinition:
+    """Load a complete canonical workflow file with truncation protection."""
+    text = path.read_text(encoding="utf-8")
+    if text and not text.endswith("\n"):
+        raise ValueError(f"workflow file is missing terminal newline: {path}")
+    return decode_workflow(text)
