@@ -139,3 +139,12 @@ def load_workflow(path: Path) -> WorkflowDefinition:
     if text and not text.endswith("\n"):
         raise ValueError(f"workflow file is missing terminal newline: {path}")
     return decode_workflow(text)
+
+
+def write_workflow(path: Path, definition: WorkflowDefinition) -> None:
+    """Create a workflow artifact without overwriting an existing path."""
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_workflow(definition))
+    except FileExistsError as error:
+        raise FileExistsError(f"workflow output already exists: {path}") from error

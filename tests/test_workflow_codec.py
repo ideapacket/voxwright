@@ -16,6 +16,7 @@ from voxwright.workflow_codec import (
     step_to_dict,
     workflow_from_dict,
     workflow_to_dict,
+    write_workflow,
 )
 
 GOLDEN = Path(__file__).parent / "golden" / "workflow.json"
@@ -193,3 +194,18 @@ def test_workflow_loader_rejects_truncated_or_missing_files(tmp_path: Path) -> N
         load_workflow(artifact)
     with pytest.raises(FileNotFoundError):
         load_workflow(tmp_path / "missing.json")
+
+
+def test_workflow_writer_creates_roundtrippable_artifact(tmp_path: Path) -> None:
+    artifact = tmp_path / "workflow.json"
+    write_workflow(artifact, sample_workflow())
+    assert artifact.read_bytes() == encode_workflow(sample_workflow()).encode()
+    assert load_workflow(artifact) == sample_workflow()
+
+
+def test_workflow_writer_never_overwrites_existing_content(tmp_path: Path) -> None:
+    artifact = tmp_path / "workflow.json"
+    artifact.write_text("keep\n", encoding="utf-8")
+    with pytest.raises(FileExistsError, match="output already exists"):
+        write_workflow(artifact, sample_workflow())
+    assert artifact.read_text(encoding="utf-8") == "keep\n"
