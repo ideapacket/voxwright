@@ -1,0 +1,1 @@
+{"name":"booking","schema_version":1,"start":"reserve","steps":[{"compensation":{"status":"released"},"effects":{"status":"held"},"id":"reserve","kind":"action","max_iterations":0,"next":["done"],"preconditions":{"allowed":true}},{"compensation":null,"effects":null,"id":"done","kind":"end","max_iterations":0,"next":[],"preconditions":null}],"version":2}

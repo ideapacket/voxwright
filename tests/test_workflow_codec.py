@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from voxwright.identifiers import Identifier
@@ -14,6 +16,8 @@ from voxwright.workflow_codec import (
     workflow_from_dict,
     workflow_to_dict,
 )
+
+GOLDEN = Path(__file__).parent / "golden" / "workflow.json"
 
 
 def sample_step() -> WorkflowStep:
@@ -168,3 +172,8 @@ def test_workflow_text_decoder_rejects_empty_and_multiple_documents() -> None:
         decode_workflow(" \n")
     with pytest.raises(ValueError):
         decode_workflow(encode_workflow(sample_workflow()) + "{}")
+
+
+def test_workflow_encoding_matches_reviewed_golden_bytes() -> None:
+    assert encode_workflow(sample_workflow()).encode() == GOLDEN.read_bytes()
+    assert decode_workflow(GOLDEN.read_text(encoding="utf-8")) == sample_workflow()
