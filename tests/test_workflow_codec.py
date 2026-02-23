@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from voxwright.identifiers import Identifier
-from voxwright.workflow import StepKind, WorkflowStep
-from voxwright.workflow_codec import step_from_dict, step_to_dict
+from voxwright.workflow import StepKind, WorkflowDefinition, WorkflowStep
+from voxwright.workflow_codec import step_from_dict, step_to_dict, workflow_to_dict
 
 
 def sample_step() -> WorkflowStep:
@@ -17,6 +17,16 @@ def sample_step() -> WorkflowStep:
         preconditions={"allowed": True},
         effects={"status": "held"},
         compensation={"status": "released"},
+    )
+
+
+def sample_workflow() -> WorkflowDefinition:
+    first = sample_step()
+    return WorkflowDefinition(
+        Identifier("booking"),
+        2,
+        first.step_id,
+        (first, WorkflowStep(Identifier("done"), StepKind.END)),
     )
 
 
@@ -77,3 +87,12 @@ def test_step_decoder_requires_nullable_maps_to_be_objects() -> None:
         encoded[field] = ["not", "an", "object"]
         with pytest.raises(TypeError, match=rf"{field}: expected object or null"):
             step_from_dict(encoded)
+
+
+def test_workflow_encoding_declares_schema_and_graph_identity() -> None:
+    encoded = workflow_to_dict(sample_workflow())
+    assert encoded["schema_version"] == 1
+    assert encoded["name"] == "booking"
+    assert encoded["version"] == 2
+    assert encoded["start"] == "reserve"
+    assert [item["id"] for item in encoded["steps"]] == ["reserve", "done"]  # type: ignore[index]

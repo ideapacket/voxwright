@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from voxwright.core import JSONValue
 from voxwright.identifiers import Identifier
-from voxwright.workflow import StepKind, WorkflowStep
+from voxwright.workflow import StepKind, WorkflowDefinition, WorkflowStep
 
 STEP_FIELDS = frozenset(
     {"id", "kind", "next", "preconditions", "effects", "compensation", "max_iterations"}
@@ -66,3 +66,14 @@ def step_from_dict(value: JSONValue, path: str = "$.step") -> WorkflowStep:
         _optional_object(value["compensation"], f"{path}.compensation"),
         iterations,
     )
+
+
+def workflow_to_dict(definition: WorkflowDefinition) -> dict[str, JSONValue]:
+    """Encode the complete graph in declared deterministic step order."""
+    return {
+        "schema_version": 1,
+        "name": str(definition.name),
+        "version": definition.version,
+        "start": str(definition.start),
+        "steps": [step_to_dict(step) for step in definition.steps],
+    }
