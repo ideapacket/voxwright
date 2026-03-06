@@ -216,3 +216,18 @@ def test_workflow_digest_identifies_canonical_artifact_bytes() -> None:
     digest = workflow_digest(sample_workflow())
     assert digest.startswith("sha256:") and len(digest) == 71
     assert digest == workflow_digest(decode_workflow(encode_workflow(sample_workflow())))
+
+
+def test_workflow_digest_changes_with_semantic_graph_fields() -> None:
+    original = sample_workflow()
+    renamed = WorkflowDefinition(Identifier("booking-v2"), 2, original.start, original.steps)
+    revised = WorkflowDefinition(original.name, 3, original.start, original.steps)
+    altered_step = WorkflowStep(Identifier("done"), StepKind.END, effects={"closed": True})
+    altered = WorkflowDefinition(
+        original.name,
+        2,
+        original.start,
+        (original.steps[0], altered_step),
+    )
+    digests = {workflow_digest(item) for item in (original, renamed, revised, altered)}
+    assert len(digests) == 4
