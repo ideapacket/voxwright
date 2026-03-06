@@ -14,6 +14,7 @@ from voxwright.workflow_codec import (
     load_workflow,
     step_from_dict,
     step_to_dict,
+    workflow_digest,
     workflow_from_dict,
     workflow_to_dict,
     write_workflow,
@@ -209,3 +210,9 @@ def test_workflow_writer_never_overwrites_existing_content(tmp_path: Path) -> No
     with pytest.raises(FileExistsError, match="output already exists"):
         write_workflow(artifact, sample_workflow())
     assert artifact.read_text(encoding="utf-8") == "keep\n"
+
+
+def test_workflow_digest_identifies_canonical_artifact_bytes() -> None:
+    digest = workflow_digest(sample_workflow())
+    assert digest.startswith("sha256:") and len(digest) == 71
+    assert digest == workflow_digest(decode_workflow(encode_workflow(sample_workflow())))

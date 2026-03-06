@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from voxwright.core import JSONValue, canonical_json, parse_json
+from voxwright.hashing import content_digest
 from voxwright.identifiers import Identifier
 from voxwright.workflow import (
     StepKind,
@@ -148,3 +149,8 @@ def write_workflow(path: Path, definition: WorkflowDefinition) -> None:
             stream.write(encode_workflow(definition))
     except FileExistsError as error:
         raise FileExistsError(f"workflow output already exists: {path}") from error
+
+
+def workflow_digest(definition: WorkflowDefinition) -> str:
+    """Identify the exact canonical workflow artifact bytes."""
+    return content_digest(encode_workflow(definition).encode("utf-8"))
