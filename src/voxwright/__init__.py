@@ -21,6 +21,13 @@ from voxwright.sandbox import PermissionDecision, PermissionPolicy, ToolSandbox
 from voxwright.scenarios import SyntheticScenario, TaskType, application_scenario
 from voxwright.tool_schema import ParameterSpec, ToolRegistry, ToolSchema, ValueType
 from voxwright.workflow import WorkflowDefinition, WorkflowStep, run_linear
+from voxwright.workflow_codec import (
+    decode_workflow,
+    encode_workflow,
+    load_workflow,
+    workflow_digest,
+    write_workflow,
+)
 
 __all__ = [
     "AdapterCapabilities",
@@ -64,9 +71,14 @@ __all__ = [
     "WorkflowStep",
     "__version__",
     "application_scenario",
+    "decode_workflow",
+    "encode_workflow",
     "envelope_for",
+    "load_workflow",
     "parse_call",
     "run_linear",
     "run_repair",
     "score_runs",
+    "workflow_digest",
+    "write_workflow",
 ]
