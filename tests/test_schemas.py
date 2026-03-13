@@ -5,7 +5,10 @@ from pathlib import Path
 import pytest
 
 from voxwright.core import canonical_json
+from voxwright.identifiers import Identifier
 from voxwright.schemas import ARTIFACT_SCHEMAS, ArtifactSchema, artifact_schema, schema_catalog
+from voxwright.workflow import StepKind, WorkflowDefinition, WorkflowStep
+from voxwright.workflow_codec import workflow_to_dict
 
 
 def test_schema_catalog_has_unique_sorted_public_names() -> None:
@@ -32,6 +35,18 @@ def test_schema_lookup_and_descriptor_boundaries() -> None:
 def test_schema_catalog_matches_reviewed_golden_bytes() -> None:
     golden = Path(__file__).parent / "golden" / "schema_catalog.json"
     assert canonical_json(schema_catalog()) + "\n" == golden.read_text(encoding="utf-8")
+
+
+def test_workflow_schema_fields_match_the_actual_public_envelope() -> None:
+    definition = WorkflowDefinition(
+        Identifier("catalog-check"),
+        1,
+        Identifier("done"),
+        (WorkflowStep(Identifier("done"), StepKind.END),),
+    )
+    schema = artifact_schema("workflow-definition")
+    assert tuple(workflow_to_dict(definition)) == schema.required_fields
+    assert schema.media_type == "application/json" and not schema.checksummed
 
 
 @pytest.mark.parametrize("schema", ARTIFACT_SCHEMAS, ids=lambda item: item.name)
