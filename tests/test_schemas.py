@@ -11,7 +11,7 @@ from voxwright.schemas import ARTIFACT_SCHEMAS, ArtifactSchema, artifact_schema,
 def test_schema_catalog_has_unique_sorted_public_names() -> None:
     names = [item.name for item in ARTIFACT_SCHEMAS]
     assert names == sorted(names)
-    assert len(names) == len(set(names)) == 11
+    assert len(names) == len(set(names)) == 12
     assert all(item.version == 1 for item in ARTIFACT_SCHEMAS)
     assert schema_catalog() == [item.to_dict() for item in ARTIFACT_SCHEMAS]
 

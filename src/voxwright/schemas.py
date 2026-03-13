@@ -111,6 +111,13 @@ ARTIFACT_SCHEMAS = (
         ("schema_version", "completed", "state", "digest"),
         True,
     ),
+    ArtifactSchema(
+        "workflow-definition",
+        1,
+        "application/json",
+        ("schema_version", "name", "version", "start", "steps"),
+        False,
+    ),
 )
 
 
