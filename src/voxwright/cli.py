@@ -19,6 +19,7 @@ from voxwright.reports import CoverageFacts, ReportSpec, render_html, render_mar
 from voxwright.run_artifacts import decode_runs, encode_runs, scripted_run
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 from voxwright.session_diff import diff_traces, format_differences
+from voxwright.workflow_codec import load_workflow, workflow_digest
 
 CommandHandler = Callable[[argparse.Namespace], int]
 
@@ -81,9 +82,19 @@ def _validate(args: argparse.Namespace) -> int:
             "digest": summary.final_digest,
             "valid": True,
         }
-    else:
+    elif args.artifact == "runs":
         runs = decode_runs(path.read_text(encoding="utf-8"))
         result = {"artifact": "runs", "count": len(runs), "valid": True}
+    else:
+        definition = load_workflow(path)
+        result = {
+            "artifact": "workflow",
+            "digest": workflow_digest(definition),
+            "name": str(definition.name),
+            "steps": len(definition.steps),
+            "valid": True,
+            "version": definition.version,
+        }
     print(canonical_json(result))
     return 0
 
@@ -254,7 +265,7 @@ def build_parser() -> argparse.ArgumentParser:
     simulate.add_argument("--task", choices=[item.value for item in TaskType], default="schedule")
     simulate.set_defaults(handler=_simulate)
     validate = commands["validate"]
-    validate.add_argument("artifact", choices=("manifest", "session", "runs"))
+    validate.add_argument("artifact", choices=("manifest", "session", "runs", "workflow"))
     validate.add_argument("path", type=Path)
     validate.set_defaults(handler=_validate)
     replay_command = commands["replay"]

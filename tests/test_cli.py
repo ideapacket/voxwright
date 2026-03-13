@@ -11,6 +11,8 @@ from voxwright.identifiers import Identifier
 from voxwright.manifests import read_manifest
 from voxwright.recording import SessionRecorder
 from voxwright.run_artifacts import decode_runs
+from voxwright.workflow import StepKind, WorkflowDefinition, WorkflowStep
+from voxwright.workflow_codec import write_workflow
 
 COMMANDS = (
     "simulate",
@@ -98,6 +100,22 @@ def test_validate_reports_verified_artifact_facts(tmp_path: object, capsys: obje
     capsys.readouterr()  # type: ignore[attr-defined]
     assert main(["validate", "runs", str(runs)]) == 0
     assert capsys.readouterr().out == '{"artifact":"runs","count":1,"valid":true}\n'  # type: ignore[attr-defined]
+
+
+def test_validate_reports_workflow_identity_and_digest(tmp_path: object, capsys: object) -> None:
+    path = tmp_path / "workflow.json"  # type: ignore[operator]
+    definition = WorkflowDefinition(
+        Identifier("cli-flow"),
+        3,
+        Identifier("done"),
+        (WorkflowStep(Identifier("done"), StepKind.END),),
+    )
+    write_workflow(path, definition)
+    assert main(["validate", "workflow", str(path)]) == 0
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"artifact":"workflow"' in output
+    assert '"name":"cli-flow"' in output and '"version":3' in output
+    assert '"steps":1' in output and '"digest":"sha256:' in output
 
 
 def test_validate_propagates_precise_artifact_errors(tmp_path: object, capsys: object) -> None:
