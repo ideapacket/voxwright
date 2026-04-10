@@ -59,8 +59,13 @@ def step_from_dict(value: JSONValue, path: str = "$.step") -> WorkflowStep:
         raise TypeError(f"{path}.id: expected string")
     if not isinstance(kind, str):
         raise TypeError(f"{path}.kind: expected string")
-    if not isinstance(successors, list) or not all(isinstance(item, str) for item in successors):
+    if not isinstance(successors, list):
         raise TypeError(f"{path}.next: expected string array")
+    decoded_successors: list[Identifier] = []
+    for index, item in enumerate(successors):
+        if not isinstance(item, str):
+            raise TypeError(f"{path}.next[{index}]: expected string")
+        decoded_successors.append(Identifier(item))
     if isinstance(iterations, bool) or not isinstance(iterations, int):
         raise TypeError(f"{path}.max_iterations: expected integer")
     try:
@@ -70,7 +75,7 @@ def step_from_dict(value: JSONValue, path: str = "$.step") -> WorkflowStep:
     return WorkflowStep(
         Identifier(identifier),
         step_kind,
-        tuple(Identifier(item) for item in successors),
+        tuple(decoded_successors),
         _optional_object(value["preconditions"], f"{path}.preconditions"),
         _optional_object(value["effects"], f"{path}.effects"),
         _optional_object(value["compensation"], f"{path}.compensation"),

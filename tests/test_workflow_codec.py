@@ -93,6 +93,10 @@ def test_step_decoder_does_not_coerce_scalar_types() -> None:
     encoded["max_iterations"] = True
     with pytest.raises(TypeError, match="expected integer"):
         step_from_dict(encoded)
+    encoded = step_to_dict(sample_step())
+    encoded["next"] = ["done", 3]
+    with pytest.raises(TypeError, match=r"next\[1\]: expected string"):
+        step_from_dict(encoded)
 
 
 def test_step_decoder_requires_nullable_maps_to_be_objects() -> None:
