@@ -145,6 +145,24 @@ def test_validate_workflow_can_export_deterministic_svg(tmp_path: object, capsys
     assert f'"diagram":"{diagram}"' in capsys.readouterr().out  # type: ignore[attr-defined]
 
 
+def test_workflow_diagram_export_never_overwrites_existing_output(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "workflow.json"  # type: ignore[operator]
+    diagram = tmp_path / "workflow.svg"  # type: ignore[operator]
+    definition = WorkflowDefinition(
+        Identifier("safe-flow"),
+        1,
+        Identifier("done"),
+        (WorkflowStep(Identifier("done"), StepKind.END),),
+    )
+    write_workflow(path, definition)
+    diagram.write_text("keep", encoding="utf-8")
+    assert main(["validate", "workflow", str(path), "--diagram", str(diagram)]) == 2
+    assert "already exists" in capsys.readouterr().err  # type: ignore[attr-defined]
+    assert diagram.read_text(encoding="utf-8") == "keep"
+
+
 def test_validate_propagates_precise_artifact_errors(tmp_path: object, capsys: object) -> None:
     broken = tmp_path / "broken.jsonl"  # type: ignore[operator]
     broken.write_text("not-json\n", encoding="utf-8")
