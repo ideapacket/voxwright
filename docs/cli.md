@@ -6,6 +6,7 @@
 voxwright simulate scenarios.jsonl --seed 7 --count 4 --task schedule
 voxwright run scenarios.jsonl runs.jsonl
 voxwright validate runs runs.jsonl
+voxwright validate workflow workflow.json --diagram workflow.svg
 voxwright score runs.jsonl
 voxwright bench runs.jsonl --budgets 50 75 100 150
 voxwright report runs.jsonl report.html --format html
@@ -20,3 +21,7 @@ voxwright demo demo-output --seed 7 --count 4
 所有输出目标都必须不存在，因此失败的命令不会覆盖已有制品。`diff` 在会话完全相同时返回
 0，存在差异时返回 1；参数、校验或 I/O 错误返回 2。报告和 benchmark 中的数字只来自输入的
 离线合成运行及其植入真值。
+
+`validate workflow` 会执行 envelope、step 类型、引用和 cycle 校验，并打印 workflow 名称、版本、
+step 数量及 canonical digest。可选 `--diagram` 写出确定性的自包含 SVG；目标已存在时命令返回 2，
+不会覆盖原文件。
