@@ -130,6 +130,21 @@ def test_validate_workflow_surfaces_graph_and_truncation_errors(
     assert "missing terminal newline" in capsys.readouterr().err  # type: ignore[attr-defined]
 
 
+def test_validate_workflow_can_export_deterministic_svg(tmp_path: object, capsys: object) -> None:
+    path = tmp_path / "workflow.json"  # type: ignore[operator]
+    diagram = tmp_path / "workflow.svg"  # type: ignore[operator]
+    definition = WorkflowDefinition(
+        Identifier("diagram-flow"),
+        1,
+        Identifier("done"),
+        (WorkflowStep(Identifier("done"), StepKind.END),),
+    )
+    write_workflow(path, definition)
+    assert main(["validate", "workflow", str(path), "--diagram", str(diagram)]) == 0
+    assert diagram.read_text(encoding="utf-8").startswith('<svg xmlns="http://www.w3.org/2000/svg"')
+    assert f'"diagram":"{diagram}"' in capsys.readouterr().out  # type: ignore[attr-defined]
+
+
 def test_validate_propagates_precise_artifact_errors(tmp_path: object, capsys: object) -> None:
     broken = tmp_path / "broken.jsonl"  # type: ignore[operator]
     broken.write_text("not-json\n", encoding="utf-8")

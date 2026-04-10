@@ -20,6 +20,7 @@ from voxwright.run_artifacts import decode_runs, encode_runs, scripted_run
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 from voxwright.session_diff import diff_traces, format_differences
 from voxwright.workflow_codec import load_workflow, workflow_digest
+from voxwright.workflow_svg import workflow_svg
 
 CommandHandler = Callable[[argparse.Namespace], int]
 
@@ -87,6 +88,9 @@ def _validate(args: argparse.Namespace) -> int:
         result = {"artifact": "runs", "count": len(runs), "valid": True}
     else:
         definition = load_workflow(path)
+        diagram: Path | None = args.diagram
+        if diagram is not None:
+            _write_new_text(diagram, workflow_svg(definition))
         result = {
             "artifact": "workflow",
             "digest": workflow_digest(definition),
@@ -95,6 +99,8 @@ def _validate(args: argparse.Namespace) -> int:
             "valid": True,
             "version": definition.version,
         }
+        if diagram is not None:
+            result["diagram"] = str(diagram)
     print(canonical_json(result))
     return 0
 
@@ -267,6 +273,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate = commands["validate"]
     validate.add_argument("artifact", choices=("manifest", "session", "runs", "workflow"))
     validate.add_argument("path", type=Path)
+    validate.add_argument("--diagram", type=Path, help="workflow 专用 SVG 输出路径")
     validate.set_defaults(handler=_validate)
     replay_command = commands["replay"]
     replay_command.add_argument("path", type=Path)
