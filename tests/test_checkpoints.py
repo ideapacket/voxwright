@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from voxwright.checkpoints import (
@@ -13,6 +15,8 @@ from voxwright.checkpoints import (
 )
 from voxwright.hashing import EMPTY_DIGEST
 from voxwright.identifiers import Identifier
+
+GOLDEN = Path(__file__).parent / "golden" / "workflow_checkpoint.json"
 
 
 def sample_checkpoint() -> WorkflowCheckpoint:
@@ -88,3 +92,8 @@ def test_checkpoint_text_decoder_rejects_empty_and_trailing_documents() -> None:
         decode_checkpoint("\n")
     with pytest.raises(ValueError):
         decode_checkpoint(encode_checkpoint(sample_checkpoint()) + "{}")
+
+
+def test_checkpoint_bytes_match_reviewed_golden() -> None:
+    assert encode_checkpoint(sample_checkpoint()).encode() == GOLDEN.read_bytes()
+    assert decode_checkpoint(GOLDEN.read_text(encoding="utf-8")) == sample_checkpoint()
