@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from voxwright.core import JSONValue, ensure_json_value
+from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
 from voxwright.hashing import EMPTY_DIGEST, verify_digest
 from voxwright.identifiers import Identifier
 
@@ -71,3 +71,13 @@ def checkpoint_from_dict(value: JSONValue) -> WorkflowCheckpoint:
     if not isinstance(digest, str):
         raise TypeError("$.digest: expected string")
     return WorkflowCheckpoint(tuple(decoded), state, digest, schema_version)
+
+
+def encode_checkpoint(checkpoint: WorkflowCheckpoint) -> str:
+    return canonical_json(checkpoint_to_dict(checkpoint)) + "\n"
+
+
+def decode_checkpoint(text: str) -> WorkflowCheckpoint:
+    if not text.strip():
+        raise ValueError("checkpoint document is empty")
+    return checkpoint_from_dict(parse_json(text))

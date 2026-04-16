@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.checkpoints import WorkflowCheckpoint, checkpoint_from_dict, checkpoint_to_dict
+from voxwright.checkpoints import (
+    WorkflowCheckpoint,
+    checkpoint_from_dict,
+    checkpoint_to_dict,
+    decode_checkpoint,
+    encode_checkpoint,
+)
 from voxwright.hashing import EMPTY_DIGEST
 from voxwright.identifiers import Identifier
 
@@ -68,3 +74,17 @@ def test_checkpoint_decoder_reports_completed_item_paths() -> None:
     encoded["completed"] = "prepare"
     with pytest.raises(TypeError, match="expected string array"):
         checkpoint_from_dict(encoded)
+
+
+def test_checkpoint_text_codec_is_canonical_and_reversible() -> None:
+    encoded = encode_checkpoint(sample_checkpoint())
+    assert encoded.endswith("\n") and " " not in encoded
+    assert decode_checkpoint(encoded) == sample_checkpoint()
+    assert encode_checkpoint(decode_checkpoint(encoded)).encode() == encoded.encode()
+
+
+def test_checkpoint_text_decoder_rejects_empty_and_trailing_documents() -> None:
+    with pytest.raises(ValueError, match="document is empty"):
+        decode_checkpoint("\n")
+    with pytest.raises(ValueError):
+        decode_checkpoint(encode_checkpoint(sample_checkpoint()) + "{}")
