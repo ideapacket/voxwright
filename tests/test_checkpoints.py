@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.checkpoints import WorkflowCheckpoint
+from voxwright.checkpoints import WorkflowCheckpoint, checkpoint_from_dict, checkpoint_to_dict
 from voxwright.hashing import EMPTY_DIGEST
 from voxwright.identifiers import Identifier
 
@@ -36,3 +36,14 @@ def test_checkpoint_rejects_duplicate_steps_bad_state_and_digest() -> None:
         WorkflowCheckpoint((), {"bad": object()})  # type: ignore[dict-item]
     with pytest.raises(ValueError, match="algorithm-qualified"):
         WorkflowCheckpoint((), {}, "not-a-digest")
+
+
+def test_checkpoint_object_codec_roundtrips_every_field() -> None:
+    original = sample_checkpoint()
+    assert checkpoint_from_dict(checkpoint_to_dict(original)) == original
+    assert tuple(checkpoint_to_dict(original)) == (
+        "schema_version",
+        "completed",
+        "state",
+        "digest",
+    )
