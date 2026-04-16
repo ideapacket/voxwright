@@ -47,3 +47,24 @@ def test_checkpoint_object_codec_roundtrips_every_field() -> None:
         "state",
         "digest",
     )
+
+
+def test_checkpoint_decoder_rejects_field_and_version_drift() -> None:
+    encoded = checkpoint_to_dict(sample_checkpoint())
+    encoded["extra"] = True
+    with pytest.raises(ValueError, match=r"unknown=\['extra'\]"):
+        checkpoint_from_dict(encoded)
+    encoded.pop("extra")
+    encoded["schema_version"] = 2
+    with pytest.raises(ValueError, match="unsupported checkpoint schema version"):
+        checkpoint_from_dict(encoded)
+
+
+def test_checkpoint_decoder_reports_completed_item_paths() -> None:
+    encoded = checkpoint_to_dict(sample_checkpoint())
+    encoded["completed"] = ["prepare", 4]
+    with pytest.raises(TypeError, match=r"completed\[1\]: expected string"):
+        checkpoint_from_dict(encoded)
+    encoded["completed"] = "prepare"
+    with pytest.raises(TypeError, match="expected string array"):
+        checkpoint_from_dict(encoded)
