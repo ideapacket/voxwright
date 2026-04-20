@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -141,3 +142,12 @@ def test_checkpoint_verification_rejects_state_or_prefix_changes() -> None:
     changed_prefix = WorkflowCheckpoint((), {}, original.digest)
     with pytest.raises(ValueError, match="does not match"):
         verify_checkpoint(changed_prefix, ledger)
+
+
+def test_checkpoint_verification_rejects_tampered_ledger_before_comparison() -> None:
+    ledger = WorkflowLedger()
+    ledger.record(Identifier("prepare"), {"count": 1})
+    checkpoint = checkpoint_from_ledger(ledger)
+    ledger.links[0] = replace(ledger.links[0], payload={"step_id": "prepare", "state": {}})
+    with pytest.raises(ValueError, match="ledger is invalid"):
+        verify_checkpoint(checkpoint, ledger)
