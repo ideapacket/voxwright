@@ -9,6 +9,7 @@ import pytest
 from voxwright.checkpoints import (
     WorkflowCheckpoint,
     checkpoint_from_dict,
+    checkpoint_from_ledger,
     checkpoint_to_dict,
     decode_checkpoint,
     encode_checkpoint,
@@ -17,6 +18,7 @@ from voxwright.checkpoints import (
 )
 from voxwright.hashing import EMPTY_DIGEST
 from voxwright.identifiers import Identifier
+from voxwright.workflow_ledger import WorkflowLedger
 
 GOLDEN = Path(__file__).parent / "golden" / "workflow_checkpoint.json"
 
@@ -115,3 +117,13 @@ def test_checkpoint_loader_detects_truncation(tmp_path: Path) -> None:
     path.write_text(encode_checkpoint(sample_checkpoint()).rstrip(), encoding="utf-8")
     with pytest.raises(ValueError, match="missing terminal newline"):
         load_checkpoint(path)
+
+
+def test_checkpoint_conversion_uses_verified_ledger_tail() -> None:
+    ledger = WorkflowLedger()
+    ledger.record(Identifier("prepare"), {"count": 1})
+    last = ledger.record(Identifier("commit"), {"count": 2})
+    checkpoint = checkpoint_from_ledger(ledger)
+    assert checkpoint.completed == (Identifier("prepare"), Identifier("commit"))
+    assert checkpoint.state == {"count": 2}
+    assert checkpoint.digest == last.digest

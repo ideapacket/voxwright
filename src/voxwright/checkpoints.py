@@ -8,6 +8,7 @@ from pathlib import Path
 from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
 from voxwright.hashing import EMPTY_DIGEST, verify_digest
 from voxwright.identifiers import Identifier
+from voxwright.workflow_ledger import WorkflowLedger
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,3 +98,8 @@ def write_checkpoint(path: Path, checkpoint: WorkflowCheckpoint) -> None:
             stream.write(encode_checkpoint(checkpoint))
     except FileExistsError as error:
         raise FileExistsError(f"checkpoint output already exists: {path}") from error
+
+
+def checkpoint_from_ledger(ledger: WorkflowLedger) -> WorkflowCheckpoint:
+    """Convert only a ledger-validated in-memory checkpoint."""
+    return checkpoint_from_dict(ledger.checkpoint())
