@@ -14,6 +14,7 @@ from voxwright.checkpoints import (
     decode_checkpoint,
     encode_checkpoint,
     load_checkpoint,
+    verify_checkpoint,
     write_checkpoint,
 )
 from voxwright.hashing import EMPTY_DIGEST
@@ -127,3 +128,16 @@ def test_checkpoint_conversion_uses_verified_ledger_tail() -> None:
     assert checkpoint.completed == (Identifier("prepare"), Identifier("commit"))
     assert checkpoint.state == {"count": 2}
     assert checkpoint.digest == last.digest
+    verify_checkpoint(checkpoint, ledger)
+
+
+def test_checkpoint_verification_rejects_state_or_prefix_changes() -> None:
+    ledger = WorkflowLedger()
+    ledger.record(Identifier("prepare"), {"count": 1})
+    original = checkpoint_from_ledger(ledger)
+    changed_state = WorkflowCheckpoint(original.completed, {"count": 2}, original.digest)
+    with pytest.raises(ValueError, match="does not match"):
+        verify_checkpoint(changed_state, ledger)
+    changed_prefix = WorkflowCheckpoint((), {}, original.digest)
+    with pytest.raises(ValueError, match="does not match"):
+        verify_checkpoint(changed_prefix, ledger)

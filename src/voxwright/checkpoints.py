@@ -103,3 +103,12 @@ def write_checkpoint(path: Path, checkpoint: WorkflowCheckpoint) -> None:
 def checkpoint_from_ledger(ledger: WorkflowLedger) -> WorkflowCheckpoint:
     """Convert only a ledger-validated in-memory checkpoint."""
     return checkpoint_from_dict(ledger.checkpoint())
+
+
+def verify_checkpoint(checkpoint: WorkflowCheckpoint, ledger: WorkflowLedger) -> None:
+    """Require a checkpoint to exactly match the verified ledger tail."""
+    if ledger.validate() is not None:
+        raise ValueError("workflow ledger is invalid")
+    expected = checkpoint_from_ledger(ledger)
+    if checkpoint != expected:
+        raise ValueError("checkpoint does not match workflow ledger")
