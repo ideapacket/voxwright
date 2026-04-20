@@ -15,6 +15,7 @@ from voxwright.checkpoints import (
     decode_checkpoint,
     encode_checkpoint,
     load_checkpoint,
+    resume_suffix,
     verify_checkpoint,
     write_checkpoint,
 )
@@ -151,3 +152,14 @@ def test_checkpoint_verification_rejects_tampered_ledger_before_comparison() -> 
     ledger.links[0] = replace(ledger.links[0], payload={"step_id": "prepare", "state": {}})
     with pytest.raises(ValueError, match="ledger is invalid"):
         verify_checkpoint(checkpoint, ledger)
+
+
+def test_resume_suffix_accepts_only_an_exact_completed_prefix() -> None:
+    ordered = (Identifier("prepare"), Identifier("commit"), Identifier("finish"))
+    checkpoint = WorkflowCheckpoint(
+        (Identifier("prepare"), Identifier("commit")), {}, "sha256:" + "2" * 64
+    )
+    assert resume_suffix(ordered, checkpoint) == (Identifier("finish"),)
+    wrong = WorkflowCheckpoint((Identifier("commit"),), {}, "sha256:" + "2" * 64)
+    with pytest.raises(ValueError, match="not a prefix"):
+        resume_suffix(ordered, wrong)

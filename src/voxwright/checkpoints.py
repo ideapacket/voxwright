@@ -8,7 +8,7 @@ from pathlib import Path
 from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
 from voxwright.hashing import EMPTY_DIGEST, verify_digest
 from voxwright.identifiers import Identifier
-from voxwright.workflow_ledger import WorkflowLedger
+from voxwright.workflow_ledger import WorkflowLedger, remaining_steps
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,3 +112,10 @@ def verify_checkpoint(checkpoint: WorkflowCheckpoint, ledger: WorkflowLedger) ->
     expected = checkpoint_from_ledger(ledger)
     if checkpoint != expected:
         raise ValueError("checkpoint does not match workflow ledger")
+
+
+def resume_suffix(
+    ordered: tuple[Identifier, ...], checkpoint: WorkflowCheckpoint
+) -> tuple[Identifier, ...]:
+    """Return the exact uncompleted suffix of a checkpointed linear order."""
+    return remaining_steps(ordered, checkpoint_to_dict(checkpoint))
