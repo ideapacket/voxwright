@@ -12,6 +12,8 @@ from voxwright.checkpoints import (
     checkpoint_to_dict,
     decode_checkpoint,
     encode_checkpoint,
+    load_checkpoint,
+    write_checkpoint,
 )
 from voxwright.hashing import EMPTY_DIGEST
 from voxwright.identifiers import Identifier
@@ -97,3 +99,19 @@ def test_checkpoint_text_decoder_rejects_empty_and_trailing_documents() -> None:
 def test_checkpoint_bytes_match_reviewed_golden() -> None:
     assert encode_checkpoint(sample_checkpoint()).encode() == GOLDEN.read_bytes()
     assert decode_checkpoint(GOLDEN.read_text(encoding="utf-8")) == sample_checkpoint()
+
+
+def test_checkpoint_files_roundtrip_without_overwrite(tmp_path: Path) -> None:
+    path = tmp_path / "checkpoint.json"
+    write_checkpoint(path, sample_checkpoint())
+    assert load_checkpoint(path) == sample_checkpoint()
+    with pytest.raises(FileExistsError, match="output already exists"):
+        write_checkpoint(path, WorkflowCheckpoint((), {}))
+    assert load_checkpoint(path) == sample_checkpoint()
+
+
+def test_checkpoint_loader_detects_truncation(tmp_path: Path) -> None:
+    path = tmp_path / "checkpoint.json"
+    path.write_text(encode_checkpoint(sample_checkpoint()).rstrip(), encoding="utf-8")
+    with pytest.raises(ValueError, match="missing terminal newline"):
+        load_checkpoint(path)

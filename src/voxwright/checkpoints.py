@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
 from voxwright.hashing import EMPTY_DIGEST, verify_digest
@@ -81,3 +82,18 @@ def decode_checkpoint(text: str) -> WorkflowCheckpoint:
     if not text.strip():
         raise ValueError("checkpoint document is empty")
     return checkpoint_from_dict(parse_json(text))
+
+
+def load_checkpoint(path: Path) -> WorkflowCheckpoint:
+    text = path.read_text(encoding="utf-8")
+    if text and not text.endswith("\n"):
+        raise ValueError(f"checkpoint file is missing terminal newline: {path}")
+    return decode_checkpoint(text)
+
+
+def write_checkpoint(path: Path, checkpoint: WorkflowCheckpoint) -> None:
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_checkpoint(checkpoint))
+    except FileExistsError as error:
+        raise FileExistsError(f"checkpoint output already exists: {path}") from error
