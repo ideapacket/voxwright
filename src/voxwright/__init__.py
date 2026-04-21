@@ -11,6 +11,14 @@ from voxwright.adapters import (
     TorchAdapter,
 )
 from voxwright.call_grammar import CallParseError, ModelChannels, ParsedCall, parse_call
+from voxwright.checkpoints import (
+    WorkflowCheckpoint,
+    checkpoint_from_ledger,
+    decode_checkpoint,
+    encode_checkpoint,
+    resume_suffix,
+    verify_checkpoint,
+)
 from voxwright.context import ContextAttachment, ContextManager, GroundedAct
 from voxwright.evaluation import EvaluationRun, MetricBundle, score_runs
 from voxwright.events import EventEnvelope, EventKind, Intent, Transcript, envelope_for
@@ -67,18 +75,24 @@ __all__ = [
     "TorchAdapter",
     "Transcript",
     "ValueType",
+    "WorkflowCheckpoint",
     "WorkflowDefinition",
     "WorkflowStep",
     "__version__",
     "application_scenario",
+    "checkpoint_from_ledger",
+    "decode_checkpoint",
     "decode_workflow",
+    "encode_checkpoint",
     "encode_workflow",
     "envelope_for",
     "load_workflow",
     "parse_call",
+    "resume_suffix",
     "run_linear",
     "run_repair",
     "score_runs",
+    "verify_checkpoint",
     "workflow_digest",
     "write_workflow",
 ]
