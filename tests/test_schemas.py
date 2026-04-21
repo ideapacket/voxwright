@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from voxwright.checkpoints import WorkflowCheckpoint, checkpoint_to_dict
 from voxwright.core import canonical_json
 from voxwright.identifiers import Identifier
 from voxwright.schemas import ARTIFACT_SCHEMAS, ArtifactSchema, artifact_schema, schema_catalog
@@ -47,6 +48,13 @@ def test_workflow_schema_fields_match_the_actual_public_envelope() -> None:
     schema = artifact_schema("workflow-definition")
     assert tuple(workflow_to_dict(definition)) == schema.required_fields
     assert schema.media_type == "application/json" and not schema.checksummed
+
+
+def test_checkpoint_schema_fields_match_the_typed_codec() -> None:
+    checkpoint = WorkflowCheckpoint((), {})
+    schema = artifact_schema("workflow-checkpoint")
+    assert tuple(checkpoint_to_dict(checkpoint)) == schema.required_fields
+    assert schema.media_type == "application/json" and schema.checksummed
 
 
 @pytest.mark.parametrize("schema", ARTIFACT_SCHEMAS, ids=lambda item: item.name)
