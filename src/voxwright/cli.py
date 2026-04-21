@@ -9,6 +9,7 @@ from pathlib import Path
 
 from voxwright import __version__
 from voxwright.campaign import CampaignArtifact
+from voxwright.checkpoints import load_checkpoint
 from voxwright.core import canonical_json
 from voxwright.evaluation import score_runs
 from voxwright.latency import RunOutcome, latency_success_curve
@@ -86,7 +87,7 @@ def _validate(args: argparse.Namespace) -> int:
     elif args.artifact == "runs":
         runs = decode_runs(path.read_text(encoding="utf-8"))
         result = {"artifact": "runs", "count": len(runs), "valid": True}
-    else:
+    elif args.artifact == "workflow":
         definition = load_workflow(path)
         diagram: Path | None = args.diagram
         if diagram is not None:
@@ -101,6 +102,15 @@ def _validate(args: argparse.Namespace) -> int:
         }
         if diagram is not None:
             result["diagram"] = str(diagram)
+    else:
+        checkpoint = load_checkpoint(path)
+        result = {
+            "artifact": "checkpoint",
+            "completed": len(checkpoint.completed),
+            "digest": checkpoint.digest,
+            "state_keys": sorted(checkpoint.state),
+            "valid": True,
+        }
     print(canonical_json(result))
     return 0
 
@@ -271,7 +281,9 @@ def build_parser() -> argparse.ArgumentParser:
     simulate.add_argument("--task", choices=[item.value for item in TaskType], default="schedule")
     simulate.set_defaults(handler=_simulate)
     validate = commands["validate"]
-    validate.add_argument("artifact", choices=("manifest", "session", "runs", "workflow"))
+    validate.add_argument(
+        "artifact", choices=("manifest", "session", "runs", "workflow", "checkpoint")
+    )
     validate.add_argument("path", type=Path)
     validate.add_argument("--diagram", type=Path, help="workflow 专用 SVG 输出路径")
     validate.set_defaults(handler=_validate)

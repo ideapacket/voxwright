@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 
+from voxwright.checkpoints import WorkflowCheckpoint, write_checkpoint
 from voxwright.cli import build_parser, main
 from voxwright.events import EventEnvelope, EventKind
 from voxwright.identifiers import Identifier
@@ -116,6 +117,17 @@ def test_validate_reports_workflow_identity_and_digest(tmp_path: object, capsys:
     assert '"artifact":"workflow"' in output
     assert '"name":"cli-flow"' in output and '"version":3' in output
     assert '"steps":1' in output and '"digest":"sha256:' in output
+
+
+def test_validate_reports_checkpoint_recovery_facts(tmp_path: object, capsys: object) -> None:
+    path = tmp_path / "checkpoint.json"  # type: ignore[operator]
+    checkpoint = WorkflowCheckpoint((Identifier("prepare"),), {"count": 1}, "sha256:" + "3" * 64)
+    write_checkpoint(path, checkpoint)
+    assert main(["validate", "checkpoint", str(path)]) == 0
+    assert capsys.readouterr().out == (  # type: ignore[attr-defined]
+        '{"artifact":"checkpoint","completed":1,'
+        '"digest":"sha256:' + "3" * 64 + '","state_keys":["count"],"valid":true}\n'
+    )
 
 
 def test_validate_workflow_surfaces_graph_and_truncation_errors(
