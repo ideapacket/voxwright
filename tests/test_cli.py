@@ -130,6 +130,24 @@ def test_validate_reports_checkpoint_recovery_facts(tmp_path: object, capsys: ob
     )
 
 
+def test_validate_checkpoint_reports_shape_digest_and_truncation_errors(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "checkpoint.json"  # type: ignore[operator]
+    path.write_text('{"schema_version":1}\n', encoding="utf-8")
+    assert main(["validate", "checkpoint", str(path)]) == 2
+    assert "checkpoint fields differ" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text(
+        '{"completed":[],"digest":"bad","schema_version":1,"state":{}}\n',
+        encoding="utf-8",
+    )
+    assert main(["validate", "checkpoint", str(path)]) == 2
+    assert "algorithm-qualified" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text("{}", encoding="utf-8")
+    assert main(["validate", "checkpoint", str(path)]) == 2
+    assert "missing terminal newline" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
 def test_validate_workflow_surfaces_graph_and_truncation_errors(
     tmp_path: object, capsys: object
 ) -> None:
