@@ -72,6 +72,8 @@ def _simulate(args: argparse.Namespace) -> int:
 
 def _validate(args: argparse.Namespace) -> int:
     path: Path = args.path
+    if args.diagram is not None and args.artifact != "workflow":
+        raise ValueError("--diagram is only valid for workflow artifacts")
     if args.artifact == "manifest":
         scenarios = read_manifest(path)
         result = {"artifact": "manifest", "count": len(scenarios), "valid": True}

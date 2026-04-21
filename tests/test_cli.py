@@ -148,6 +148,17 @@ def test_validate_checkpoint_reports_shape_digest_and_truncation_errors(
     assert "missing terminal newline" in capsys.readouterr().err  # type: ignore[attr-defined]
 
 
+def test_validate_rejects_diagram_output_for_nonworkflow_artifacts(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "checkpoint.json"  # type: ignore[operator]
+    write_checkpoint(path, WorkflowCheckpoint((), {}))
+    diagram = tmp_path / "unexpected.svg"  # type: ignore[operator]
+    assert main(["validate", "checkpoint", str(path), "--diagram", str(diagram)]) == 2
+    assert "only valid for workflow" in capsys.readouterr().err  # type: ignore[attr-defined]
+    assert not diagram.exists()
+
+
 def test_validate_workflow_surfaces_graph_and_truncation_errors(
     tmp_path: object, capsys: object
 ) -> None:
