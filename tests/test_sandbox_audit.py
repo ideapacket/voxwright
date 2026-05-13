@@ -4,7 +4,7 @@ import pytest
 
 from voxwright.identifiers import Identifier
 from voxwright.sandbox import PermissionDecision, PermissionPolicy, ToolSandbox
-from voxwright.sandbox_audit import AuditSummary, summarize_audit
+from voxwright.sandbox_audit import AuditSummary, audit_to_dict, encode_audit, summarize_audit
 
 
 def test_audit_summary_distinguishes_every_nonexecution_reason() -> None:
@@ -29,3 +29,15 @@ def test_audit_summary_rejects_tampered_chain() -> None:
     )
     with pytest.raises(ValueError, match="invalid at index 0"):
         summarize_audit(box.ledger)
+    with pytest.raises(ValueError, match="cannot encode invalid"):
+        encode_audit(box.ledger)
+
+
+def test_audit_encoding_preserves_chain_order_and_canonical_bytes() -> None:
+    box = ToolSandbox(PermissionPolicy({}))
+    box.execute("notes.add", {"text": "blocked"})
+    encoded = audit_to_dict(box.ledger)
+    assert encoded["schema_version"] == 1
+    assert encoded["links"][0]["index"] == 0  # type: ignore[index]
+    text = encode_audit(box.ledger)
+    assert text.endswith("\n") and " " not in text

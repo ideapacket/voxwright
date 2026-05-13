@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from voxwright.core import JSONValue, canonical_json
+from voxwright.hashing import ChainLink
 from voxwright.sandbox import SideEffectLedger
 
 
@@ -36,3 +38,24 @@ def summarize_audit(ledger: SideEffectLedger) -> AuditSummary:
         elif isinstance(result, dict) and result.get("dry_run") is True:
             dry_runs += 1
     return AuditSummary(len(ledger.links), executed, denied, confirmation_required, dry_runs)
+
+
+def _link_to_dict(link: ChainLink) -> dict[str, JSONValue]:
+    return {
+        "index": link.index,
+        "previous": link.previous,
+        "payload": link.payload,
+        "digest": link.digest,
+    }
+
+
+def audit_to_dict(ledger: SideEffectLedger) -> dict[str, JSONValue]:
+    """Encode a ledger only when its complete chain is intact."""
+    invalid = ledger.validate()
+    if invalid is not None:
+        raise ValueError(f"cannot encode invalid side-effect ledger at index {invalid}")
+    return {"schema_version": 1, "links": [_link_to_dict(link) for link in ledger.links]}
+
+
+def encode_audit(ledger: SideEffectLedger) -> str:
+    return canonical_json(audit_to_dict(ledger)) + "\n"
