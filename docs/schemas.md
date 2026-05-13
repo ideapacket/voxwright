@@ -24,3 +24,7 @@ workflow definition 采用单个 canonical JSON 文档，显式保存 schema ver
 入口和有序 step 列表。decoder 拒绝未知字段、悬空引用和非 bounded loop 形成的环；文件缺少末尾
 换行时也会被视作可能中断的写入。`workflow_digest` 对包含末尾换行的规范字节计算 SHA-256，
 因此同一语义制品在支持的 Python 版本间具有相同标识。
+
+workflow checkpoint 记录已完成 step 的严格前缀、最后状态和 ledger tail digest。读取文件时会检查
+schema、字段类型与末尾换行；恢复前用 `verify_checkpoint` 对照完整的 hash-chain ledger，任何状态、
+前缀、digest 或 ledger 历史变化都会被拒绝。`resume_suffix` 只返回声明顺序中尚未完成的后缀。
