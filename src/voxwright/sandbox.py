@@ -179,6 +179,8 @@ class ToolSandbox:
             self.ledger.record(tool_name, arguments or {}, False, "denied")
             return ExecutionOutcome(False, "denied", decision)
         if decision is PermissionDecision.CONFIRM and tool_name not in self.grants:
+            if arguments is not None:
+                self.ledger.record(tool_name, arguments, False, "confirmation-required")
             return ExecutionOutcome(False, None, decision, f"Confirm tool {tool_name}")
         return None
 

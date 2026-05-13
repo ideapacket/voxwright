@@ -209,4 +209,7 @@ def test_ungranted_confirm_tool_never_executes_across_repeated_attempts() -> Non
         outcome = box.execute(name, {"recipient": "synthetic", "text": "hello"})
         assert not outcome.executed
     assert box.state.messages == []
-    assert box.ledger.links == []
+    assert len(box.ledger.links) == 20
+    assert box.ledger.validate() is None
+    results = [link.payload["result"] for link in box.ledger.links]  # type: ignore[index]
+    assert results == ["confirmation-required"] * 20
