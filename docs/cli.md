@@ -7,6 +7,7 @@ voxwright simulate scenarios.jsonl --seed 7 --count 4 --task schedule
 voxwright run scenarios.jsonl runs.jsonl
 voxwright validate runs runs.jsonl
 voxwright validate workflow workflow.json --diagram workflow.svg
+voxwright validate checkpoint checkpoint.json
 voxwright score runs.jsonl
 voxwright bench runs.jsonl --budgets 50 75 100 150
 voxwright report runs.jsonl report.html --format html
@@ -25,3 +26,6 @@ voxwright demo demo-output --seed 7 --count 4
 `validate workflow` 会执行 envelope、step 类型、引用和 cycle 校验，并打印 workflow 名称、版本、
 step 数量及 canonical digest。可选 `--diagram` 写出确定性的自包含 SVG；目标已存在时命令返回 2，
 不会覆盖原文件。
+
+`validate checkpoint` 校验版本、完成前缀、状态对象与 digest 形状，并报告已完成数量和状态 key。
+它不替代恢复时的 ledger 比对；应用恢复必须同时保留 ledger 并调用 `verify_checkpoint`。
