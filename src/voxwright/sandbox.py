@@ -169,10 +169,14 @@ class ToolSandbox:
             raise ValueError("session grant requires confirm permission")
         self.grants.add(name)
 
-    def permission(self, tool_name: Identifier) -> ExecutionOutcome | None:
+    def permission(
+        self,
+        tool_name: Identifier,
+        arguments: dict[str, JSONValue] | None = None,
+    ) -> ExecutionOutcome | None:
         decision = self.policy.decide(tool_name)
         if decision is PermissionDecision.DENY:
-            self.ledger.record(tool_name, {}, False, "denied")
+            self.ledger.record(tool_name, arguments or {}, False, "denied")
             return ExecutionOutcome(False, "denied", decision)
         if decision is PermissionDecision.CONFIRM and tool_name not in self.grants:
             return ExecutionOutcome(False, None, decision, f"Confirm tool {tool_name}")
@@ -182,7 +186,7 @@ class ToolSandbox:
         self, tool_name: str | Identifier, arguments: dict[str, JSONValue], *, dry_run: bool = False
     ) -> ExecutionOutcome:
         name = tool_name if isinstance(tool_name, Identifier) else Identifier(tool_name)
-        blocked = self.permission(name)
+        blocked = self.permission(name, arguments)
         if blocked is not None:
             return blocked
         if dry_run:

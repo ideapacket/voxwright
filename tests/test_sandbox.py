@@ -102,6 +102,15 @@ def test_denied_permission_records_nonexecution() -> None:
     assert box.ledger.links[0].payload["executed"] is False  # type: ignore[index]
 
 
+def test_denied_execution_audit_preserves_attempted_arguments() -> None:
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({}))
+    arguments = {"recipient": "synthetic", "text": "blocked"}
+    outcome = box.execute("messages.send", arguments)
+    assert not outcome.executed
+    assert box.ledger.links[-1].payload["arguments"] == arguments  # type: ignore[index]
+    assert box.state.messages == []
+
+
 def test_confirm_permission_prompts_until_session_grant() -> None:
     name = Identifier("messages.send")
     box = sandbox.ToolSandbox(sandbox.PermissionPolicy({name: sandbox.PermissionDecision.CONFIRM}))
