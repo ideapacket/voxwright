@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from voxwright.core import JSONValue, canonical_json
+from voxwright.core import JSONValue, canonical_json, parse_json
 from voxwright.hashing import ChainLink
 from voxwright.sandbox import SideEffectLedger
 
@@ -59,3 +59,53 @@ def audit_to_dict(ledger: SideEffectLedger) -> dict[str, JSONValue]:
 
 def encode_audit(ledger: SideEffectLedger) -> str:
     return canonical_json(audit_to_dict(ledger)) + "\n"
+
+
+AUDIT_FIELDS = frozenset({"schema_version", "links"})
+LINK_FIELDS = frozenset({"index", "previous", "payload", "digest"})
+PAYLOAD_FIELDS = frozenset({"tool_name", "arguments", "executed", "result"})
+
+
+def _decode_link(value: JSONValue, expected_index: int) -> ChainLink:
+    path = f"$.links[{expected_index}]"
+    if not isinstance(value, dict) or set(value) != LINK_FIELDS:
+        raise ValueError(f"{path}: expected exact audit link fields")
+    index = value["index"]
+    previous = value["previous"]
+    payload = value["payload"]
+    digest = value["digest"]
+    if isinstance(index, bool) or not isinstance(index, int) or index != expected_index:
+        raise ValueError(f"{path}.index: expected {expected_index}")
+    if not isinstance(previous, str) or not isinstance(digest, str):
+        raise TypeError(f"{path}: previous and digest must be strings")
+    if not isinstance(payload, dict) or set(payload) != PAYLOAD_FIELDS:
+        raise ValueError(f"{path}.payload: expected exact side-effect fields")
+    if not isinstance(payload["tool_name"], str):
+        raise TypeError(f"{path}.payload.tool_name: expected string")
+    if not isinstance(payload["arguments"], dict):
+        raise TypeError(f"{path}.payload.arguments: expected object")
+    if not isinstance(payload["executed"], bool):
+        raise TypeError(f"{path}.payload.executed: expected boolean")
+    return ChainLink(index, previous, payload, digest)
+
+
+def audit_from_dict(value: JSONValue) -> SideEffectLedger:
+    if not isinstance(value, dict) or set(value) != AUDIT_FIELDS:
+        raise ValueError("$: expected exact sandbox audit fields")
+    if value["schema_version"] != 1 or isinstance(value["schema_version"], bool):
+        raise ValueError(f"$.schema_version: unsupported version {value['schema_version']!r}")
+    links = value["links"]
+    if not isinstance(links, list):
+        raise TypeError("$.links: expected array")
+    ledger = SideEffectLedger()
+    ledger.links = [_decode_link(item, index) for index, item in enumerate(links)]
+    invalid = ledger.validate()
+    if invalid is not None:
+        raise ValueError(f"side-effect ledger chain is invalid at index {invalid}")
+    return ledger
+
+
+def decode_audit(text: str) -> SideEffectLedger:
+    if not text.strip():
+        raise ValueError("sandbox audit document is empty")
+    return audit_from_dict(parse_json(text))
