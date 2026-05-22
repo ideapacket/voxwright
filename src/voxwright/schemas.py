@@ -98,6 +98,13 @@ ARTIFACT_SCHEMAS = (
         True,
     ),
     ArtifactSchema(
+        "side-effect-ledger",
+        1,
+        "application/json",
+        ("schema_version", "links"),
+        True,
+    ),
+    ArtifactSchema(
         "tool-registry",
         1,
         "application/json",
