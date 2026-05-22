@@ -127,3 +127,19 @@ def test_audit_entry_selection_preserves_verified_ledger_order() -> None:
     assert [item["arguments"] for item in notes] == [{"text": "one"}, {"text": "two"}]
     blocked = audit_entries(box.ledger, executed=False)
     assert [item["tool_name"] for item in blocked] == ["music.play"]
+
+
+def test_audit_entry_selection_returns_copies_and_rejects_tampering() -> None:
+    box = ToolSandbox(PermissionPolicy({}))
+    box.execute("notes.add", {"text": "blocked"})
+    selected = audit_entries(box.ledger)
+    selected[0]["tool_name"] = "changed"
+    assert box.ledger.links[0].payload["tool_name"] == "notes.add"  # type: ignore[index]
+    box.ledger.links[0] = box.ledger.links[0].__class__(
+        0,
+        box.ledger.links[0].previous,
+        box.ledger.links[0].payload,
+        "sha256:" + "0" * 64,
+    )
+    with pytest.raises(ValueError, match="chain is invalid"):
+        audit_entries(box.ledger)
