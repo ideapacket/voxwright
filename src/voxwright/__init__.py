@@ -26,6 +26,15 @@ from voxwright.frames import ConfirmationPolicy, FrameStack, GroundedSlot, TaskF
 from voxwright.repair import RepairConfig, RepairOutcome, RepairStrategy, run_repair
 from voxwright.runtime import LatencyBudget, LatencyTrace
 from voxwright.sandbox import PermissionDecision, PermissionPolicy, ToolSandbox
+from voxwright.sandbox_audit import (
+    AuditSummary,
+    audit_entries,
+    decode_audit,
+    encode_audit,
+    load_audit,
+    summarize_audit,
+    write_audit,
+)
 from voxwright.scenarios import SyntheticScenario, TaskType, application_scenario
 from voxwright.tool_schema import ParameterSpec, ToolRegistry, ToolSchema, ValueType
 from voxwright.workflow import WorkflowDefinition, WorkflowStep, run_linear
@@ -40,6 +49,7 @@ from voxwright.workflow_codec import (
 __all__ = [
     "AdapterCapabilities",
     "AdapterTurn",
+    "AuditSummary",
     "CallParseError",
     "ConfirmationPolicy",
     "ContextAttachment",
@@ -80,19 +90,25 @@ __all__ = [
     "WorkflowStep",
     "__version__",
     "application_scenario",
+    "audit_entries",
     "checkpoint_from_ledger",
+    "decode_audit",
     "decode_checkpoint",
     "decode_workflow",
+    "encode_audit",
     "encode_checkpoint",
     "encode_workflow",
     "envelope_for",
+    "load_audit",
     "load_workflow",
     "parse_call",
     "resume_suffix",
     "run_linear",
     "run_repair",
     "score_runs",
+    "summarize_audit",
     "verify_checkpoint",
     "workflow_digest",
+    "write_audit",
     "write_workflow",
 ]
