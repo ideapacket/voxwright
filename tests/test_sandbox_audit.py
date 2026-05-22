@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from voxwright.identifiers import Identifier
@@ -11,6 +13,8 @@ from voxwright.sandbox_audit import (
     encode_audit,
     summarize_audit,
 )
+
+GOLDEN = Path(__file__).parent / "golden" / "sandbox_audit.json"
 
 
 def test_audit_summary_distinguishes_every_nonexecution_reason() -> None:
@@ -84,3 +88,10 @@ def test_audit_decoder_rejects_chain_tampering() -> None:
     encoded["links"][0]["digest"] = "sha256:" + "0" * 64  # type: ignore[index]
     with pytest.raises(ValueError, match="chain is invalid at index 0"):
         decode_audit(__import__("json").dumps(encoded))
+
+
+def test_sandbox_audit_matches_reviewed_golden_bytes() -> None:
+    box = ToolSandbox(PermissionPolicy({}))
+    box.execute("notes.add", {"text": "blocked"})
+    assert encode_audit(box.ledger).encode() == GOLDEN.read_bytes()
+    assert decode_audit(GOLDEN.read_text(encoding="utf-8")).links == box.ledger.links

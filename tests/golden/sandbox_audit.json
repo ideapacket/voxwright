@@ -1,0 +1,1 @@
+{"links":[{"digest":"sha256:10fcf484e09f99544c21eed9d3c5f75c800dbe6d25b6dcc2e25c8a65f1faef51","index":0,"payload":{"arguments":{"text":"blocked"},"executed":false,"result":"denied","tool_name":"notes.add"},"previous":"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}],"schema_version":1}
