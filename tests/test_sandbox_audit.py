@@ -8,6 +8,7 @@ from voxwright.identifiers import Identifier
 from voxwright.sandbox import PermissionDecision, PermissionPolicy, ToolSandbox
 from voxwright.sandbox_audit import (
     AuditSummary,
+    audit_entries,
     audit_to_dict,
     decode_audit,
     encode_audit,
@@ -114,3 +115,15 @@ def test_sandbox_audit_loader_detects_truncation(tmp_path: Path) -> None:
     path.write_text("{}", encoding="utf-8")
     with pytest.raises(ValueError, match="missing terminal newline"):
         load_audit(path)
+
+
+def test_audit_entry_selection_preserves_verified_ledger_order() -> None:
+    allowed = Identifier("notes.add")
+    box = ToolSandbox(PermissionPolicy({allowed: PermissionDecision.ALLOW}))
+    box.execute(allowed, {"text": "one"})
+    box.execute("music.play", {"track": "blocked"})
+    box.execute(allowed, {"text": "two"})
+    notes = audit_entries(box.ledger, tool_name=allowed)
+    assert [item["arguments"] for item in notes] == [{"text": "one"}, {"text": "two"}]
+    blocked = audit_entries(box.ledger, executed=False)
+    assert [item["tool_name"] for item in blocked] == ["music.play"]

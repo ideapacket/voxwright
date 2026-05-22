@@ -7,6 +7,7 @@ from pathlib import Path
 
 from voxwright.core import JSONValue, canonical_json, parse_json
 from voxwright.hashing import ChainLink
+from voxwright.identifiers import Identifier
 from voxwright.sandbox import SideEffectLedger
 
 
@@ -125,3 +126,24 @@ def write_audit(path: Path, ledger: SideEffectLedger) -> None:
             stream.write(encode_audit(ledger))
     except FileExistsError as error:
         raise FileExistsError(f"sandbox audit output already exists: {path}") from error
+
+
+def audit_entries(
+    ledger: SideEffectLedger,
+    *,
+    tool_name: Identifier | None = None,
+    executed: bool | None = None,
+) -> tuple[dict[str, JSONValue], ...]:
+    """Select verified evidence without changing its ledger order."""
+    summarize_audit(ledger)
+    selected: list[dict[str, JSONValue]] = []
+    for link in ledger.links:
+        if not isinstance(link.payload, dict):
+            raise ValueError("side-effect ledger payload must be an object")
+        payload = link.payload
+        if tool_name is not None and payload.get("tool_name") != str(tool_name):
+            continue
+        if executed is not None and payload.get("executed") is not executed:
+            continue
+        selected.append(dict(payload))
+    return tuple(selected)
