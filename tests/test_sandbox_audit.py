@@ -11,7 +11,9 @@ from voxwright.sandbox_audit import (
     audit_to_dict,
     decode_audit,
     encode_audit,
+    load_audit,
     summarize_audit,
+    write_audit,
 )
 
 GOLDEN = Path(__file__).parent / "golden" / "sandbox_audit.json"
@@ -95,3 +97,20 @@ def test_sandbox_audit_matches_reviewed_golden_bytes() -> None:
     box.execute("notes.add", {"text": "blocked"})
     assert encode_audit(box.ledger).encode() == GOLDEN.read_bytes()
     assert decode_audit(GOLDEN.read_text(encoding="utf-8")).links == box.ledger.links
+
+
+def test_sandbox_audit_files_roundtrip_without_clobbering(tmp_path: Path) -> None:
+    box = ToolSandbox(PermissionPolicy({}))
+    box.execute("notes.add", {"text": "blocked"})
+    path = tmp_path / "audit.json"
+    write_audit(path, box.ledger)
+    assert load_audit(path).links == box.ledger.links
+    with pytest.raises(FileExistsError, match="output already exists"):
+        write_audit(path, box.ledger.__class__())
+
+
+def test_sandbox_audit_loader_detects_truncation(tmp_path: Path) -> None:
+    path = tmp_path / "audit.json"
+    path.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="missing terminal newline"):
+        load_audit(path)

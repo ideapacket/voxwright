@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from voxwright.core import JSONValue, canonical_json, parse_json
 from voxwright.hashing import ChainLink
@@ -109,3 +110,18 @@ def decode_audit(text: str) -> SideEffectLedger:
     if not text.strip():
         raise ValueError("sandbox audit document is empty")
     return audit_from_dict(parse_json(text))
+
+
+def load_audit(path: Path) -> SideEffectLedger:
+    text = path.read_text(encoding="utf-8")
+    if text and not text.endswith("\n"):
+        raise ValueError(f"sandbox audit file is missing terminal newline: {path}")
+    return decode_audit(text)
+
+
+def write_audit(path: Path, ledger: SideEffectLedger) -> None:
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_audit(ledger))
+    except FileExistsError as error:
+        raise FileExistsError(f"sandbox audit output already exists: {path}") from error
