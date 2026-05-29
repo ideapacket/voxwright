@@ -12,6 +12,8 @@ from voxwright.identifiers import Identifier
 from voxwright.manifests import read_manifest
 from voxwright.recording import SessionRecorder
 from voxwright.run_artifacts import decode_runs
+from voxwright.sandbox import PermissionPolicy, ToolSandbox
+from voxwright.sandbox_audit import write_audit
 from voxwright.workflow import StepKind, WorkflowDefinition, WorkflowStep
 from voxwright.workflow_codec import write_workflow
 
@@ -127,6 +129,18 @@ def test_validate_reports_checkpoint_recovery_facts(tmp_path: object, capsys: ob
     assert capsys.readouterr().out == (  # type: ignore[attr-defined]
         '{"artifact":"checkpoint","completed":1,'
         '"digest":"sha256:' + "3" * 64 + '","state_keys":["count"],"valid":true}\n'
+    )
+
+
+def test_validate_reports_verified_sandbox_audit_counts(tmp_path: object, capsys: object) -> None:
+    path = tmp_path / "audit.json"  # type: ignore[operator]
+    box = ToolSandbox(PermissionPolicy({}))
+    box.execute("notes.add", {"text": "blocked"})
+    write_audit(path, box.ledger)
+    assert main(["validate", "audit", str(path)]) == 0
+    assert capsys.readouterr().out == (  # type: ignore[attr-defined]
+        '{"artifact":"audit","confirmation_required":0,"denied":1,"dry_runs":0,'
+        '"executed":0,"total":1,"valid":true}\n'
     )
 
 

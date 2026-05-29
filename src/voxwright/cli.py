@@ -18,6 +18,7 @@ from voxwright.recording import load_session, summarize
 from voxwright.replay import replay
 from voxwright.reports import CoverageFacts, ReportSpec, render_html, render_markdown
 from voxwright.run_artifacts import decode_runs, encode_runs, scripted_run
+from voxwright.sandbox_audit import load_audit, summarize_audit
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 from voxwright.session_diff import diff_traces, format_differences
 from voxwright.workflow_codec import load_workflow, workflow_digest
@@ -104,13 +105,24 @@ def _validate(args: argparse.Namespace) -> int:
         }
         if diagram is not None:
             result["diagram"] = str(diagram)
-    else:
+    elif args.artifact == "checkpoint":
         checkpoint = load_checkpoint(path)
         result = {
             "artifact": "checkpoint",
             "completed": len(checkpoint.completed),
             "digest": checkpoint.digest,
             "state_keys": sorted(checkpoint.state),
+            "valid": True,
+        }
+    else:
+        summary = summarize_audit(load_audit(path))
+        result = {
+            "artifact": "audit",
+            "confirmation_required": summary.confirmation_required,
+            "denied": summary.denied,
+            "dry_runs": summary.dry_runs,
+            "executed": summary.executed,
+            "total": summary.total,
             "valid": True,
         }
     print(canonical_json(result))
@@ -284,7 +296,7 @@ def build_parser() -> argparse.ArgumentParser:
     simulate.set_defaults(handler=_simulate)
     validate = commands["validate"]
     validate.add_argument(
-        "artifact", choices=("manifest", "session", "runs", "workflow", "checkpoint")
+        "artifact", choices=("manifest", "session", "runs", "workflow", "checkpoint", "audit")
     )
     validate.add_argument("path", type=Path)
     validate.add_argument("--diagram", type=Path, help="workflow 专用 SVG 输出路径")
