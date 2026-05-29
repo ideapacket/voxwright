@@ -144,6 +144,23 @@ def test_validate_reports_verified_sandbox_audit_counts(tmp_path: object, capsys
     )
 
 
+def test_validate_audit_surfaces_truncation_and_chain_tampering(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "audit.json"  # type: ignore[operator]
+    path.write_text("{}", encoding="utf-8")
+    assert main(["validate", "audit", str(path)]) == 2
+    assert "missing terminal newline" in capsys.readouterr().err  # type: ignore[attr-defined]
+    box = ToolSandbox(PermissionPolicy({}))
+    box.execute("notes.add", {"text": "blocked"})
+    path.unlink()
+    write_audit(path, box.ledger)
+    content = path.read_text(encoding="utf-8")
+    path.write_text(content.replace('"digest":"sha256:', '"digest":"sha256:0'), encoding="utf-8")
+    assert main(["validate", "audit", str(path)]) == 2
+    assert "chain is invalid" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
 def test_validate_checkpoint_reports_shape_digest_and_truncation_errors(
     tmp_path: object, capsys: object
 ) -> None:
