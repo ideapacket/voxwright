@@ -80,11 +80,11 @@ def _validate(args: argparse.Namespace) -> int:
         result = {"artifact": "manifest", "count": len(scenarios), "valid": True}
     elif args.artifact == "session":
         records = load_session(path)
-        summary = summarize(records)
+        recording_summary = summarize(records)
         result = {
             "artifact": "session",
-            "count": summary.event_count,
-            "digest": summary.final_digest,
+            "count": recording_summary.event_count,
+            "digest": recording_summary.final_digest,
             "valid": True,
         }
     elif args.artifact == "runs":
@@ -115,14 +115,14 @@ def _validate(args: argparse.Namespace) -> int:
             "valid": True,
         }
     else:
-        summary = summarize_audit(load_audit(path))
+        audit_summary = summarize_audit(load_audit(path))
         result = {
             "artifact": "audit",
-            "confirmation_required": summary.confirmation_required,
-            "denied": summary.denied,
-            "dry_runs": summary.dry_runs,
-            "executed": summary.executed,
-            "total": summary.total,
+            "confirmation_required": audit_summary.confirmation_required,
+            "denied": audit_summary.denied,
+            "dry_runs": audit_summary.dry_runs,
+            "executed": audit_summary.executed,
+            "total": audit_summary.total,
             "valid": True,
         }
     print(canonical_json(result))
