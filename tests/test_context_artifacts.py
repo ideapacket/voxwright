@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.context import AttachmentKind, ContextAttachment
-from voxwright.context_artifacts import attachment_from_dict, attachment_to_dict
+from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
+from voxwright.context_artifacts import (
+    attachment_from_dict,
+    attachment_to_dict,
+    context_from_dict,
+    context_to_dict,
+)
 from voxwright.identifiers import Identifier
 
 
@@ -54,3 +59,14 @@ def test_attachment_decoder_rejects_field_drift_with_path() -> None:
     encoded.pop("content")
     with pytest.raises(ValueError, match="expected exact"):
         attachment_from_dict(encoded)
+
+
+def test_context_snapshot_roundtrips_order_and_budget() -> None:
+    manager = ContextManager(12)
+    manager.add(sample_attachment())
+    manager.add(
+        ContextAttachment(Identifier("doc-1"), AttachmentKind.DOCUMENT, "synthetic", token_cost=2)
+    )
+    decoded = context_from_dict(context_to_dict(manager))
+    assert decoded.token_budget == 12
+    assert decoded.attachments == manager.attachments

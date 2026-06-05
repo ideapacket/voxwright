@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from voxwright.context import AttachmentKind, ContextAttachment
+from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
 from voxwright.core import JSONValue
 from voxwright.identifiers import Identifier
 
@@ -41,3 +41,29 @@ def attachment_from_dict(value: JSONValue, path: str = "$.attachment") -> Contex
     except ValueError as error:
         raise ValueError(f"{path}.kind: unknown attachment kind {kind!r}") from error
     return ContextAttachment(Identifier(context_id), attachment_kind, value["content"], *integers)
+
+
+def context_to_dict(manager: ContextManager) -> dict[str, JSONValue]:
+    return {
+        "schema_version": 1,
+        "token_budget": manager.token_budget,
+        "attachments": [attachment_to_dict(item) for item in manager.attachments],
+    }
+
+
+def context_from_dict(value: JSONValue) -> ContextManager:
+    expected = {"schema_version", "token_budget", "attachments"}
+    if not isinstance(value, dict) or set(value) != expected:
+        raise ValueError("$: expected exact context snapshot fields")
+    if value["schema_version"] != 1 or isinstance(value["schema_version"], bool):
+        raise ValueError(f"$.schema_version: unsupported version {value['schema_version']!r}")
+    budget = value["token_budget"]
+    attachments = value["attachments"]
+    if isinstance(budget, bool) or not isinstance(budget, int):
+        raise TypeError("$.token_budget: expected integer")
+    if not isinstance(attachments, list):
+        raise TypeError("$.attachments: expected array")
+    manager = ContextManager(budget)
+    for index, item in enumerate(attachments):
+        manager.add(attachment_from_dict(item, f"$.attachments[{index}]"))
+    return manager
