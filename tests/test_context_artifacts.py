@@ -43,3 +43,14 @@ def test_attachment_decoder_rejects_unknown_kind_and_scalar_coercion() -> None:
     encoded["token_cost"] = True
     with pytest.raises(TypeError, match="token_cost: expected integer"):
         attachment_from_dict(encoded)
+
+
+def test_attachment_decoder_rejects_field_drift_with_path() -> None:
+    encoded = attachment_to_dict(sample_attachment())
+    encoded["owner"] = "unversioned"
+    with pytest.raises(ValueError, match=r"\$\.items\[2\]: expected exact"):
+        attachment_from_dict(encoded, "$.items[2]")
+    encoded.pop("owner")
+    encoded.pop("content")
+    with pytest.raises(ValueError, match="expected exact"):
+        attachment_from_dict(encoded)
