@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
 from voxwright.core import JSONValue, canonical_json, parse_json
 from voxwright.identifiers import Identifier
@@ -77,3 +79,18 @@ def decode_context(text: str) -> ContextManager:
     if not text.strip():
         raise ValueError("context snapshot document is empty")
     return context_from_dict(parse_json(text))
+
+
+def load_context(path: Path) -> ContextManager:
+    text = path.read_text(encoding="utf-8")
+    if text and not text.endswith("\n"):
+        raise ValueError(f"context snapshot is missing terminal newline: {path}")
+    return decode_context(text)
+
+
+def write_context(path: Path, manager: ContextManager) -> None:
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_context(manager))
+    except FileExistsError as error:
+        raise FileExistsError(f"context snapshot output already exists: {path}") from error

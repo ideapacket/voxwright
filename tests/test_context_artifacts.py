@@ -12,6 +12,8 @@ from voxwright.context_artifacts import (
     context_to_dict,
     decode_context,
     encode_context,
+    load_context,
+    write_context,
 )
 from voxwright.identifiers import Identifier
 
@@ -99,3 +101,17 @@ def test_context_snapshot_matches_reviewed_golden_bytes() -> None:
     manager.add(sample_attachment())
     assert encode_context(manager).encode() == GOLDEN.read_bytes()
     assert decode_context(GOLDEN.read_text(encoding="utf-8")).attachments == manager.attachments
+
+
+def test_context_snapshot_files_are_complete_and_nonclobbering(tmp_path: Path) -> None:
+    manager = ContextManager(8)
+    manager.add(sample_attachment())
+    path = tmp_path / "context.json"
+    write_context(path, manager)
+    assert load_context(path).attachments == manager.attachments
+    with pytest.raises(FileExistsError, match="output already exists"):
+        write_context(path, ContextManager(1))
+    path.unlink()
+    path.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="missing terminal newline"):
+        load_context(path)
