@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
@@ -12,6 +14,8 @@ from voxwright.context_artifacts import (
     encode_context,
 )
 from voxwright.identifiers import Identifier
+
+GOLDEN = Path(__file__).parent / "golden" / "context_snapshot.json"
 
 
 def sample_attachment() -> ContextAttachment:
@@ -88,3 +92,10 @@ def test_context_text_decoder_rejects_empty_and_trailing_documents() -> None:
         decode_context("\n")
     with pytest.raises(ValueError):
         decode_context('{"attachments":[]}{}')
+
+
+def test_context_snapshot_matches_reviewed_golden_bytes() -> None:
+    manager = ContextManager(8)
+    manager.add(sample_attachment())
+    assert encode_context(manager).encode() == GOLDEN.read_bytes()
+    assert decode_context(GOLDEN.read_text(encoding="utf-8")).attachments == manager.attachments
