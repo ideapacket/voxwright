@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
-from voxwright.core import JSONValue
+from voxwright.core import JSONValue, canonical_json, parse_json
 from voxwright.identifiers import Identifier
 
 
@@ -67,3 +67,13 @@ def context_from_dict(value: JSONValue) -> ContextManager:
     for index, item in enumerate(attachments):
         manager.add(attachment_from_dict(item, f"$.attachments[{index}]"))
     return manager
+
+
+def encode_context(manager: ContextManager) -> str:
+    return canonical_json(context_to_dict(manager)) + "\n"
+
+
+def decode_context(text: str) -> ContextManager:
+    if not text.strip():
+        raise ValueError("context snapshot document is empty")
+    return context_from_dict(parse_json(text))

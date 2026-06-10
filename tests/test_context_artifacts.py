@@ -8,6 +8,8 @@ from voxwright.context_artifacts import (
     attachment_to_dict,
     context_from_dict,
     context_to_dict,
+    decode_context,
+    encode_context,
 )
 from voxwright.identifiers import Identifier
 
@@ -70,3 +72,19 @@ def test_context_snapshot_roundtrips_order_and_budget() -> None:
     decoded = context_from_dict(context_to_dict(manager))
     assert decoded.token_budget == 12
     assert decoded.attachments == manager.attachments
+
+
+def test_context_text_codec_is_canonical_and_deterministic() -> None:
+    manager = ContextManager(8)
+    manager.add(sample_attachment())
+    encoded = encode_context(manager)
+    assert encoded.endswith("\n") and " " not in encoded
+    decoded = decode_context(encoded)
+    assert encode_context(decoded).encode() == encoded.encode()
+
+
+def test_context_text_decoder_rejects_empty_and_trailing_documents() -> None:
+    with pytest.raises(ValueError, match="document is empty"):
+        decode_context("\n")
+    with pytest.raises(ValueError):
+        decode_context('{"attachments":[]}{}')
