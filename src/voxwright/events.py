@@ -27,6 +27,7 @@ class EventKind(str, Enum):
     REPAIR_REQUEST = "repair-request"
     ERROR = "error"
     HANDOFF = "handoff"
+    CONTEXT_UPDATE = "context-update"
 
 
 def _object(value: object, path: str) -> dict[str, JSONValue]:
@@ -444,6 +445,60 @@ class HandoffEvent:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ContextUpdate:
+    """A session-visible reference to an exact versioned context snapshot."""
+
+    snapshot_digest: str
+    versions: dict[str, int]
+    token_cost: int
+    evicted: tuple[Identifier, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.snapshot_digest.startswith("sha256:") or len(self.snapshot_digest) != 71:
+            raise ValueError("context snapshot digest must be algorithm-qualified SHA-256")
+        if isinstance(self.token_cost, bool) or self.token_cost < 0:
+            raise ValueError("context token cost must be a non-negative integer")
+        checked: dict[str, int] = {}
+        for name, version in self.versions.items():
+            Identifier(name)
+            if isinstance(version, bool) or not isinstance(version, int) or version < 1:
+                raise ValueError("context versions must be positive integers")
+            checked[name] = version
+        object.__setattr__(self, "versions", checked)
+        if len(set(self.evicted)) != len(self.evicted):
+            raise ValueError("evicted context identifiers must be unique")
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        return {
+            "snapshot_digest": self.snapshot_digest,
+            "versions": self.versions,
+            "token_cost": self.token_cost,
+            "evicted": [str(item) for item in self.evicted],
+        }
+
+    @classmethod
+    def from_payload(cls, value: object) -> ContextUpdate:
+        data = _object(value, "$.payload")
+        _exact(data, {"snapshot_digest", "versions", "token_cost", "evicted"}, "$.payload")
+        versions = _object(data["versions"], "$.payload.versions")
+        decoded_versions: dict[str, int] = {}
+        for name, version in versions.items():
+            decoded_versions[name] = _integer(version, f"$.payload.versions.{name}")
+        evicted = data["evicted"]
+        if not isinstance(evicted, list):
+            raise TypeError("$.payload.evicted: expected array")
+        return cls(
+            _text(data["snapshot_digest"], "$.payload.snapshot_digest"),
+            decoded_versions,
+            _integer(data["token_cost"], "$.payload.token_cost"),
+            tuple(
+                Identifier(_text(item, f"$.payload.evicted[{index}]"))
+                for index, item in enumerate(evicted)
+            ),
+        )
+
+
 class PayloadCodec(Protocol):
     """Structural contract shared by typed event payload classes."""
 
@@ -460,6 +515,7 @@ EventPayload: TypeAlias = (
     | RepairRequest
     | ErrorEvent
     | HandoffEvent
+    | ContextUpdate
 )
 
 PAYLOAD_TYPES: dict[EventKind, type[EventPayload]] = {
@@ -473,6 +529,7 @@ PAYLOAD_TYPES: dict[EventKind, type[EventPayload]] = {
     EventKind.REPAIR_REQUEST: RepairRequest,
     EventKind.ERROR: ErrorEvent,
     EventKind.HANDOFF: HandoffEvent,
+    EventKind.CONTEXT_UPDATE: ContextUpdate,
 }
 
 

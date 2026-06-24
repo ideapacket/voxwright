@@ -8,6 +8,7 @@ from voxwright.events import (
     EVENT_SCHEMA_VERSION,
     AgentUtterance,
     AudioBlock,
+    ContextUpdate,
     ErrorEvent,
     EventEnvelope,
     EventKind,
@@ -41,6 +42,7 @@ def test_event_kind_registry_is_complete() -> None:
         "repair-request",
         "error",
         "handoff",
+        "context-update",
     }
 
 
@@ -284,6 +286,10 @@ def test_handoff_queue_cannot_be_blank() -> None:
         (EventKind.REPAIR_REQUEST, RepairRequest(Identifier("reask"), "请重复", 1)),
         (EventKind.ERROR, ErrorEvent(Identifier("runtime.error"), "failed")),
         (EventKind.HANDOFF, HandoffEvent(Identifier("policy"), "transfer")),
+        (
+            EventKind.CONTEXT_UPDATE,
+            ContextUpdate("sha256:" + "1" * 64, {"screen-1": 2}, 4),
+        ),
     ],
 )
 def test_payload_registry_roundtrips_every_event_kind(kind: EventKind, payload: object) -> None:
