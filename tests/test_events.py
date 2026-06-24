@@ -270,6 +270,42 @@ def test_handoff_queue_cannot_be_blank() -> None:
         HandoffEvent(Identifier("policy"), "transfer", "")
 
 
+def test_context_update_roundtrips_versions_and_evictions() -> None:
+    update = ContextUpdate(
+        "sha256:" + "2" * 64,
+        {"screen-1": 2, "document-1": 1},
+        7,
+        (Identifier("old-screen"),),
+    )
+    assert ContextUpdate.from_payload(update.to_payload()) == update
+    assert update.to_payload()["evicted"] == ["old-screen"]
+
+
+def test_context_update_rejects_invalid_digest_versions_and_duplicates() -> None:
+    with pytest.raises(ValueError, match="algorithm-qualified"):
+        ContextUpdate("bad", {}, 0)
+    with pytest.raises(ValueError, match="positive integers"):
+        ContextUpdate("sha256:" + "2" * 64, {"screen-1": 0}, 0)
+    with pytest.raises(ValueError, match="must be unique"):
+        ContextUpdate(
+            "sha256:" + "2" * 64,
+            {},
+            0,
+            (Identifier("old"), Identifier("old")),
+        )
+
+
+def test_context_update_decoder_reports_nested_version_types() -> None:
+    payload = {
+        "snapshot_digest": "sha256:" + "2" * 64,
+        "versions": {"screen-1": True},
+        "token_cost": 1,
+        "evicted": [],
+    }
+    with pytest.raises(TypeError, match=r"versions\.screen-1: expected integer"):
+        ContextUpdate.from_payload(payload)
+
+
 @pytest.mark.parametrize(
     ("kind", "payload"),
     [
