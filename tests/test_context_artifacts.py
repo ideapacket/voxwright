@@ -11,6 +11,7 @@ from voxwright.context_artifacts import (
     context_digest,
     context_from_dict,
     context_to_dict,
+    context_update,
     decode_context,
     encode_context,
     load_context,
@@ -137,3 +138,13 @@ def test_context_digest_changes_with_version_content_and_budget() -> None:
     digests = {context_digest(item) for item in (original, revised, smaller)}
     assert len(digests) == 3
     assert all(item.startswith("sha256:") for item in digests)
+
+
+def test_context_update_captures_visible_versions_and_evictions() -> None:
+    manager = ContextManager(8)
+    manager.add(sample_attachment())
+    update = context_update(manager, (Identifier("old-screen"),))
+    assert update.snapshot_digest == context_digest(manager)
+    assert update.versions == {"screen-1": 3}
+    assert update.token_cost == 4
+    assert update.evicted == (Identifier("old-screen"),)

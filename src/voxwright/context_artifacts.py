@@ -6,6 +6,7 @@ from pathlib import Path
 
 from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
 from voxwright.core import JSONValue, canonical_json, parse_json
+from voxwright.events import ContextUpdate
 from voxwright.hashing import content_digest
 from voxwright.identifiers import Identifier
 
@@ -100,3 +101,9 @@ def write_context(path: Path, manager: ContextManager) -> None:
 def context_digest(manager: ContextManager) -> str:
     """Identify exact canonical context bytes, including versions and budget."""
     return content_digest(encode_context(manager).encode("utf-8"))
+
+
+def context_update(manager: ContextManager, evicted: tuple[Identifier, ...] = ()) -> ContextUpdate:
+    """Describe the exact context versions visible after deterministic eviction."""
+    versions = {str(item.context_id): item.version for item in manager.attachments}
+    return ContextUpdate(context_digest(manager), versions, manager.token_cost, evicted)
