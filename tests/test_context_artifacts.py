@@ -17,7 +17,9 @@ from voxwright.context_artifacts import (
     load_context,
     write_context,
 )
+from voxwright.events import EventKind, decode_payload, envelope_for
 from voxwright.identifiers import Identifier
+from voxwright.recording import SessionRecorder, load_session
 
 GOLDEN = Path(__file__).parent / "golden" / "context_snapshot.json"
 
@@ -148,3 +150,16 @@ def test_context_update_captures_visible_versions_and_evictions() -> None:
     assert update.versions == {"screen-1": 3}
     assert update.token_cost == 4
     assert update.evicted == (Identifier("old-screen"),)
+
+
+def test_context_update_survives_checksummed_session_recording(tmp_path: Path) -> None:
+    manager = ContextManager(8)
+    manager.add(sample_attachment())
+    update = context_update(manager)
+    event = envelope_for(Identifier("session-context"), 0, 25, EventKind.CONTEXT_UPDATE, update)
+    path = tmp_path / "session.jsonl"
+    SessionRecorder(path).append(event)
+    records = load_session(path)
+    assert len(records) == 1
+    assert decode_payload(records[0].event) == update
+    assert records[0].event.payload["snapshot_digest"] == context_digest(manager)
