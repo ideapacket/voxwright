@@ -8,6 +8,7 @@ from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
 from voxwright.context_artifacts import (
     attachment_from_dict,
     attachment_to_dict,
+    context_digest,
     context_from_dict,
     context_to_dict,
     decode_context,
@@ -115,3 +116,24 @@ def test_context_snapshot_files_are_complete_and_nonclobbering(tmp_path: Path) -
     path.write_text("{}", encoding="utf-8")
     with pytest.raises(ValueError, match="missing terminal newline"):
         load_context(path)
+
+
+def test_context_digest_changes_with_version_content_and_budget() -> None:
+    original = ContextManager(8)
+    original.add(sample_attachment())
+    revised = ContextManager(8)
+    revised.add(
+        ContextAttachment(
+            Identifier("screen-1"),
+            AttachmentKind.SCREEN_STATE,
+            {"page": "music"},
+            version=4,
+            token_cost=4,
+            priority=2,
+        )
+    )
+    smaller = ContextManager(7)
+    smaller.add(sample_attachment())
+    digests = {context_digest(item) for item in (original, revised, smaller)}
+    assert len(digests) == 3
+    assert all(item.startswith("sha256:") for item in digests)

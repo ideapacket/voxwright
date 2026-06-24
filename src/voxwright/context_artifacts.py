@@ -6,6 +6,7 @@ from pathlib import Path
 
 from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
 from voxwright.core import JSONValue, canonical_json, parse_json
+from voxwright.hashing import content_digest
 from voxwright.identifiers import Identifier
 
 
@@ -94,3 +95,8 @@ def write_context(path: Path, manager: ContextManager) -> None:
             stream.write(encode_context(manager))
     except FileExistsError as error:
         raise FileExistsError(f"context snapshot output already exists: {path}") from error
+
+
+def context_digest(manager: ContextManager) -> str:
+    """Identify exact canonical context bytes, including versions and budget."""
+    return content_digest(encode_context(manager).encode("utf-8"))
