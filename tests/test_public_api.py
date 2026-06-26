@@ -31,6 +31,9 @@ def test_public_api_exports_real_application_mechanics() -> None:
         "AuditSummary",
         "audit_entries",
         "summarize_audit",
+        "ContextUpdate",
+        "context_digest",
+        "context_update",
     }
     assert required <= set(voxwright.__all__)
     assert all(hasattr(voxwright, name) for name in voxwright.__all__)
@@ -39,7 +42,7 @@ def test_public_api_exports_real_application_mechanics() -> None:
 
 def test_public_api_contract_is_sorted_and_exact() -> None:
     assert voxwright.__all__ == sorted(voxwright.__all__)
-    assert len(voxwright.__all__) == 64
+    assert len(voxwright.__all__) == 71
     assert voxwright.__all__[0] == "AdapterCapabilities"
     assert voxwright.__all__[-1] == "write_workflow"
 

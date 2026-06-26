@@ -20,8 +20,23 @@ from voxwright.checkpoints import (
     verify_checkpoint,
 )
 from voxwright.context import ContextAttachment, ContextManager, GroundedAct
+from voxwright.context_artifacts import (
+    context_digest,
+    context_update,
+    decode_context,
+    encode_context,
+    load_context,
+    write_context,
+)
 from voxwright.evaluation import EvaluationRun, MetricBundle, score_runs
-from voxwright.events import EventEnvelope, EventKind, Intent, Transcript, envelope_for
+from voxwright.events import (
+    ContextUpdate,
+    EventEnvelope,
+    EventKind,
+    Intent,
+    Transcript,
+    envelope_for,
+)
 from voxwright.frames import ConfirmationPolicy, FrameStack, GroundedSlot, TaskFrame
 from voxwright.repair import RepairConfig, RepairOutcome, RepairStrategy, run_repair
 from voxwright.runtime import LatencyBudget, LatencyTrace
@@ -54,6 +69,7 @@ __all__ = [
     "ConfirmationPolicy",
     "ContextAttachment",
     "ContextManager",
+    "ContextUpdate",
     "EvaluationRun",
     "EventEnvelope",
     "EventKind",
@@ -92,14 +108,19 @@ __all__ = [
     "application_scenario",
     "audit_entries",
     "checkpoint_from_ledger",
+    "context_digest",
+    "context_update",
     "decode_audit",
     "decode_checkpoint",
+    "decode_context",
     "decode_workflow",
     "encode_audit",
     "encode_checkpoint",
+    "encode_context",
     "encode_workflow",
     "envelope_for",
     "load_audit",
+    "load_context",
     "load_workflow",
     "parse_call",
     "resume_suffix",
@@ -110,5 +131,6 @@ __all__ = [
     "verify_checkpoint",
     "workflow_digest",
     "write_audit",
+    "write_context",
     "write_workflow",
 ]
