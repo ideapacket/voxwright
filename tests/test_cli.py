@@ -7,6 +7,8 @@ import sys
 
 from voxwright.checkpoints import WorkflowCheckpoint, write_checkpoint
 from voxwright.cli import build_parser, main
+from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
+from voxwright.context_artifacts import write_context
 from voxwright.events import EventEnvelope, EventKind
 from voxwright.identifiers import Identifier
 from voxwright.manifests import read_manifest
@@ -142,6 +144,27 @@ def test_validate_reports_verified_sandbox_audit_counts(tmp_path: object, capsys
         '{"artifact":"audit","confirmation_required":0,"denied":1,"dry_runs":0,'
         '"executed":0,"total":1,"valid":true}\n'
     )
+
+
+def test_validate_reports_context_snapshot_budget_and_identity(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "context.json"  # type: ignore[operator]
+    manager = ContextManager(10)
+    manager.add(
+        ContextAttachment(
+            Identifier("screen-1"),
+            AttachmentKind.SCREEN_STATE,
+            {"page": "calendar"},
+            token_cost=3,
+        )
+    )
+    write_context(path, manager)
+    assert main(["validate", "context", str(path)]) == 0
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"artifact":"context"' in output and '"attachments":1' in output
+    assert '"token_budget":10' in output and '"token_cost":3' in output
+    assert '"digest":"sha256:' in output
 
 
 def test_validate_audit_surfaces_truncation_and_chain_tampering(

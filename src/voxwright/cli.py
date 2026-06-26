@@ -10,6 +10,7 @@ from pathlib import Path
 from voxwright import __version__
 from voxwright.campaign import CampaignArtifact
 from voxwright.checkpoints import load_checkpoint
+from voxwright.context_artifacts import context_digest, load_context
 from voxwright.core import canonical_json
 from voxwright.evaluation import score_runs
 from voxwright.latency import RunOutcome, latency_success_curve
@@ -114,7 +115,7 @@ def _validate(args: argparse.Namespace) -> int:
             "state_keys": sorted(checkpoint.state),
             "valid": True,
         }
-    else:
+    elif args.artifact == "audit":
         audit_summary = summarize_audit(load_audit(path))
         result = {
             "artifact": "audit",
@@ -123,6 +124,16 @@ def _validate(args: argparse.Namespace) -> int:
             "dry_runs": audit_summary.dry_runs,
             "executed": audit_summary.executed,
             "total": audit_summary.total,
+            "valid": True,
+        }
+    else:
+        manager = load_context(path)
+        result = {
+            "artifact": "context",
+            "attachments": len(manager.attachments),
+            "digest": context_digest(manager),
+            "token_budget": manager.token_budget,
+            "token_cost": manager.token_cost,
             "valid": True,
         }
     print(canonical_json(result))
@@ -296,7 +307,8 @@ def build_parser() -> argparse.ArgumentParser:
     simulate.set_defaults(handler=_simulate)
     validate = commands["validate"]
     validate.add_argument(
-        "artifact", choices=("manifest", "session", "runs", "workflow", "checkpoint", "audit")
+        "artifact",
+        choices=("manifest", "session", "runs", "workflow", "checkpoint", "audit", "context"),
     )
     validate.add_argument("path", type=Path)
     validate.add_argument("--diagram", type=Path, help="workflow 专用 SVG 输出路径")
