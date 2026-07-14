@@ -167,6 +167,21 @@ def test_validate_reports_context_snapshot_budget_and_identity(
     assert '"digest":"sha256:' in output
 
 
+def test_validate_context_reports_version_budget_and_truncation_errors(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "context.json"  # type: ignore[operator]
+    path.write_text('{"attachments":[],"schema_version":2,"token_budget":1}\n', encoding="utf-8")
+    assert main(["validate", "context", str(path)]) == 2
+    assert "unsupported version 2" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text('{"attachments":[],"schema_version":1,"token_budget":0}\n', encoding="utf-8")
+    assert main(["validate", "context", str(path)]) == 2
+    assert "budget must be positive" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text("{}", encoding="utf-8")
+    assert main(["validate", "context", str(path)]) == 2
+    assert "missing terminal newline" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
 def test_validate_audit_surfaces_truncation_and_chain_tampering(
     tmp_path: object, capsys: object
 ) -> None:
