@@ -9,6 +9,7 @@ voxwright validate runs runs.jsonl
 voxwright validate workflow workflow.json --diagram workflow.svg
 voxwright validate checkpoint checkpoint.json
 voxwright validate audit sandbox-audit.json
+voxwright validate context context.json
 voxwright score runs.jsonl
 voxwright bench runs.jsonl --budgets 50 75 100 150
 voxwright report runs.jsonl report.html --format html
@@ -33,3 +34,7 @@ step 数量及 canonical digest。可选 `--diagram` 写出确定性的自包含
 
 `validate audit` 重新计算完整 hash chain，并分别报告 executed、denied、confirmation-required 和
 dry-run 数量。统计只描述输入制品中的 synthetic side-effect 证据，不代表真实 backend 审计。
+
+`validate context` 严格校验 snapshot schema、attachment version 与 budget accounting，并打印
+canonical digest。它处理原始 snapshot；传给 adapter 的 view 仍会执行预算 eviction 与 PII-like
+redaction。
