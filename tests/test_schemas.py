@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 
 from voxwright.checkpoints import WorkflowCheckpoint, checkpoint_to_dict
+from voxwright.context import ContextManager
+from voxwright.context_artifacts import context_to_dict
 from voxwright.core import canonical_json
 from voxwright.identifiers import Identifier
 from voxwright.sandbox import SideEffectLedger
@@ -17,7 +19,7 @@ from voxwright.workflow_codec import workflow_to_dict
 def test_schema_catalog_has_unique_sorted_public_names() -> None:
     names = [item.name for item in ARTIFACT_SCHEMAS]
     assert names == sorted(names)
-    assert len(names) == len(set(names)) == 13
+    assert len(names) == len(set(names)) == 14
     assert all(item.version == 1 for item in ARTIFACT_SCHEMAS)
     assert schema_catalog() == [item.to_dict() for item in ARTIFACT_SCHEMAS]
 
@@ -63,6 +65,12 @@ def test_side_effect_schema_matches_the_verified_audit_codec() -> None:
     schema = artifact_schema("side-effect-ledger")
     assert tuple(audit_to_dict(SideEffectLedger())) == schema.required_fields
     assert schema.media_type == "application/json" and schema.checksummed
+
+
+def test_context_schema_fields_match_the_snapshot_codec() -> None:
+    schema = artifact_schema("context-snapshot")
+    assert tuple(context_to_dict(ContextManager(1))) == schema.required_fields
+    assert schema.media_type == "application/json" and not schema.checksummed
 
 
 @pytest.mark.parametrize("schema", ARTIFACT_SCHEMAS, ids=lambda item: item.name)

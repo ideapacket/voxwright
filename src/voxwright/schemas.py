@@ -42,6 +42,13 @@ ARTIFACT_SCHEMAS = (
         False,
     ),
     ArtifactSchema(
+        "context-snapshot",
+        1,
+        "application/json",
+        ("schema_version", "token_budget", "attachments"),
+        False,
+    ),
+    ArtifactSchema(
         "event",
         1,
         "application/json",
