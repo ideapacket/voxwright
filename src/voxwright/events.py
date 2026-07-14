@@ -470,9 +470,10 @@ class ContextUpdate:
             raise ValueError("evicted context identifiers must be unique")
 
     def to_payload(self) -> dict[str, JSONValue]:
+        encoded_versions: dict[str, JSONValue] = dict(self.versions)
         return {
             "snapshot_digest": self.snapshot_digest,
-            "versions": self.versions,
+            "versions": encoded_versions,
             "token_cost": self.token_cost,
             "evicted": [str(item) for item in self.evicted],
         }
