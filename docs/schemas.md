@@ -28,3 +28,7 @@ workflow definition 采用单个 canonical JSON 文档，显式保存 schema ver
 workflow checkpoint 记录已完成 step 的严格前缀、最后状态和 ledger tail digest。读取文件时会检查
 schema、字段类型与末尾换行；恢复前用 `verify_checkpoint` 对照完整的 hash-chain ledger，任何状态、
 前缀、digest 或 ledger 历史变化都会被拒绝。`resume_suffix` 只返回声明顺序中尚未完成的后缀。
+
+context snapshot 保存 token budget 和 attachment 的 id、kind、content、version、cost、priority；
+canonical digest 会随任一版本或内容变化。每次应用上下文变化可写成 `context-update` session event，
+其中引用 snapshot digest 和当前版本表，因此 replay 可验证当时 adapter 可见的应用状态。
