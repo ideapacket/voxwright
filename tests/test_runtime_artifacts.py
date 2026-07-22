@@ -6,6 +6,8 @@ from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace, Runtime
 from voxwright.runtime_artifacts import (
     block_from_dict,
     block_to_dict,
+    decode_runtime,
+    encode_runtime,
     sample_from_dict,
     sample_to_dict,
     turn_from_dict,
@@ -54,3 +56,23 @@ def test_runtime_turn_codec_preserves_stage_order_and_idle_gaps() -> None:
     turn = RuntimeTurn(StreamBlock(0, 10, 5), trace)
     assert turn_from_dict(turn_to_dict(turn)) == turn
     assert turn_from_dict(turn_to_dict(turn)).trace.elapsed_ms == 12
+
+
+def test_runtime_artifact_text_is_canonical_and_reversible() -> None:
+    turn = RuntimeTurn(
+        StreamBlock(0, 0, 10, True),
+        LatencyTrace((LatencySample(LatencyStage.PERCEPTION, 0, 3),)),
+    )
+    encoded = encode_runtime((turn,))
+    assert encoded.endswith("\n") and " " not in encoded
+    assert decode_runtime(encoded) == (turn,)
+    assert encode_runtime(decode_runtime(encoded)).encode() == encoded.encode()
+
+
+def test_runtime_artifact_requires_nonempty_single_document() -> None:
+    with pytest.raises(ValueError, match="at least one turn"):
+        encode_runtime(())
+    with pytest.raises(ValueError, match="document is empty"):
+        decode_runtime("\n")
+    with pytest.raises(ValueError):
+        decode_runtime('{"schema_version":1,"turns":[]}{}')
