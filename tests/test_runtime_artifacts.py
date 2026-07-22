@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.runtime import LatencySample, LatencyStage, StreamBlock
+from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace, RuntimeTurn, StreamBlock
 from voxwright.runtime_artifacts import (
     block_from_dict,
     block_to_dict,
     sample_from_dict,
     sample_to_dict,
+    turn_from_dict,
+    turn_to_dict,
 )
 
 
@@ -40,3 +42,15 @@ def test_stream_block_decoder_rejects_boolean_integer_aliases() -> None:
     encoded["sequence"] = False
     with pytest.raises(TypeError, match="sequence: expected integer"):
         block_from_dict(encoded)
+
+
+def test_runtime_turn_codec_preserves_stage_order_and_idle_gaps() -> None:
+    trace = LatencyTrace(
+        (
+            LatencySample(LatencyStage.PERCEPTION, 10, 15),
+            LatencySample(LatencyStage.DECISION, 18, 22),
+        )
+    )
+    turn = RuntimeTurn(StreamBlock(0, 10, 5), trace)
+    assert turn_from_dict(turn_to_dict(turn)) == turn
+    assert turn_from_dict(turn_to_dict(turn)).trace.elapsed_ms == 12

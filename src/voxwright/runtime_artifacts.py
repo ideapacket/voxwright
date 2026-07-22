@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from voxwright.core import JSONValue
-from voxwright.runtime import LatencySample, LatencyStage, StreamBlock
+from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace, RuntimeTurn, StreamBlock
 
 
 def sample_to_dict(sample: LatencySample) -> dict[str, JSONValue]:
@@ -54,3 +54,24 @@ def block_from_dict(value: JSONValue, path: str = "$.block") -> StreamBlock:
     if not isinstance(final, bool):
         raise TypeError(f"{path}.final: expected boolean")
     return StreamBlock(*integers, final)
+
+
+def turn_to_dict(turn: RuntimeTurn) -> dict[str, JSONValue]:
+    return {
+        "block": block_to_dict(turn.block),
+        "samples": [sample_to_dict(item) for item in turn.trace.samples],
+    }
+
+
+def turn_from_dict(value: JSONValue, path: str = "$.turn") -> RuntimeTurn:
+    if not isinstance(value, dict) or set(value) != {"block", "samples"}:
+        raise ValueError(f"{path}: expected exact runtime turn fields")
+    samples = value["samples"]
+    if not isinstance(samples, list):
+        raise TypeError(f"{path}.samples: expected array")
+    trace = LatencyTrace(
+        tuple(
+            sample_from_dict(item, f"{path}.samples[{index}]") for index, item in enumerate(samples)
+        )
+    )
+    return RuntimeTurn(block_from_dict(value["block"], f"{path}.block"), trace)
