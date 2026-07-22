@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from voxwright.core import JSONValue
-from voxwright.runtime import LatencySample, LatencyStage
+from voxwright.runtime import LatencySample, LatencyStage, StreamBlock
 
 
 def sample_to_dict(sample: LatencySample) -> dict[str, JSONValue]:
@@ -29,3 +29,28 @@ def sample_from_dict(value: JSONValue, path: str = "$.sample") -> LatencySample:
     except ValueError as error:
         raise ValueError(f"{path}.stage: unknown latency stage {stage!r}") from error
     return LatencySample(latency_stage, started, ended)
+
+
+def block_to_dict(block: StreamBlock) -> dict[str, JSONValue]:
+    return {
+        "sequence": block.sequence,
+        "received_at_ms": block.received_at_ms,
+        "duration_ms": block.duration_ms,
+        "final": block.final,
+    }
+
+
+def block_from_dict(value: JSONValue, path: str = "$.block") -> StreamBlock:
+    fields = {"sequence", "received_at_ms", "duration_ms", "final"}
+    if not isinstance(value, dict) or set(value) != fields:
+        raise ValueError(f"{path}: expected exact stream block fields")
+    integers: list[int] = []
+    for field in ("sequence", "received_at_ms", "duration_ms"):
+        item = value[field]
+        if isinstance(item, bool) or not isinstance(item, int):
+            raise TypeError(f"{path}.{field}: expected integer")
+        integers.append(item)
+    final = value["final"]
+    if not isinstance(final, bool):
+        raise TypeError(f"{path}.final: expected boolean")
+    return StreamBlock(*integers, final)
