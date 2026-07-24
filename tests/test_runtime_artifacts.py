@@ -10,10 +10,13 @@ from voxwright.runtime_artifacts import (
     block_to_dict,
     decode_runtime,
     encode_runtime,
+    load_runtime,
+    runtime_digest,
     sample_from_dict,
     sample_to_dict,
     turn_from_dict,
     turn_to_dict,
+    write_runtime,
 )
 
 GOLDEN = Path(__file__).parent / "golden" / "runtime_turns.json"
@@ -116,3 +119,20 @@ def test_runtime_artifact_matches_reviewed_golden_bytes() -> None:
     )
     assert encode_runtime((turn,)).encode() == GOLDEN.read_bytes()
     assert decode_runtime(GOLDEN.read_text(encoding="utf-8")) == (turn,)
+
+
+def test_runtime_files_are_complete_identified_and_nonclobbering(tmp_path: Path) -> None:
+    turn = RuntimeTurn(
+        StreamBlock(0, 0, 10, True),
+        LatencyTrace((LatencySample(LatencyStage.PERCEPTION, 0, 3),)),
+    )
+    path = tmp_path / "runtime.json"
+    write_runtime(path, (turn,))
+    assert load_runtime(path) == (turn,)
+    assert runtime_digest(load_runtime(path)) == runtime_digest((turn,))
+    with pytest.raises(FileExistsError, match="output already exists"):
+        write_runtime(path, (turn,))
+    path.unlink()
+    path.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="missing terminal newline"):
+        load_runtime(path)

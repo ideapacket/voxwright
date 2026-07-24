@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from voxwright.core import JSONValue, canonical_json, parse_json
+from voxwright.hashing import content_digest
 from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace, RuntimeTurn, StreamBlock
 
 
@@ -102,3 +105,22 @@ def decode_runtime(text: str) -> tuple[RuntimeTurn, ...]:
     if not text.strip():
         raise ValueError("runtime artifact document is empty")
     return runtime_from_dict(parse_json(text))
+
+
+def runtime_digest(turns: tuple[RuntimeTurn, ...]) -> str:
+    return content_digest(encode_runtime(turns).encode("utf-8"))
+
+
+def load_runtime(path: Path) -> tuple[RuntimeTurn, ...]:
+    text = path.read_text(encoding="utf-8")
+    if text and not text.endswith("\n"):
+        raise ValueError(f"runtime artifact is missing terminal newline: {path}")
+    return decode_runtime(text)
+
+
+def write_runtime(path: Path, turns: tuple[RuntimeTurn, ...]) -> None:
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_runtime(turns))
+    except FileExistsError as error:
+        raise FileExistsError(f"runtime artifact output already exists: {path}") from error
