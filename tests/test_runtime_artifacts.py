@@ -76,3 +76,30 @@ def test_runtime_artifact_requires_nonempty_single_document() -> None:
         decode_runtime("\n")
     with pytest.raises(ValueError):
         decode_runtime('{"schema_version":1,"turns":[]}{}')
+
+
+def test_runtime_decoder_rejects_unknown_versions_and_field_drift() -> None:
+    with pytest.raises(ValueError, match="unsupported version 2"):
+        decode_runtime('{"schema_version":2,"turns":[{}]}')
+    with pytest.raises(ValueError, match="exact runtime artifact fields"):
+        decode_runtime('{"extra":1,"schema_version":1,"turns":[]}')
+
+
+def test_runtime_decoder_enforces_trace_stage_order() -> None:
+    turn = RuntimeTurn(
+        StreamBlock(0, 0, 10),
+        LatencyTrace((LatencySample(LatencyStage.PERCEPTION, 0, 2),)),
+    )
+    encoded = encode_runtime((turn,)).replace('"stage":"perception"', '"stage":"tool"')
+    with pytest.raises(ValueError, match="stage order"):
+        decode_runtime(encoded)
+
+
+def test_runtime_decoder_reports_nested_block_paths() -> None:
+    turn = RuntimeTurn(
+        StreamBlock(0, 0, 10),
+        LatencyTrace((LatencySample(LatencyStage.PERCEPTION, 0, 2),)),
+    )
+    encoded = encode_runtime((turn,)).replace('"duration_ms":10', '"duration_ms":true')
+    with pytest.raises(TypeError, match=r"turns\[0\]\.block\.duration_ms"):
+        decode_runtime(encoded)
