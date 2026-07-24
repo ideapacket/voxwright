@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace, RuntimeTurn, StreamBlock
@@ -13,6 +15,8 @@ from voxwright.runtime_artifacts import (
     turn_from_dict,
     turn_to_dict,
 )
+
+GOLDEN = Path(__file__).parent / "golden" / "runtime_turns.json"
 
 
 def test_latency_sample_artifact_roundtrips_logical_interval() -> None:
@@ -103,3 +107,12 @@ def test_runtime_decoder_reports_nested_block_paths() -> None:
     encoded = encode_runtime((turn,)).replace('"duration_ms":10', '"duration_ms":true')
     with pytest.raises(TypeError, match=r"turns\[0\]\.block\.duration_ms"):
         decode_runtime(encoded)
+
+
+def test_runtime_artifact_matches_reviewed_golden_bytes() -> None:
+    turn = RuntimeTurn(
+        StreamBlock(0, 0, 10, True),
+        LatencyTrace((LatencySample(LatencyStage.PERCEPTION, 0, 3),)),
+    )
+    assert encode_runtime((turn,)).encode() == GOLDEN.read_bytes()
+    assert decode_runtime(GOLDEN.read_text(encoding="utf-8")) == (turn,)
