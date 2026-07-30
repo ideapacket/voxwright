@@ -14,6 +14,14 @@ from voxwright.identifiers import Identifier
 from voxwright.manifests import read_manifest
 from voxwright.recording import SessionRecorder
 from voxwright.run_artifacts import decode_runs
+from voxwright.runtime import (
+    LatencySample,
+    LatencyStage,
+    LatencyTrace,
+    RuntimeTurn,
+    StreamBlock,
+)
+from voxwright.runtime_artifacts import write_runtime
 from voxwright.sandbox import PermissionPolicy, ToolSandbox
 from voxwright.sandbox_audit import write_audit
 from voxwright.workflow import StepKind, WorkflowDefinition, WorkflowStep
@@ -165,6 +173,19 @@ def test_validate_reports_context_snapshot_budget_and_identity(
     assert '"artifact":"context"' in output and '"attachments":1' in output
     assert '"token_budget":10' in output and '"token_cost":3' in output
     assert '"digest":"sha256:' in output
+
+
+def test_validate_reports_logical_runtime_facts(tmp_path: object, capsys: object) -> None:
+    path = tmp_path / "runtime.json"  # type: ignore[operator]
+    turn = RuntimeTurn(
+        StreamBlock(0, 0, 10, True),
+        LatencyTrace((LatencySample(LatencyStage.PERCEPTION, 0, 4),)),
+    )
+    write_runtime(path, (turn,))
+    assert main(["validate", "runtime", str(path)]) == 0
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"active_ms":4' in output and '"turns":1' in output
+    assert '"complete":0' in output and '"digest":"sha256:' in output
 
 
 def test_validate_context_reports_version_budget_and_truncation_errors(

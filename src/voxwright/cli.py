@@ -19,6 +19,7 @@ from voxwright.recording import load_session, summarize
 from voxwright.replay import replay
 from voxwright.reports import CoverageFacts, ReportSpec, render_html, render_markdown
 from voxwright.run_artifacts import decode_runs, encode_runs, scripted_run
+from voxwright.runtime_artifacts import load_runtime, runtime_digest
 from voxwright.sandbox_audit import load_audit, summarize_audit
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 from voxwright.session_diff import diff_traces, format_differences
@@ -126,7 +127,7 @@ def _validate(args: argparse.Namespace) -> int:
             "total": audit_summary.total,
             "valid": True,
         }
-    else:
+    elif args.artifact == "context":
         manager = load_context(path)
         result = {
             "artifact": "context",
@@ -134,6 +135,16 @@ def _validate(args: argparse.Namespace) -> int:
             "digest": context_digest(manager),
             "token_budget": manager.token_budget,
             "token_cost": manager.token_cost,
+            "valid": True,
+        }
+    else:
+        turns = load_runtime(path)
+        result = {
+            "active_ms": sum(turn.trace.active_ms for turn in turns),
+            "artifact": "runtime",
+            "complete": sum(turn.trace.complete for turn in turns),
+            "digest": runtime_digest(turns),
+            "turns": len(turns),
             "valid": True,
         }
     print(canonical_json(result))
@@ -308,7 +319,16 @@ def build_parser() -> argparse.ArgumentParser:
     validate = commands["validate"]
     validate.add_argument(
         "artifact",
-        choices=("manifest", "session", "runs", "workflow", "checkpoint", "audit", "context"),
+        choices=(
+            "manifest",
+            "session",
+            "runs",
+            "workflow",
+            "checkpoint",
+            "audit",
+            "context",
+            "runtime",
+        ),
     )
     validate.add_argument("path", type=Path)
     validate.add_argument("--diagram", type=Path, help="workflow 专用 SVG 输出路径")
