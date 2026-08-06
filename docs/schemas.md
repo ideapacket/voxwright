@@ -32,3 +32,7 @@ schema、字段类型与末尾换行；恢复前用 `verify_checkpoint` 对照�
 context snapshot 保存 token budget 和 attachment 的 id、kind、content、version、cost、priority；
 canonical digest 会随任一版本或内容变化。每次应用上下文变化可写成 `context-update` session event，
 其中引用 snapshot digest 和当前版本表，因此 replay 可验证当时 adapter 可见的应用状态。
+
+runtime artifact 保存有序 stream block 及每个 perception、decision、tool、response logical interval。
+decoder 重新执行 stage order、非重叠时间和 block 字段校验；canonical digest 覆盖完整 turn 顺序。
+这些 interval 来自 deterministic fixture clock，不包含真实网络或模型服务的 wall-clock 测量。
