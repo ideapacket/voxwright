@@ -10,6 +10,7 @@ voxwright validate workflow workflow.json --diagram workflow.svg
 voxwright validate checkpoint checkpoint.json
 voxwright validate audit sandbox-audit.json
 voxwright validate context context.json
+voxwright validate runtime runtime.json
 voxwright score runs.jsonl
 voxwright bench runs.jsonl --budgets 50 75 100 150
 voxwright report runs.jsonl report.html --format html
@@ -38,3 +39,6 @@ dry-run 数量。统计只描述输入制品中的 synthetic side-effect 证据�
 `validate context` 严格校验 snapshot schema、attachment version 与 budget accounting，并打印
 canonical digest。它处理原始 snapshot；传给 adapter 的 view 仍会执行预算 eviction 与 PII-like
 redaction。
+
+`validate runtime` 只使用 logical clock interval，报告 turn 数、完整 trace 数、active milliseconds 和
+canonical digest；不读取 wall clock，也不把这些 synthetic duration 描述成真实服务延迟。
