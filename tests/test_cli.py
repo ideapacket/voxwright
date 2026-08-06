@@ -188,6 +188,28 @@ def test_validate_reports_logical_runtime_facts(tmp_path: object, capsys: object
     assert '"complete":0' in output and '"digest":"sha256:' in output
 
 
+def test_validate_runtime_surfaces_version_order_and_truncation_errors(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "runtime.json"  # type: ignore[operator]
+    path.write_text('{"schema_version":2,"turns":[{}]}\n', encoding="utf-8")
+    assert main(["validate", "runtime", str(path)]) == 2
+    assert "unsupported version 2" in capsys.readouterr().err  # type: ignore[attr-defined]
+    turn = RuntimeTurn(
+        StreamBlock(0, 0, 10),
+        LatencyTrace((LatencySample(LatencyStage.PERCEPTION, 0, 2),)),
+    )
+    path.unlink()
+    write_runtime(path, (turn,))
+    content = path.read_text(encoding="utf-8")
+    path.write_text(content.replace('"stage":"perception"', '"stage":"tool"'), encoding="utf-8")
+    assert main(["validate", "runtime", str(path)]) == 2
+    assert "stage order" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text("{}", encoding="utf-8")
+    assert main(["validate", "runtime", str(path)]) == 2
+    assert "missing terminal newline" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
 def test_validate_context_reports_version_budget_and_truncation_errors(
     tmp_path: object, capsys: object
 ) -> None:
