@@ -5,8 +5,10 @@ from __future__ import annotations
 import pytest
 
 import voxwright.sandbox as sandbox
+from voxwright.events import EventKind, decode_payload, envelope_for
 from voxwright.hashing import EMPTY_DIGEST
 from voxwright.identifiers import Identifier
+from voxwright.recording import SessionRecorder, load_session
 from voxwright.scenarios import INJECTION_TRANSCRIPTS
 
 
@@ -137,6 +139,22 @@ def test_nonconfirm_outcome_cannot_forge_permission_prompt() -> None:
     outcome = box.execute(name, {"text": "blocked"})
     with pytest.raises(ValueError, match="confirmation-blocked"):
         sandbox.permission_prompt_event(Identifier("call-1"), name, {}, outcome)
+
+
+def test_permission_prompt_survives_session_record_and_replay(tmp_path: object) -> None:
+    name = Identifier("calendar.create")
+    arguments = {"title": "synthetic review", "hour": 14}
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({name: sandbox.PermissionDecision.CONFIRM}))
+    outcome = box.execute(name, arguments)
+    prompt = sandbox.permission_prompt_event(Identifier("call-2"), name, arguments, outcome)
+    event = envelope_for(
+        Identifier("session-permission"), 0, 10, EventKind.PERMISSION_PROMPT, prompt
+    )
+    path = tmp_path / "session.jsonl"  # type: ignore[operator]
+    SessionRecorder(path).append(event)
+    [record] = load_session(path)
+    assert decode_payload(record.event) == prompt
+    assert box.state.calendar == []
 
 
 def test_allow_permission_needs_no_grant() -> None:
