@@ -308,6 +308,31 @@ def test_context_update_decoder_reports_nested_version_types() -> None:
         ContextUpdate.from_payload(payload)
 
 
+def test_permission_prompt_roundtrips_structured_call_evidence() -> None:
+    prompt = PermissionPrompt(
+        Identifier("calendar.create"),
+        Identifier("call-7"),
+        {"title": "synthetic review", "hour": 14},
+        "Confirm tool calendar.create",
+    )
+    assert PermissionPrompt.from_payload(prompt.to_payload()) == prompt
+    assert prompt.to_payload()["arguments"] == {"title": "synthetic review", "hour": 14}
+
+
+def test_permission_prompt_rejects_empty_text_and_malformed_arguments() -> None:
+    with pytest.raises(ValueError, match="cannot be empty"):
+        PermissionPrompt(Identifier("notes.add"), Identifier("call-1"), {}, " ")
+    with pytest.raises(TypeError, match="arguments: expected object"):
+        PermissionPrompt.from_payload(
+            {
+                "tool_name": "notes.add",
+                "call_id": "call-1",
+                "arguments": [],
+                "prompt": "Confirm",
+            }
+        )
+
+
 @pytest.mark.parametrize(
     ("kind", "payload"),
     [
