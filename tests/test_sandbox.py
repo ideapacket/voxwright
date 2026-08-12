@@ -120,6 +120,25 @@ def test_confirm_permission_prompts_until_session_grant() -> None:
     assert box.permission(name) is None
 
 
+def test_confirmation_outcome_builds_structured_session_prompt() -> None:
+    name = Identifier("messages.send")
+    arguments = {"recipient": "synthetic", "text": "hello"}
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({name: sandbox.PermissionDecision.CONFIRM}))
+    outcome = box.execute(name, arguments)
+    prompt = sandbox.permission_prompt_event(Identifier("call-1"), name, arguments, outcome)
+    assert prompt.tool_name == name and prompt.call_id == Identifier("call-1")
+    assert prompt.arguments == arguments
+    assert prompt.prompt == "Confirm tool messages.send"
+
+
+def test_nonconfirm_outcome_cannot_forge_permission_prompt() -> None:
+    name = Identifier("notes.add")
+    box = sandbox.ToolSandbox(sandbox.PermissionPolicy({}))
+    outcome = box.execute(name, {"text": "blocked"})
+    with pytest.raises(ValueError, match="confirmation-blocked"):
+        sandbox.permission_prompt_event(Identifier("call-1"), name, {}, outcome)
+
+
 def test_allow_permission_needs_no_grant() -> None:
     name = Identifier("timer.start")
     box = sandbox.ToolSandbox(sandbox.PermissionPolicy({name: sandbox.PermissionDecision.ALLOW}))

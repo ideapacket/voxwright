@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from voxwright.core import JSONValue
+from voxwright.events import PermissionPrompt
 from voxwright.hashing import ChainLink, append_link, validate_chain
 from voxwright.identifiers import Identifier
 
@@ -127,6 +128,18 @@ class ExecutionOutcome:
     result: JSONValue
     permission: PermissionDecision
     prompt: str | None = None
+
+
+def permission_prompt_event(
+    call_id: Identifier,
+    tool_name: Identifier,
+    arguments: dict[str, JSONValue],
+    outcome: ExecutionOutcome,
+) -> PermissionPrompt:
+    """Convert only a confirmation-blocked outcome into session evidence."""
+    if outcome.permission is not PermissionDecision.CONFIRM or outcome.prompt is None:
+        raise ValueError("permission prompt event requires a confirmation-blocked outcome")
+    return PermissionPrompt(tool_name, call_id, arguments, outcome.prompt)
 
 
 def _text_argument(arguments: dict[str, JSONValue], name: str) -> str:
