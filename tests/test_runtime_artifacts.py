@@ -31,7 +31,7 @@ def test_latency_sample_artifact_roundtrips_logical_interval() -> None:
 def test_latency_sample_decoder_rejects_stage_and_time_coercion() -> None:
     with pytest.raises(ValueError, match="unknown latency stage"):
         sample_from_dict({"stage": "network", "started_ms": 0, "ended_ms": 1})
-    with pytest.raises(TypeError, match="logical times must be integers"):
+    with pytest.raises(TypeError, match="started_ms: expected integer"):
         sample_from_dict({"stage": "tool", "started_ms": False, "ended_ms": 1})
 
 

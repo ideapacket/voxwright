@@ -9,6 +9,12 @@ from voxwright.hashing import content_digest
 from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace, RuntimeTurn, StreamBlock
 
 
+def _integer(value: JSONValue, path: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{path}: expected integer")
+    return value
+
+
 def sample_to_dict(sample: LatencySample) -> dict[str, JSONValue]:
     return {
         "stage": sample.stage.value,
@@ -25,13 +31,13 @@ def sample_from_dict(value: JSONValue, path: str = "$.sample") -> LatencySample:
     ended = value["ended_ms"]
     if not isinstance(stage, str):
         raise TypeError(f"{path}.stage: expected string")
-    if any(isinstance(item, bool) or not isinstance(item, int) for item in (started, ended)):
-        raise TypeError(f"{path}: logical times must be integers")
+    started_ms = _integer(started, f"{path}.started_ms")
+    ended_ms = _integer(ended, f"{path}.ended_ms")
     try:
         latency_stage = LatencyStage(stage)
     except ValueError as error:
         raise ValueError(f"{path}.stage: unknown latency stage {stage!r}") from error
-    return LatencySample(latency_stage, started, ended)
+    return LatencySample(latency_stage, started_ms, ended_ms)
 
 
 def block_to_dict(block: StreamBlock) -> dict[str, JSONValue]:
@@ -47,16 +53,13 @@ def block_from_dict(value: JSONValue, path: str = "$.block") -> StreamBlock:
     fields = {"sequence", "received_at_ms", "duration_ms", "final"}
     if not isinstance(value, dict) or set(value) != fields:
         raise ValueError(f"{path}: expected exact stream block fields")
-    integers: list[int] = []
-    for field in ("sequence", "received_at_ms", "duration_ms"):
-        item = value[field]
-        if isinstance(item, bool) or not isinstance(item, int):
-            raise TypeError(f"{path}.{field}: expected integer")
-        integers.append(item)
+    sequence = _integer(value["sequence"], f"{path}.sequence")
+    received_at_ms = _integer(value["received_at_ms"], f"{path}.received_at_ms")
+    duration_ms = _integer(value["duration_ms"], f"{path}.duration_ms")
     final = value["final"]
     if not isinstance(final, bool):
         raise TypeError(f"{path}.final: expected boolean")
-    return StreamBlock(*integers, final)
+    return StreamBlock(sequence, received_at_ms, duration_ms, final)
 
 
 def turn_to_dict(turn: RuntimeTurn) -> dict[str, JSONValue]:
