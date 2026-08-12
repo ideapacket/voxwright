@@ -14,6 +14,7 @@ from voxwright.events import (
     EventKind,
     HandoffEvent,
     Intent,
+    PermissionPrompt,
     RepairRequest,
     ToolCallEvent,
     ToolResultEvent,
@@ -43,6 +44,7 @@ def test_event_kind_registry_is_complete() -> None:
         "error",
         "handoff",
         "context-update",
+        "permission-prompt",
     }
 
 
@@ -325,6 +327,15 @@ def test_context_update_decoder_reports_nested_version_types() -> None:
         (
             EventKind.CONTEXT_UPDATE,
             ContextUpdate("sha256:" + "1" * 64, {"screen-1": 2}, 4),
+        ),
+        (
+            EventKind.PERMISSION_PROMPT,
+            PermissionPrompt(
+                Identifier("messages.send"),
+                Identifier("call-1"),
+                {"recipient": "fixture"},
+                "Confirm tool messages.send",
+            ),
         ),
     ],
 )

@@ -28,6 +28,7 @@ class EventKind(str, Enum):
     ERROR = "error"
     HANDOFF = "handoff"
     CONTEXT_UPDATE = "context-update"
+    PERMISSION_PROMPT = "permission-prompt"
 
 
 def _object(value: object, path: str) -> dict[str, JSONValue]:
@@ -500,6 +501,40 @@ class ContextUpdate:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class PermissionPrompt:
+    """A session event requesting an explicit grant for one structured call."""
+
+    tool_name: Identifier
+    call_id: Identifier
+    arguments: dict[str, JSONValue]
+    prompt: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "arguments", _object(self.arguments, "$.arguments"))
+        if not self.prompt.strip():
+            raise ValueError("permission prompt cannot be empty")
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        return {
+            "tool_name": str(self.tool_name),
+            "call_id": str(self.call_id),
+            "arguments": self.arguments,
+            "prompt": self.prompt,
+        }
+
+    @classmethod
+    def from_payload(cls, value: object) -> PermissionPrompt:
+        data = _object(value, "$.payload")
+        _exact(data, {"tool_name", "call_id", "arguments", "prompt"}, "$.payload")
+        return cls(
+            Identifier(_text(data["tool_name"], "$.payload.tool_name")),
+            Identifier(_text(data["call_id"], "$.payload.call_id")),
+            _object(data["arguments"], "$.payload.arguments"),
+            _text(data["prompt"], "$.payload.prompt"),
+        )
+
+
 class PayloadCodec(Protocol):
     """Structural contract shared by typed event payload classes."""
 
@@ -517,6 +552,7 @@ EventPayload: TypeAlias = (
     | ErrorEvent
     | HandoffEvent
     | ContextUpdate
+    | PermissionPrompt
 )
 
 PAYLOAD_TYPES: dict[EventKind, type[EventPayload]] = {
@@ -531,6 +567,7 @@ PAYLOAD_TYPES: dict[EventKind, type[EventPayload]] = {
     EventKind.ERROR: ErrorEvent,
     EventKind.HANDOFF: HandoffEvent,
     EventKind.CONTEXT_UPDATE: ContextUpdate,
+    EventKind.PERMISSION_PROMPT: PermissionPrompt,
 }
 
 
