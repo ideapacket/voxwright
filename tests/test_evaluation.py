@@ -243,3 +243,17 @@ def test_metric_bundle_decoder_rejects_field_and_range_drift() -> None:
     encoded["task_success"] = 1.1
     with pytest.raises(ValueError, match="between 0 and 1"):
         metric_bundle_from_dict(encoded)
+
+
+def test_metric_bundle_decoder_rejects_impossible_slot_counts() -> None:
+    encoded = score_runs((run(),)).to_dict()
+    encoded["slots"]["correct"] = 2  # type: ignore[index]
+    with pytest.raises(ValueError, match="correct count exceeds"):
+        metric_bundle_from_dict(encoded)
+
+
+def test_metric_bundle_requires_positive_observation_count() -> None:
+    encoded = score_runs((run(),)).to_dict()
+    encoded["run_count"] = 0
+    with pytest.raises(ValueError, match="run count must be positive"):
+        metric_bundle_from_dict(encoded)

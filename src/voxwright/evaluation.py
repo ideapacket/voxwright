@@ -156,6 +156,26 @@ class MetricBundle:
     tools: ToolScore
     efficiency: EfficiencyScore
 
+    def __post_init__(self) -> None:
+        if isinstance(self.run_count, bool) or self.run_count < 1:
+            raise ValueError("metric run count must be positive")
+        if not 0.0 <= self.task_success <= 1.0:
+            raise ValueError("metric task success must be between 0 and 1")
+        if self.slots.correct > min(self.slots.expected, self.slots.predicted):
+            raise ValueError("slot correct count exceeds expected or predicted count")
+        for label, value in (
+            ("slot accuracy", self.slots.accuracy),
+            ("tool precision", self.tools.precision),
+            ("tool recall", self.tools.recall),
+            ("tool f1", self.tools.f1),
+            ("repair rate", self.efficiency.repair_rate),
+            ("latency adherence", self.efficiency.latency_adherence),
+        ):
+            if not 0.0 <= value <= 1.0:
+                raise ValueError(f"metric {label} must be between 0 and 1")
+        if self.efficiency.mean_turns <= 0 or self.efficiency.false_execute_count < 0:
+            raise ValueError("metric efficiency counts must be non-negative with positive turns")
+
     def to_dict(self) -> dict[str, JSONValue]:
         return {
             "schema_version": METRIC_SCHEMA_VERSION,
