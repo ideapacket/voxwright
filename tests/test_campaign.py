@@ -10,6 +10,8 @@ from voxwright.campaign import (
     CampaignArtifact,
     SliceDimension,
     compare_metrics,
+    decode_campaign,
+    encode_campaign,
     noise_band,
     slice_campaign,
     slot_breakdown,
@@ -263,3 +265,19 @@ def test_campaign_decoder_rejects_config_checksum_and_field_drift() -> None:
     encoded["extra"] = True
     with pytest.raises(ValueError, match="exact campaign fields"):
         CampaignArtifact.from_dict(encoded)
+
+
+def test_campaign_text_codec_is_canonical_and_reversible() -> None:
+    artifact = CampaignArtifact("text", 5, {"adapter": "scripted"}, score_runs((run("a"),)))
+    encoded = encode_campaign(artifact)
+    assert encoded.endswith("\n") and " " not in encoded
+    assert decode_campaign(encoded) == artifact
+    assert encode_campaign(decode_campaign(encoded)).encode() == encoded.encode()
+
+
+def test_campaign_text_decoder_rejects_empty_and_trailing_documents() -> None:
+    with pytest.raises(ValueError, match="document is empty"):
+        decode_campaign("\n")
+    artifact = CampaignArtifact("x", 0, {}, score_runs((run("a"),)))
+    with pytest.raises(ValueError):
+        decode_campaign(encode_campaign(artifact) + "{}")

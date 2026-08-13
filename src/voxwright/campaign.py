@@ -6,7 +6,7 @@ from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
 
-from voxwright.core import JSONValue, ensure_json_value
+from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
 from voxwright.evaluation import EvaluationRun, MetricBundle, metric_bundle_from_dict, score_runs
 from voxwright.hashing import object_digest
 
@@ -197,3 +197,13 @@ class CampaignArtifact:
         if not isinstance(digest, str) or object_digest(config) != digest:
             raise ValueError("$.config_digest: checksum mismatch")
         return cls(name, seed, config, metric_bundle_from_dict(value["metrics"]))
+
+
+def encode_campaign(artifact: CampaignArtifact) -> str:
+    return canonical_json(artifact.to_dict()) + "\n"
+
+
+def decode_campaign(text: str) -> CampaignArtifact:
+    if not text.strip():
+        raise ValueError("campaign document is empty")
+    return CampaignArtifact.from_dict(parse_json(text))
