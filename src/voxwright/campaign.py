@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
 from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
 from voxwright.evaluation import EvaluationRun, MetricBundle, metric_bundle_from_dict, score_runs
@@ -207,3 +208,18 @@ def decode_campaign(text: str) -> CampaignArtifact:
     if not text.strip():
         raise ValueError("campaign document is empty")
     return CampaignArtifact.from_dict(parse_json(text))
+
+
+def load_campaign(path: Path) -> CampaignArtifact:
+    text = path.read_text(encoding="utf-8")
+    if text and not text.endswith("\n"):
+        raise ValueError(f"campaign file is missing terminal newline: {path}")
+    return decode_campaign(text)
+
+
+def write_campaign(path: Path, artifact: CampaignArtifact) -> None:
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_campaign(artifact))
+    except FileExistsError as error:
+        raise FileExistsError(f"campaign output already exists: {path}") from error

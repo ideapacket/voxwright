@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -12,10 +13,12 @@ from voxwright.campaign import (
     compare_metrics,
     decode_campaign,
     encode_campaign,
+    load_campaign,
     noise_band,
     slice_campaign,
     slot_breakdown,
     tool_breakdown,
+    write_campaign,
 )
 from voxwright.core import canonical_json
 from voxwright.evaluation import EvaluationRun, score_runs
@@ -281,3 +284,16 @@ def test_campaign_text_decoder_rejects_empty_and_trailing_documents() -> None:
     artifact = CampaignArtifact("x", 0, {}, score_runs((run("a"),)))
     with pytest.raises(ValueError):
         decode_campaign(encode_campaign(artifact) + "{}")
+
+
+def test_campaign_files_roundtrip_without_overwrite(tmp_path: Path) -> None:
+    artifact = CampaignArtifact("file", 3, {"synthetic": True}, score_runs((run("a"),)))
+    path = tmp_path / "campaign.json"
+    write_campaign(path, artifact)
+    assert load_campaign(path) == artifact
+    with pytest.raises(FileExistsError, match="output already exists"):
+        write_campaign(path, artifact)
+    path.unlink()
+    path.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="missing terminal newline"):
+        load_campaign(path)
