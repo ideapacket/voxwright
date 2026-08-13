@@ -184,6 +184,75 @@ class MetricBundle:
         }
 
 
+def _metric_object(value: JSONValue, fields: set[str], path: str) -> dict[str, JSONValue]:
+    if not isinstance(value, dict) or set(value) != fields:
+        raise ValueError(f"{path}: metric fields differ")
+    return value
+
+
+def _metric_int(value: JSONValue, path: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{path}: expected non-negative integer")
+    return value
+
+
+def _metric_float(value: JSONValue, path: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(f"{path}: expected number")
+    result = float(value)
+    if not 0.0 <= result <= 1.0:
+        raise ValueError(f"{path}: expected value between 0 and 1")
+    return round(result, 6)
+
+
+def metric_bundle_from_dict(value: JSONValue) -> MetricBundle:
+    """Decode a complete reviewed metric bundle without recomputing observations."""
+    root_fields = {"schema_version", "run_count", "task_success", "slots", "tools", "efficiency"}
+    data = _metric_object(value, root_fields, "$")
+    if data["schema_version"] != METRIC_SCHEMA_VERSION:
+        raise ValueError(f"$.schema_version: unsupported version {data['schema_version']!r}")
+    slots = _metric_object(
+        data["slots"], {"correct", "expected", "predicted", "accuracy"}, "$.slots"
+    )
+    tools = _metric_object(
+        data["tools"],
+        {"true_positive", "false_positive", "false_negative", "precision", "recall", "f1"},
+        "$.tools",
+    )
+    efficiency = _metric_object(
+        data["efficiency"],
+        {"mean_turns", "repair_rate", "false_execute_count", "latency_adherence"},
+        "$.efficiency",
+    )
+    mean_turns = efficiency["mean_turns"]
+    if isinstance(mean_turns, bool) or not isinstance(mean_turns, (int, float)) or mean_turns < 0:
+        raise ValueError("$.efficiency.mean_turns: expected non-negative number")
+    return MetricBundle(
+        _metric_int(data["run_count"], "$.run_count"),
+        _metric_float(data["task_success"], "$.task_success"),
+        SlotScore(
+            _metric_int(slots["correct"], "$.slots.correct"),
+            _metric_int(slots["expected"], "$.slots.expected"),
+            _metric_int(slots["predicted"], "$.slots.predicted"),
+            _metric_float(slots["accuracy"], "$.slots.accuracy"),
+        ),
+        ToolScore(
+            _metric_int(tools["true_positive"], "$.tools.true_positive"),
+            _metric_int(tools["false_positive"], "$.tools.false_positive"),
+            _metric_int(tools["false_negative"], "$.tools.false_negative"),
+            _metric_float(tools["precision"], "$.tools.precision"),
+            _metric_float(tools["recall"], "$.tools.recall"),
+            _metric_float(tools["f1"], "$.tools.f1"),
+        ),
+        EfficiencyScore(
+            round(float(mean_turns), 6),
+            _metric_float(efficiency["repair_rate"], "$.efficiency.repair_rate"),
+            _metric_int(efficiency["false_execute_count"], "$.efficiency.false_execute_count"),
+            _metric_float(efficiency["latency_adherence"], "$.efficiency.latency_adherence"),
+        ),
+    )
+
+
 def score_runs(runs: tuple[EvaluationRun, ...]) -> MetricBundle:
     """Produce the complete public metric bundle for an executed campaign."""
     if not runs:

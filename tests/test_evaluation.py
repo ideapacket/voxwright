@@ -8,6 +8,7 @@ from voxwright.core import canonical_json
 from voxwright.evaluation import (
     EvaluationRun,
     efficiency_score,
+    metric_bundle_from_dict,
     score_runs,
     slot_score,
     task_success_rate,
@@ -226,3 +227,19 @@ def test_metric_serialization_changes_with_real_observations() -> None:
     assert degraded["task_success"] == 0.0
     assert degraded["slots"] != perfect["slots"]
     assert degraded["tools"] != perfect["tools"]
+
+
+def test_metric_bundle_codec_roundtrips_hand_computed_scores() -> None:
+    metrics = score_runs((run(), run(run_id="run-2", repairs=1)))
+    assert metric_bundle_from_dict(metrics.to_dict()) == metrics
+
+
+def test_metric_bundle_decoder_rejects_field_and_range_drift() -> None:
+    encoded = score_runs((run(),)).to_dict()
+    encoded["extra"] = True
+    with pytest.raises(ValueError, match="metric fields differ"):
+        metric_bundle_from_dict(encoded)
+    encoded = score_runs((run(),)).to_dict()
+    encoded["task_success"] = 1.1
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        metric_bundle_from_dict(encoded)
