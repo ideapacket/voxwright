@@ -244,3 +244,22 @@ def test_campaign_artifact_validates_identity_and_seed() -> None:
         CampaignArtifact(" ", 0, {}, metrics)
     with pytest.raises(ValueError, match="non-negative integer"):
         CampaignArtifact("bad-seed", -1, {}, metrics)
+
+
+def test_campaign_artifact_object_roundtrips_metrics_and_config() -> None:
+    artifact = CampaignArtifact(
+        "roundtrip", 9, {"adapter": "scripted", "synthetic": True}, score_runs((run("a"),))
+    )
+    assert CampaignArtifact.from_dict(artifact.to_dict()) == artifact
+
+
+def test_campaign_decoder_rejects_config_checksum_and_field_drift() -> None:
+    artifact = CampaignArtifact("strict", 1, {"seeded": True}, score_runs((run("a"),)))
+    encoded = artifact.to_dict()
+    encoded["config"]["seeded"] = False  # type: ignore[index]
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        CampaignArtifact.from_dict(encoded)
+    encoded = artifact.to_dict()
+    encoded["extra"] = True
+    with pytest.raises(ValueError, match="exact campaign fields"):
+        CampaignArtifact.from_dict(encoded)

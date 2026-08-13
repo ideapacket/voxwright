@@ -6,8 +6,8 @@ from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
 
-from voxwright.core import JSONValue
-from voxwright.evaluation import EvaluationRun, MetricBundle, score_runs
+from voxwright.core import JSONValue, ensure_json_value
+from voxwright.evaluation import EvaluationRun, MetricBundle, metric_bundle_from_dict, score_runs
 from voxwright.hashing import object_digest
 
 CAMPAIGN_SCHEMA_VERSION = 1
@@ -176,3 +176,24 @@ class CampaignArtifact:
             "config_digest": self.config_digest,
             "metrics": self.metrics.to_dict(),
         }
+
+    @classmethod
+    def from_dict(cls, value: JSONValue) -> CampaignArtifact:
+        fields = {"schema_version", "name", "seed", "config", "config_digest", "metrics"}
+        if not isinstance(value, dict) or set(value) != fields:
+            raise ValueError("$: expected exact campaign fields")
+        if value["schema_version"] != CAMPAIGN_SCHEMA_VERSION:
+            raise ValueError(f"$.schema_version: unsupported version {value['schema_version']!r}")
+        name = value["name"]
+        seed = value["seed"]
+        config = ensure_json_value(value["config"], "$.config")
+        digest = value["config_digest"]
+        if not isinstance(name, str):
+            raise TypeError("$.name: expected string")
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            raise TypeError("$.seed: expected integer")
+        if not isinstance(config, dict):
+            raise TypeError("$.config: expected object")
+        if not isinstance(digest, str) or object_digest(config) != digest:
+            raise ValueError("$.config_digest: checksum mismatch")
+        return cls(name, seed, config, metric_bundle_from_dict(value["metrics"]))
