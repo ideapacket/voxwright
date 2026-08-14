@@ -10,7 +10,7 @@ from voxwright.checkpoints import WorkflowCheckpoint, write_checkpoint
 from voxwright.cli import build_parser, main
 from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
 from voxwright.context_artifacts import write_context
-from voxwright.evaluation import score_runs
+from voxwright.evaluation import EvaluationRun, score_runs
 from voxwright.events import EventEnvelope, EventKind
 from voxwright.identifiers import Identifier
 from voxwright.manifests import read_manifest
@@ -204,6 +204,28 @@ def test_validate_reports_campaign_provenance_and_metrics(tmp_path: object, caps
     output = capsys.readouterr().out  # type: ignore[attr-defined]
     assert '"name":"cli"' in output and '"run_count":1' in output
     assert '"task_success":1.0' in output and '"config_digest":"sha256:' in output
+
+
+def test_validate_campaign_rejects_checksum_and_metric_drift(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "campaign.json"  # type: ignore[operator]
+    campaign = CampaignArtifact(
+        "strict",
+        0,
+        {"synthetic": True},
+        score_runs(
+            (EvaluationRun("r", "notes", "easy", 0.0, {}, {}, (), (), True, 1, 0, 0, 10, 20),)
+        ),
+    )
+    write_campaign(path, campaign)
+    content = path.read_text(encoding="utf-8")
+    path.write_text(content.replace('"synthetic":true', '"synthetic":false'), encoding="utf-8")
+    assert main(["validate", "campaign", str(path)]) == 2
+    assert "checksum mismatch" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text(content.replace('"task_success":1.0', '"task_success":2.0'), encoding="utf-8")
+    assert main(["validate", "campaign", str(path)]) == 2
+    assert "between 0 and 1" in capsys.readouterr().err  # type: ignore[attr-defined]
 
 
 def test_validate_runtime_surfaces_version_order_and_truncation_errors(
