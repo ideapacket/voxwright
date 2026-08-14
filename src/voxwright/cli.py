@@ -8,7 +8,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from voxwright import __version__
-from voxwright.campaign import CampaignArtifact
+from voxwright.campaign import CampaignArtifact, load_campaign
 from voxwright.checkpoints import load_checkpoint
 from voxwright.context_artifacts import context_digest, load_context
 from voxwright.core import canonical_json
@@ -137,7 +137,7 @@ def _validate(args: argparse.Namespace) -> int:
             "token_cost": manager.token_cost,
             "valid": True,
         }
-    else:
+    elif args.artifact == "runtime":
         turns = load_runtime(path)
         result = {
             "active_ms": sum(turn.trace.active_ms for turn in turns),
@@ -145,6 +145,17 @@ def _validate(args: argparse.Namespace) -> int:
             "complete": sum(turn.trace.complete for turn in turns),
             "digest": runtime_digest(turns),
             "turns": len(turns),
+            "valid": True,
+        }
+    else:
+        campaign_artifact = load_campaign(path)
+        result = {
+            "artifact": "campaign",
+            "config_digest": campaign_artifact.config_digest,
+            "name": campaign_artifact.name,
+            "run_count": campaign_artifact.metrics.run_count,
+            "seed": campaign_artifact.seed,
+            "task_success": campaign_artifact.metrics.task_success,
             "valid": True,
         }
     print(canonical_json(result))
@@ -328,6 +339,7 @@ def build_parser() -> argparse.ArgumentParser:
             "audit",
             "context",
             "runtime",
+            "campaign",
         ),
     )
     validate.add_argument("path", type=Path)

@@ -5,10 +5,12 @@ from __future__ import annotations
 import subprocess
 import sys
 
+from voxwright.campaign import CampaignArtifact, write_campaign
 from voxwright.checkpoints import WorkflowCheckpoint, write_checkpoint
 from voxwright.cli import build_parser, main
 from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
 from voxwright.context_artifacts import write_context
+from voxwright.evaluation import score_runs
 from voxwright.events import EventEnvelope, EventKind
 from voxwright.identifiers import Identifier
 from voxwright.manifests import read_manifest
@@ -186,6 +188,22 @@ def test_validate_reports_logical_runtime_facts(tmp_path: object, capsys: object
     output = capsys.readouterr().out  # type: ignore[attr-defined]
     assert '"active_ms":4' in output and '"turns":1' in output
     assert '"complete":0' in output and '"digest":"sha256:' in output
+
+
+def test_validate_reports_campaign_provenance_and_metrics(tmp_path: object, capsys: object) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    runs_path = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    campaign_path = tmp_path / "campaign.json"  # type: ignore[operator]
+    assert main(["simulate", str(manifest)]) == 0
+    assert main(["run", str(manifest), str(runs_path)]) == 0
+    runs = decode_runs(runs_path.read_text(encoding="utf-8"))
+    campaign = CampaignArtifact("cli", 0, {"synthetic": True}, score_runs(runs))
+    write_campaign(campaign_path, campaign)
+    capsys.readouterr()  # type: ignore[attr-defined]
+    assert main(["validate", "campaign", str(campaign_path)]) == 0
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"name":"cli"' in output and '"run_count":1' in output
+    assert '"task_success":1.0' in output and '"config_digest":"sha256:' in output
 
 
 def test_validate_runtime_surfaces_version_order_and_truncation_errors(
