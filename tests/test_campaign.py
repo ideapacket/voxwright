@@ -23,6 +23,8 @@ from voxwright.campaign import (
 from voxwright.core import canonical_json
 from voxwright.evaluation import EvaluationRun, score_runs
 
+GOLDEN = Path(__file__).parent / "golden" / "campaign.json"
+
 
 def run(run_id: str, *, task: str = "schedule", difficulty: str = "easy") -> EvaluationRun:
     return EvaluationRun(
@@ -297,3 +299,14 @@ def test_campaign_files_roundtrip_without_overwrite(tmp_path: Path) -> None:
     path.write_text("{}", encoding="utf-8")
     with pytest.raises(ValueError, match="missing terminal newline"):
         load_campaign(path)
+
+
+def test_campaign_artifact_matches_reviewed_golden_bytes() -> None:
+    artifact = CampaignArtifact(
+        "golden",
+        7,
+        {"adapter": "scripted", "synthetic": True},
+        score_runs((run("run-1"),)),
+    )
+    assert encode_campaign(artifact).encode() == GOLDEN.read_bytes()
+    assert decode_campaign(GOLDEN.read_text(encoding="utf-8")) == artifact
