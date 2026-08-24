@@ -35,12 +35,13 @@ from voxwright.context_artifacts import (
     load_context,
     write_context,
 )
-from voxwright.evaluation import EvaluationRun, MetricBundle, score_runs
+from voxwright.evaluation import EvaluationRun, MetricBundle, metric_bundle_from_dict, score_runs
 from voxwright.events import (
     ContextUpdate,
     EventEnvelope,
     EventKind,
     Intent,
+    PermissionPrompt,
     Transcript,
     envelope_for,
 )
@@ -54,7 +55,12 @@ from voxwright.runtime_artifacts import (
     runtime_digest,
     write_runtime,
 )
-from voxwright.sandbox import PermissionDecision, PermissionPolicy, ToolSandbox
+from voxwright.sandbox import (
+    PermissionDecision,
+    PermissionPolicy,
+    ToolSandbox,
+    permission_prompt_event,
+)
 from voxwright.sandbox_audit import (
     AuditSummary,
     audit_entries,
@@ -100,6 +106,7 @@ __all__ = [
     "ParsedCall",
     "PermissionDecision",
     "PermissionPolicy",
+    "PermissionPrompt",
     "RecordedReplayAdapter",
     "RepairConfig",
     "RepairOutcome",
@@ -144,7 +151,9 @@ __all__ = [
     "load_context",
     "load_runtime",
     "load_workflow",
+    "metric_bundle_from_dict",
     "parse_call",
+    "permission_prompt_event",
     "resume_suffix",
     "run_linear",
     "run_repair",
