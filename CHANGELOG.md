@@ -2,6 +2,19 @@
 
 All notable changes are documented here.
 
+## [0.1.1] - 2026-10-30
+
+### Added
+
+- Strict workflow, checkpoint, sandbox-audit, context, runtime, and campaign artifact codecs.
+- CLI validation for the new versioned artifacts and deterministic workflow SVG export.
+- Session-visible context updates and permission prompts with checksummed replay coverage.
+
+### Fixed
+
+- Preserve denied and confirmation-blocked tool attempts in tamper-evident audit evidence.
+- Use explicit cross-version type narrowing at JSON decoder boundaries.
+
 ## [0.1.0] - 2026-10-30
 
 ### Added
