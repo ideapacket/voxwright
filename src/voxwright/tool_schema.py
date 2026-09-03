@@ -101,12 +101,26 @@ class ToolSchema:
                 "default",
             }:
                 raise ValueError(f"$.parameters[{index}]: invalid parameter shape")
+            parameter_name = item["name"]
+            parameter_type = item["type"]
+            required = item["required"]
+            nullable = item["nullable"]
+            if not isinstance(parameter_name, str) or not isinstance(parameter_type, str):
+                raise TypeError(f"$.parameters[{index}]: name and type must be strings")
+            if not isinstance(required, bool) or not isinstance(nullable, bool):
+                raise TypeError(f"$.parameters[{index}]: flags must be booleans")
+            try:
+                value_type = ValueType(parameter_type)
+            except ValueError as error:
+                raise ValueError(
+                    f"$.parameters[{index}].type: unknown value type {parameter_type!r}"
+                ) from error
             decoded.append(
                 ParameterSpec(
-                    Identifier(str(item["name"])),
-                    ValueType(str(item["type"])),
-                    bool(item["required"]),
-                    bool(item["nullable"]),
+                    Identifier(parameter_name),
+                    value_type,
+                    required,
+                    nullable,
                     item["default"],
                 )
             )

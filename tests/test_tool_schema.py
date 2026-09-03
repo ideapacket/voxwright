@@ -77,6 +77,17 @@ def test_schema_decoder_never_coerces_identity_or_idempotency_types() -> None:
         schemas.ToolSchema.from_dict(value)
 
 
+def test_parameter_decoder_requires_exact_flag_and_type_values() -> None:
+    value = schemas.ToolSchema(Identifier("notes.add"), (parameter("text"),), "add").to_dict()
+    value["parameters"][0]["required"] = 1  # type: ignore[index]
+    with pytest.raises(TypeError, match="flags must be booleans"):
+        schemas.ToolSchema.from_dict(value)
+    value = schemas.ToolSchema(Identifier("notes.add"), (parameter("text"),), "add").to_dict()
+    value["parameters"][0]["type"] = "timestamp"  # type: ignore[index]
+    with pytest.raises(ValueError, match="unknown value type 'timestamp'"):
+        schemas.ToolSchema.from_dict(value)
+
+
 def test_registry_resolves_tools_in_sorted_name_order() -> None:
     registry = schemas.ToolRegistry()
     notes = schemas.ToolSchema(Identifier("notes.add"), (), "add note")
