@@ -173,6 +173,23 @@ def test_registry_decoder_rejects_future_schema() -> None:
         schemas.ToolRegistry.from_dict(value)
 
 
+def test_registry_text_codec_is_canonical_and_reversible() -> None:
+    registry = schemas.ToolRegistry(
+        (schemas.ToolSchema(Identifier("notes.add"), (parameter("text"),), "add note"),)
+    )
+    encoded = schemas.encode_registry(registry)
+    assert encoded.endswith("\n") and ": " not in encoded and ", " not in encoded
+    assert schemas.decode_registry(encoded).to_dict() == registry.to_dict()
+    assert schemas.encode_registry(schemas.decode_registry(encoded)).encode() == encoded.encode()
+
+
+def test_registry_text_decoder_rejects_empty_and_trailing_documents() -> None:
+    with pytest.raises(ValueError, match="document is empty"):
+        schemas.decode_registry("\n")
+    with pytest.raises(ValueError):
+        schemas.decode_registry(schemas.encode_registry(schemas.ToolRegistry()) + "{}")
+
+
 def test_parameter_defaults_must_be_optional() -> None:
     with pytest.raises(ValueError, match="required parameter cannot declare a default"):
         schemas.ParameterSpec(Identifier("count"), schemas.ValueType.INTEGER, True, False, 1)

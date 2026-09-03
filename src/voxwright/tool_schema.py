@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from voxwright.core import JSONValue, ensure_json_value
+from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
 from voxwright.identifiers import Identifier
 
 
@@ -172,6 +172,16 @@ class ToolRegistry:
         if not isinstance(tools, list):
             raise TypeError("$.tools: expected array")
         return cls(tuple(ToolSchema.from_dict(item) for item in tools))
+
+
+def encode_registry(registry: ToolRegistry) -> str:
+    return canonical_json(registry.to_dict()) + "\n"
+
+
+def decode_registry(text: str) -> ToolRegistry:
+    if not text.strip():
+        raise ValueError("tool registry document is empty")
+    return ToolRegistry.from_dict(parse_json(text))
 
 
 def coerce_value(value: JSONValue, value_type: ValueType, path: str) -> JSONValue:
