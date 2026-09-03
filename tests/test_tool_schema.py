@@ -66,6 +66,17 @@ def test_schema_decoder_rejects_unknown_top_level_field() -> None:
         schemas.ToolSchema.from_dict(value)
 
 
+def test_schema_decoder_never_coerces_identity_or_idempotency_types() -> None:
+    value = schemas.ToolSchema(Identifier("timer.start"), (), "start").to_dict()
+    value["name"] = 7
+    with pytest.raises(TypeError, match=r"\$\.name: expected string"):
+        schemas.ToolSchema.from_dict(value)
+    value = schemas.ToolSchema(Identifier("timer.start"), (), "start").to_dict()
+    value["idempotent"] = 1
+    with pytest.raises(TypeError, match=r"\$\.idempotent: expected boolean"):
+        schemas.ToolSchema.from_dict(value)
+
+
 def test_registry_resolves_tools_in_sorted_name_order() -> None:
     registry = schemas.ToolRegistry()
     notes = schemas.ToolSchema(Identifier("notes.add"), (), "add note")

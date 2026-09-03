@@ -82,6 +82,15 @@ class ToolSchema:
         parameters = checked["parameters"]
         if not isinstance(parameters, list):
             raise TypeError("$.parameters: expected array")
+        name = checked["name"]
+        description = checked["description"]
+        idempotent = checked["idempotent"]
+        if not isinstance(name, str):
+            raise TypeError("$.name: expected string")
+        if not isinstance(description, str):
+            raise TypeError("$.description: expected string")
+        if not isinstance(idempotent, bool):
+            raise TypeError("$.idempotent: expected boolean")
         decoded = []
         for index, item in enumerate(parameters):
             if not isinstance(item, dict) or set(item) != {
@@ -102,10 +111,10 @@ class ToolSchema:
                 )
             )
         return cls(
-            Identifier(str(checked["name"])),
+            Identifier(name),
             tuple(decoded),
-            str(checked["description"]),
-            bool(checked["idempotent"]),
+            description,
+            idempotent,
         )
 
 
