@@ -91,6 +91,13 @@ ARTIFACT_SCHEMAS = (
         True,
     ),
     ArtifactSchema(
+        "runtime-turns",
+        1,
+        "application/json",
+        ("schema_version", "turns"),
+        False,
+    ),
+    ArtifactSchema(
         "scenario-manifest",
         1,
         "application/x-ndjson",

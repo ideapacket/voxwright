@@ -9,6 +9,8 @@ from voxwright.context import ContextManager
 from voxwright.context_artifacts import context_to_dict
 from voxwright.core import canonical_json
 from voxwright.identifiers import Identifier
+from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace, RuntimeTurn, StreamBlock
+from voxwright.runtime_artifacts import runtime_to_dict
 from voxwright.sandbox import SideEffectLedger
 from voxwright.sandbox_audit import audit_to_dict
 from voxwright.schemas import ARTIFACT_SCHEMAS, ArtifactSchema, artifact_schema, schema_catalog
@@ -19,7 +21,7 @@ from voxwright.workflow_codec import workflow_to_dict
 def test_schema_catalog_has_unique_sorted_public_names() -> None:
     names = [item.name for item in ARTIFACT_SCHEMAS]
     assert names == sorted(names)
-    assert len(names) == len(set(names)) == 14
+    assert len(names) == len(set(names)) == 15
     assert all(item.version == 1 for item in ARTIFACT_SCHEMAS)
     assert schema_catalog() == [item.to_dict() for item in ARTIFACT_SCHEMAS]
 
@@ -70,6 +72,16 @@ def test_side_effect_schema_matches_the_verified_audit_codec() -> None:
 def test_context_schema_fields_match_the_snapshot_codec() -> None:
     schema = artifact_schema("context-snapshot")
     assert tuple(context_to_dict(ContextManager(1))) == schema.required_fields
+    assert schema.media_type == "application/json" and not schema.checksummed
+
+
+def test_runtime_schema_fields_match_the_logical_turn_codec() -> None:
+    turn = RuntimeTurn(
+        StreamBlock(0, 0, 1, True),
+        LatencyTrace((LatencySample(LatencyStage.PERCEPTION, 0, 1),)),
+    )
+    schema = artifact_schema("runtime-turns")
+    assert tuple(runtime_to_dict((turn,))) == schema.required_fields
     assert schema.media_type == "application/json" and not schema.checksummed
 
 
