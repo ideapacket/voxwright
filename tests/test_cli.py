@@ -26,6 +26,7 @@ from voxwright.runtime import (
 from voxwright.runtime_artifacts import write_runtime
 from voxwright.sandbox import PermissionPolicy, ToolSandbox
 from voxwright.sandbox_audit import write_audit
+from voxwright.tool_schema import ToolRegistry, ToolSchema, write_registry
 from voxwright.workflow import StepKind, WorkflowDefinition, WorkflowStep
 from voxwright.workflow_codec import write_workflow
 
@@ -226,6 +227,21 @@ def test_validate_campaign_rejects_checksum_and_metric_drift(
     path.write_text(content.replace('"task_success":1.0', '"task_success":2.0'), encoding="utf-8")
     assert main(["validate", "campaign", str(path)]) == 2
     assert "between 0 and 1" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
+def test_validate_reports_sorted_tool_registry_names(tmp_path: object, capsys: object) -> None:
+    path = tmp_path / "tools.json"  # type: ignore[operator]
+    registry = ToolRegistry(
+        (
+            ToolSchema(Identifier("notes.add"), (), "add"),
+            ToolSchema(Identifier("calendar.create"), (), "create"),
+        )
+    )
+    write_registry(path, registry)
+    assert main(["validate", "registry", str(path)]) == 0
+    assert capsys.readouterr().out == (  # type: ignore[attr-defined]
+        '{"artifact":"registry","names":["calendar.create","notes.add"],"tools":2,"valid":true}\n'
+    )
 
 
 def test_validate_runtime_surfaces_version_order_and_truncation_errors(

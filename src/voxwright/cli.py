@@ -23,6 +23,7 @@ from voxwright.runtime_artifacts import load_runtime, runtime_digest
 from voxwright.sandbox_audit import load_audit, summarize_audit
 from voxwright.scenarios import TaskType, application_scenario, composite_scenario
 from voxwright.session_diff import diff_traces, format_differences
+from voxwright.tool_schema import load_registry
 from voxwright.workflow_codec import load_workflow, workflow_digest
 from voxwright.workflow_svg import workflow_svg
 
@@ -147,7 +148,7 @@ def _validate(args: argparse.Namespace) -> int:
             "turns": len(turns),
             "valid": True,
         }
-    else:
+    elif args.artifact == "campaign":
         campaign_artifact = load_campaign(path)
         result = {
             "artifact": "campaign",
@@ -156,6 +157,14 @@ def _validate(args: argparse.Namespace) -> int:
             "run_count": campaign_artifact.metrics.run_count,
             "seed": campaign_artifact.seed,
             "task_success": campaign_artifact.metrics.task_success,
+            "valid": True,
+        }
+    else:
+        registry = load_registry(path)
+        result = {
+            "artifact": "registry",
+            "names": [str(item) for item in registry.names()],
+            "tools": len(registry.names()),
             "valid": True,
         }
     print(canonical_json(result))
@@ -340,6 +349,7 @@ def build_parser() -> argparse.ArgumentParser:
             "context",
             "runtime",
             "campaign",
+            "registry",
         ),
     )
     validate.add_argument("path", type=Path)
