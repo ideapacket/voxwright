@@ -71,7 +71,16 @@ from voxwright.sandbox_audit import (
     write_audit,
 )
 from voxwright.scenarios import SyntheticScenario, TaskType, application_scenario
-from voxwright.tool_schema import ParameterSpec, ToolRegistry, ToolSchema, ValueType
+from voxwright.tool_schema import (
+    ParameterSpec,
+    ToolRegistry,
+    ToolSchema,
+    ValueType,
+    decode_registry,
+    encode_registry,
+    load_registry,
+    write_registry,
+)
 from voxwright.workflow import WorkflowDefinition, WorkflowStep, run_linear
 from voxwright.workflow_codec import (
     decode_workflow,
@@ -137,18 +146,21 @@ __all__ = [
     "decode_campaign",
     "decode_checkpoint",
     "decode_context",
+    "decode_registry",
     "decode_runtime",
     "decode_workflow",
     "encode_audit",
     "encode_campaign",
     "encode_checkpoint",
     "encode_context",
+    "encode_registry",
     "encode_runtime",
     "encode_workflow",
     "envelope_for",
     "load_audit",
     "load_campaign",
     "load_context",
+    "load_registry",
     "load_runtime",
     "load_workflow",
     "metric_bundle_from_dict",
@@ -165,6 +177,7 @@ __all__ = [
     "write_audit",
     "write_campaign",
     "write_context",
+    "write_registry",
     "write_runtime",
     "write_workflow",
 ]
