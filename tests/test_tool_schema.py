@@ -9,6 +9,8 @@ import pytest
 import voxwright.tool_schema as schemas
 from voxwright.identifiers import Identifier
 
+GOLDEN = Path(__file__).parent / "golden" / "tool_registry.json"
+
 
 def parameter(name: str = "title", required: bool = True) -> schemas.ParameterSpec:
     return schemas.ParameterSpec(Identifier(name), schemas.ValueType.STRING, required)
@@ -205,6 +207,16 @@ def test_registry_files_roundtrip_without_overwrite(tmp_path: Path) -> None:
     path.write_text("{}", encoding="utf-8")
     with pytest.raises(ValueError, match="missing terminal newline"):
         schemas.load_registry(path)
+
+
+def test_tool_registry_matches_reviewed_golden_bytes() -> None:
+    registry = schemas.ToolRegistry(
+        (schemas.ToolSchema(Identifier("notes.add"), (parameter("text"),), "add synthetic note"),)
+    )
+    assert schemas.encode_registry(registry).encode() == GOLDEN.read_bytes()
+    assert schemas.decode_registry(GOLDEN.read_text(encoding="utf-8")).to_dict() == (
+        registry.to_dict()
+    )
 
 
 def test_parameter_defaults_must_be_optional() -> None:

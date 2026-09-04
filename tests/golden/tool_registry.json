@@ -1,0 +1,1 @@
+{"schema_version":1,"tools":[{"description":"add synthetic note","idempotent":false,"name":"notes.add","parameters":[{"default":null,"name":"text","nullable":false,"required":true,"type":"string"}]}]}
