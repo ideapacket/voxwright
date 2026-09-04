@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
 from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
 from voxwright.identifiers import Identifier
@@ -182,6 +183,21 @@ def decode_registry(text: str) -> ToolRegistry:
     if not text.strip():
         raise ValueError("tool registry document is empty")
     return ToolRegistry.from_dict(parse_json(text))
+
+
+def load_registry(path: Path) -> ToolRegistry:
+    text = path.read_text(encoding="utf-8")
+    if text and not text.endswith("\n"):
+        raise ValueError(f"tool registry is missing terminal newline: {path}")
+    return decode_registry(text)
+
+
+def write_registry(path: Path, registry: ToolRegistry) -> None:
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_registry(registry))
+    except FileExistsError as error:
+        raise FileExistsError(f"tool registry output already exists: {path}") from error
 
 
 def coerce_value(value: JSONValue, value_type: ValueType, path: str) -> JSONValue:

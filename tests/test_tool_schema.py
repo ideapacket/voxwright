@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 import voxwright.tool_schema as schemas
@@ -188,6 +190,21 @@ def test_registry_text_decoder_rejects_empty_and_trailing_documents() -> None:
         schemas.decode_registry("\n")
     with pytest.raises(ValueError):
         schemas.decode_registry(schemas.encode_registry(schemas.ToolRegistry()) + "{}")
+
+
+def test_registry_files_roundtrip_without_overwrite(tmp_path: Path) -> None:
+    registry = schemas.ToolRegistry(
+        (schemas.ToolSchema(Identifier("notes.add"), (parameter("text"),), "add"),)
+    )
+    path = tmp_path / "tools.json"
+    schemas.write_registry(path, registry)
+    assert schemas.load_registry(path).to_dict() == registry.to_dict()
+    with pytest.raises(FileExistsError, match="output already exists"):
+        schemas.write_registry(path, schemas.ToolRegistry())
+    path.unlink()
+    path.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="missing terminal newline"):
+        schemas.load_registry(path)
 
 
 def test_parameter_defaults_must_be_optional() -> None:
