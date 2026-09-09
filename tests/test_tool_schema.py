@@ -92,6 +92,17 @@ def test_parameter_decoder_requires_exact_flag_and_type_values() -> None:
         schemas.ToolSchema.from_dict(value)
 
 
+def test_parameter_defaults_must_match_declared_type_without_coercion() -> None:
+    with pytest.raises(TypeError, match="default must already match"):
+        schemas.ParameterSpec(
+            Identifier("count"), schemas.ValueType.INTEGER, required=False, default="5"
+        )
+    valid = schemas.ParameterSpec(
+        Identifier("count"), schemas.ValueType.INTEGER, required=False, default=5
+    )
+    assert valid.default == 5
+
+
 def test_registry_resolves_tools_in_sorted_name_order() -> None:
     registry = schemas.ToolRegistry()
     notes = schemas.ToolSchema(Identifier("notes.add"), (), "add note")

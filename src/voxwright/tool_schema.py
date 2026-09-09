@@ -33,6 +33,10 @@ class ParameterSpec:
         object.__setattr__(self, "default", ensure_json_value(self.default, "$.default"))
         if self.required and self.default is not None:
             raise ValueError("required parameter cannot declare a default")
+        if self.default is not None:
+            coerced = coerce_value(self.default, self.value_type, "$.default")
+            if type(coerced) is not type(self.default) or coerced != self.default:
+                raise TypeError("parameter default must already match its declared type")
         if self.default is None and not self.nullable and not self.required:
             return
 
