@@ -244,6 +244,25 @@ def test_validate_reports_sorted_tool_registry_names(tmp_path: object, capsys: o
     )
 
 
+def test_validate_registry_surfaces_type_version_and_truncation_errors(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "tools.json"  # type: ignore[operator]
+    path.write_text('{"schema_version":2,"tools":[]}\n', encoding="utf-8")
+    assert main(["validate", "registry", str(path)]) == 2
+    assert "unsupported tool registry" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text(
+        '{"schema_version":1,"tools":[{"description":"x","idempotent":1,'
+        '"name":"notes.add","parameters":[]}]}\n',
+        encoding="utf-8",
+    )
+    assert main(["validate", "registry", str(path)]) == 2
+    assert "idempotent: expected boolean" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text("{}", encoding="utf-8")
+    assert main(["validate", "registry", str(path)]) == 2
+    assert "missing terminal newline" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
 def test_validate_runtime_surfaces_version_order_and_truncation_errors(
     tmp_path: object, capsys: object
 ) -> None:
