@@ -175,6 +175,9 @@ def test_registry_decoder_rejects_future_schema() -> None:
     value["schema_version"] = 2
     with pytest.raises(ValueError, match="unsupported tool registry"):
         schemas.ToolRegistry.from_dict(value)
+    value["schema_version"] = True
+    with pytest.raises(ValueError, match="unsupported tool registry"):
+        schemas.ToolRegistry.from_dict(value)
 
 
 def test_registry_text_codec_is_canonical_and_reversible() -> None:

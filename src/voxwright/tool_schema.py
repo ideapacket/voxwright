@@ -167,7 +167,7 @@ class ToolRegistry:
         checked = ensure_json_value(value, "$")
         if not isinstance(checked, dict) or set(checked) != {"schema_version", "tools"}:
             raise ValueError("invalid tool registry shape")
-        if checked["schema_version"] != 1:
+        if checked["schema_version"] != 1 or isinstance(checked["schema_version"], bool):
             raise ValueError("unsupported tool registry schema version")
         tools = checked["tools"]
         if not isinstance(tools, list):
