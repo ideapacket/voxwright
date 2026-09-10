@@ -45,3 +45,27 @@ def test_frame_stack_decoder_reports_nested_slot_span_errors() -> None:
     slot["span"] = [0, True]  # type: ignore[index]
     with pytest.raises(TypeError, match=r"slots\.title\.span\[1\]: expected integer"):
         stack_from_dict(snapshot)
+
+
+def test_frame_stack_roundtrips_nested_suspended_parent() -> None:
+    stack = sample_stack()
+    child = TaskFrame(
+        Identifier("music-1"),
+        Identifier("music.play"),
+        {Identifier("track"): GroundedSlot(Identifier("track"))},
+    )
+    stack.push(child)
+    restored = decode_frame_stack(encode_frame_stack(stack))
+    assert restored.snapshot() == stack.snapshot()
+    assert restored.frames[0].state.value == "suspended"
+    assert restored.current is not None and restored.current.frame_id == Identifier("music-1")
+
+
+def test_frame_stack_decoder_rejects_duplicate_frame_identity() -> None:
+    snapshot = sample_stack().snapshot()
+    duplicate = dict(snapshot["frames"][0])  # type: ignore[index]
+    duplicate["state"] = "active"
+    snapshot["frames"][0]["state"] = "suspended"  # type: ignore[index]
+    snapshot["frames"].append(duplicate)  # type: ignore[union-attr]
+    with pytest.raises(ValueError, match="identifiers must be unique"):
+        stack_from_dict(snapshot)

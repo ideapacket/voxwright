@@ -76,6 +76,9 @@ def stack_from_dict(value: JSONValue) -> FrameStack:
     if not isinstance(frames, list):
         raise TypeError("$.frames: expected array")
     decoded = [frame_from_dict(item, f"$.frames[{index}]") for index, item in enumerate(frames)]
+    frame_ids = [item.frame_id for item in decoded]
+    if len(set(frame_ids)) != len(frame_ids):
+        raise ValueError("frame stack identifiers must be unique")
     if decoded:
         if decoded[-1].state not in {FrameState.ACTIVE, FrameState.CLOSED}:
             raise ValueError("frame stack top must be active or closed")
