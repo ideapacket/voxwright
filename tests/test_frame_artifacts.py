@@ -15,6 +15,8 @@ from voxwright.frame_artifacts import (
 from voxwright.frames import FrameStack, GroundedSlot, TaskFrame
 from voxwright.identifiers import Identifier
 
+GOLDEN = Path(__file__).parent / "golden" / "frame_stack.json"
+
 
 def sample_stack() -> FrameStack:
     stack = FrameStack()
@@ -93,3 +95,9 @@ def test_frame_stack_files_are_identified_complete_and_nonclobbering(tmp_path: P
     path.write_text("{}", encoding="utf-8")
     with pytest.raises(ValueError, match="missing terminal newline"):
         load_frame_stack(path)
+
+
+def test_frame_stack_matches_reviewed_golden_bytes() -> None:
+    stack = sample_stack()
+    assert encode_frame_stack(stack).encode() == GOLDEN.read_bytes()
+    assert decode_frame_stack(GOLDEN.read_text(encoding="utf-8")).snapshot() == stack.snapshot()
