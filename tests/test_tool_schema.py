@@ -233,6 +233,16 @@ def test_tool_registry_matches_reviewed_golden_bytes() -> None:
     )
 
 
+def test_registry_digest_is_order_independent_but_schema_sensitive() -> None:
+    notes = schemas.ToolSchema(Identifier("notes.add"), (), "add")
+    calendar = schemas.ToolSchema(Identifier("calendar.create"), (), "create")
+    forward = schemas.ToolRegistry((notes, calendar))
+    reverse = schemas.ToolRegistry((calendar, notes))
+    changed = schemas.ToolRegistry((notes, schemas.ToolSchema(calendar.name, (), "changed")))
+    assert schemas.registry_digest(forward) == schemas.registry_digest(reverse)
+    assert schemas.registry_digest(forward) != schemas.registry_digest(changed)
+
+
 def test_parameter_defaults_must_be_optional() -> None:
     with pytest.raises(ValueError, match="required parameter cannot declare a default"):
         schemas.ParameterSpec(Identifier("count"), schemas.ValueType.INTEGER, True, False, 1)

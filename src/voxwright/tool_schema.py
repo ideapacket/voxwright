@@ -7,6 +7,7 @@ from enum import Enum
 from pathlib import Path
 
 from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
+from voxwright.hashing import content_digest
 from voxwright.identifiers import Identifier
 
 
@@ -202,6 +203,10 @@ def write_registry(path: Path, registry: ToolRegistry) -> None:
             stream.write(encode_registry(registry))
     except FileExistsError as error:
         raise FileExistsError(f"tool registry output already exists: {path}") from error
+
+
+def registry_digest(registry: ToolRegistry) -> str:
+    return content_digest(encode_registry(registry).encode("utf-8"))
 
 
 def coerce_value(value: JSONValue, value_type: ValueType, path: str) -> JSONValue:
