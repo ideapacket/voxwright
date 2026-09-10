@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from voxwright.frame_artifacts import decode_frame_stack, encode_frame_stack, stack_from_dict
+from voxwright.frame_artifacts import (
+    decode_frame_stack,
+    encode_frame_stack,
+    frame_stack_digest,
+    load_frame_stack,
+    stack_from_dict,
+    write_frame_stack,
+)
 from voxwright.frames import FrameStack, GroundedSlot, TaskFrame
 from voxwright.identifiers import Identifier
 
@@ -69,3 +78,18 @@ def test_frame_stack_decoder_rejects_duplicate_frame_identity() -> None:
     snapshot["frames"].append(duplicate)  # type: ignore[union-attr]
     with pytest.raises(ValueError, match="identifiers must be unique"):
         stack_from_dict(snapshot)
+
+
+def test_frame_stack_files_are_identified_complete_and_nonclobbering(tmp_path: Path) -> None:
+    stack = sample_stack()
+    path = tmp_path / "frames.json"
+    write_frame_stack(path, stack)
+    restored = load_frame_stack(path)
+    assert restored.snapshot() == stack.snapshot()
+    assert frame_stack_digest(restored) == frame_stack_digest(stack)
+    with pytest.raises(FileExistsError, match="output already exists"):
+        write_frame_stack(path, FrameStack())
+    path.unlink()
+    path.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="missing terminal newline"):
+        load_frame_stack(path)

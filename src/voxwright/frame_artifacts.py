@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from voxwright.core import JSONValue, canonical_json, parse_json
 from voxwright.frames import FrameStack, FrameState, GroundedSlot, SlotState, TaskFrame
+from voxwright.hashing import content_digest
 from voxwright.identifiers import Identifier
 
 
@@ -97,3 +100,22 @@ def decode_frame_stack(text: str) -> FrameStack:
     if not text.strip():
         raise ValueError("frame stack document is empty")
     return stack_from_dict(parse_json(text))
+
+
+def frame_stack_digest(stack: FrameStack) -> str:
+    return content_digest(encode_frame_stack(stack).encode("utf-8"))
+
+
+def load_frame_stack(path: Path) -> FrameStack:
+    text = path.read_text(encoding="utf-8")
+    if text and not text.endswith("\n"):
+        raise ValueError(f"frame stack is missing terminal newline: {path}")
+    return decode_frame_stack(text)
+
+
+def write_frame_stack(path: Path, stack: FrameStack) -> None:
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_frame_stack(stack))
+    except FileExistsError as error:
+        raise FileExistsError(f"frame stack output already exists: {path}") from error
