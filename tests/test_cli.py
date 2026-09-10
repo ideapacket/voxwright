@@ -239,9 +239,10 @@ def test_validate_reports_sorted_tool_registry_names(tmp_path: object, capsys: o
     )
     write_registry(path, registry)
     assert main(["validate", "registry", str(path)]) == 0
-    assert capsys.readouterr().out == (  # type: ignore[attr-defined]
-        '{"artifact":"registry","names":["calendar.create","notes.add"],"tools":2,"valid":true}\n'
-    )
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"artifact":"registry"' in output and '"digest":"sha256:' in output
+    assert '"names":["calendar.create","notes.add"]' in output
+    assert '"tools":2' in output and '"valid":true' in output
 
 
 def test_validate_registry_surfaces_type_version_and_truncation_errors(
