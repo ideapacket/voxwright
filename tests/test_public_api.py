@@ -42,6 +42,8 @@ def test_public_api_exports_real_application_mechanics() -> None:
         "PermissionPrompt",
         "permission_prompt_event",
         "metric_bundle_from_dict",
+        "decode_frame_stack",
+        "frame_stack_digest",
         "encode_registry",
         "decode_registry",
     }
@@ -52,7 +54,7 @@ def test_public_api_exports_real_application_mechanics() -> None:
 
 def test_public_api_contract_is_sorted_and_exact() -> None:
     assert voxwright.__all__ == sorted(voxwright.__all__)
-    assert len(voxwright.__all__) == 89
+    assert len(voxwright.__all__) == 94
     assert voxwright.__all__[0] == "AdapterCapabilities"
     assert voxwright.__all__[-1] == "write_workflow"
 

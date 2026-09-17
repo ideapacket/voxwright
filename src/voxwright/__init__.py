@@ -45,6 +45,13 @@ from voxwright.events import (
     Transcript,
     envelope_for,
 )
+from voxwright.frame_artifacts import (
+    decode_frame_stack,
+    encode_frame_stack,
+    frame_stack_digest,
+    load_frame_stack,
+    write_frame_stack,
+)
 from voxwright.frames import ConfirmationPolicy, FrameStack, GroundedSlot, TaskFrame
 from voxwright.repair import RepairConfig, RepairOutcome, RepairStrategy, run_repair
 from voxwright.runtime import LatencyBudget, LatencyTrace, RuntimeTurn
@@ -146,6 +153,7 @@ __all__ = [
     "decode_campaign",
     "decode_checkpoint",
     "decode_context",
+    "decode_frame_stack",
     "decode_registry",
     "decode_runtime",
     "decode_workflow",
@@ -153,13 +161,16 @@ __all__ = [
     "encode_campaign",
     "encode_checkpoint",
     "encode_context",
+    "encode_frame_stack",
     "encode_registry",
     "encode_runtime",
     "encode_workflow",
     "envelope_for",
+    "frame_stack_digest",
     "load_audit",
     "load_campaign",
     "load_context",
+    "load_frame_stack",
     "load_registry",
     "load_runtime",
     "load_workflow",
@@ -177,6 +188,7 @@ __all__ = [
     "write_audit",
     "write_campaign",
     "write_context",
+    "write_frame_stack",
     "write_registry",
     "write_runtime",
     "write_workflow",
