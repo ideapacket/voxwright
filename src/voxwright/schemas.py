@@ -56,10 +56,10 @@ ARTIFACT_SCHEMAS = (
         False,
     ),
     ArtifactSchema(
-        "frame-snapshot",
+        "frame-stack",
         1,
         "application/json",
-        ("schema_version", "frame_id", "task_type", "state", "slots"),
+        ("schema_version", "frames"),
         False,
     ),
     ArtifactSchema(

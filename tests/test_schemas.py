@@ -8,6 +8,7 @@ from voxwright.checkpoints import WorkflowCheckpoint, checkpoint_to_dict
 from voxwright.context import ContextManager
 from voxwright.context_artifacts import context_to_dict
 from voxwright.core import canonical_json
+from voxwright.frames import FrameStack
 from voxwright.identifiers import Identifier
 from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace, RuntimeTurn, StreamBlock
 from voxwright.runtime_artifacts import runtime_to_dict
@@ -72,6 +73,12 @@ def test_side_effect_schema_matches_the_verified_audit_codec() -> None:
 def test_context_schema_fields_match_the_snapshot_codec() -> None:
     schema = artifact_schema("context-snapshot")
     assert tuple(context_to_dict(ContextManager(1))) == schema.required_fields
+    assert schema.media_type == "application/json" and not schema.checksummed
+
+
+def test_frame_stack_schema_matches_the_actual_snapshot_shape() -> None:
+    schema = artifact_schema("frame-stack")
+    assert tuple(FrameStack().snapshot()) == schema.required_fields
     assert schema.media_type == "application/json" and not schema.checksummed
 
 
