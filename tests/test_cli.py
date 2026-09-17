@@ -12,6 +12,8 @@ from voxwright.context import AttachmentKind, ContextAttachment, ContextManager
 from voxwright.context_artifacts import write_context
 from voxwright.evaluation import EvaluationRun, score_runs
 from voxwright.events import EventEnvelope, EventKind
+from voxwright.frame_artifacts import write_frame_stack
+from voxwright.frames import FrameStack, GroundedSlot, TaskFrame
 from voxwright.identifiers import Identifier
 from voxwright.manifests import read_manifest
 from voxwright.recording import SessionRecorder
@@ -243,6 +245,25 @@ def test_validate_reports_sorted_tool_registry_names(tmp_path: object, capsys: o
     assert '"artifact":"registry"' in output and '"digest":"sha256:' in output
     assert '"names":["calendar.create","notes.add"]' in output
     assert '"tools":2' in output and '"valid":true' in output
+
+
+def test_validate_reports_frame_stack_depth_current_and_digest(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "frames.json"  # type: ignore[operator]
+    stack = FrameStack()
+    stack.push(
+        TaskFrame(
+            Identifier("schedule-cli"),
+            Identifier("calendar.create"),
+            {Identifier("title"): GroundedSlot(Identifier("title"))},
+        )
+    )
+    write_frame_stack(path, stack)
+    assert main(["validate", "frames", str(path)]) == 0
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"artifact":"frames"' in output and '"frames":1' in output
+    assert '"current":"schedule-cli"' in output and '"digest":"sha256:' in output
 
 
 def test_validate_registry_surfaces_type_version_and_truncation_errors(

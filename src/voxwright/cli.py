@@ -13,6 +13,7 @@ from voxwright.checkpoints import load_checkpoint
 from voxwright.context_artifacts import context_digest, load_context
 from voxwright.core import canonical_json
 from voxwright.evaluation import score_runs
+from voxwright.frame_artifacts import frame_stack_digest, load_frame_stack
 from voxwright.latency import RunOutcome, latency_success_curve
 from voxwright.manifests import encode_manifest, read_manifest
 from voxwright.recording import load_session, summarize
@@ -159,13 +160,23 @@ def _validate(args: argparse.Namespace) -> int:
             "task_success": campaign_artifact.metrics.task_success,
             "valid": True,
         }
-    else:
+    elif args.artifact == "registry":
         registry = load_registry(path)
         result = {
             "artifact": "registry",
             "digest": registry_digest(registry),
             "names": [str(item) for item in registry.names()],
             "tools": len(registry.names()),
+            "valid": True,
+        }
+    else:
+        stack = load_frame_stack(path)
+        current = stack.current
+        result = {
+            "artifact": "frames",
+            "current": str(current.frame_id) if current is not None else None,
+            "digest": frame_stack_digest(stack),
+            "frames": len(stack.frames),
             "valid": True,
         }
     print(canonical_json(result))
@@ -351,6 +362,7 @@ def build_parser() -> argparse.ArgumentParser:
             "runtime",
             "campaign",
             "registry",
+            "frames",
         ),
     )
     validate.add_argument("path", type=Path)
