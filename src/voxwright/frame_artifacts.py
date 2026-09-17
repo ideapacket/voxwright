@@ -16,6 +16,12 @@ def _integer(value: JSONValue, path: str) -> int:
     return value
 
 
+def _text(value: JSONValue, path: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError(f"{path}: expected string")
+    return value
+
+
 def _slot_from_dict(name: str, value: JSONValue, path: str) -> GroundedSlot:
     fields = {"value", "confidence", "source_text", "span", "state"}
     if not isinstance(value, dict) or set(value) != fields:
@@ -55,19 +61,20 @@ def frame_from_dict(value: JSONValue, path: str = "$.frame") -> TaskFrame:
         value["state"],
         value["slots"],
     )
-    if not all(isinstance(item, str) for item in (frame_id, intent, state)):
-        raise TypeError(f"{path}: identity and state must be strings")
+    decoded_frame_id = _text(frame_id, f"{path}.frame_id")
+    decoded_intent = _text(intent, f"{path}.intent")
+    decoded_state = _text(state, f"{path}.state")
     if not isinstance(slots, dict):
         raise TypeError(f"{path}.slots: expected object")
     try:
-        frame_state = FrameState(state)
+        frame_state = FrameState(decoded_state)
     except ValueError as error:
-        raise ValueError(f"{path}.state: unknown frame state {state!r}") from error
+        raise ValueError(f"{path}.state: unknown frame state {decoded_state!r}") from error
     decoded = {
         Identifier(name): _slot_from_dict(name, item, f"{path}.slots.{name}")
         for name, item in slots.items()
     }
-    return TaskFrame(Identifier(frame_id), Identifier(intent), decoded, frame_state)
+    return TaskFrame(Identifier(decoded_frame_id), Identifier(decoded_intent), decoded, frame_state)
 
 
 def stack_from_dict(value: JSONValue) -> FrameStack:
