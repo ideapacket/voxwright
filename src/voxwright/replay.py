@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
-from voxwright.core import JSONValue, canonical_bytes, ensure_json_value
+from voxwright.core import JSONValue, canonical_bytes, canonical_json, ensure_json_value, parse_json
 from voxwright.events import EventEnvelope
+from voxwright.hashing import content_digest
 from voxwright.identifiers import Identifier
 from voxwright.recording import RecordingError, SessionRecord
 
@@ -72,6 +74,37 @@ def replay(records: list[SessionRecord], seed: int) -> ReplayTrace:
         seed,
         tuple(record.event for record in records),
     )
+
+
+def encode_trace(trace: ReplayTrace) -> str:
+    """Encode a complete replay artifact with a terminal newline."""
+    return canonical_json(trace.to_dict()) + "\n"
+
+
+def decode_trace(text: str) -> ReplayTrace:
+    """Decode and validate a complete replay artifact."""
+    if not text.strip():
+        raise ValueError("replay trace document is empty")
+    return ReplayTrace.from_dict(parse_json(text))
+
+
+def trace_digest(trace: ReplayTrace) -> str:
+    return content_digest(encode_trace(trace).encode("utf-8"))
+
+
+def load_trace(path: Path) -> ReplayTrace:
+    text = path.read_text(encoding="utf-8")
+    if text and not text.endswith("\n"):
+        raise ValueError(f"replay trace is missing terminal newline: {path}")
+    return decode_trace(text)
+
+
+def write_trace(path: Path, trace: ReplayTrace) -> None:
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_trace(trace))
+    except FileExistsError as error:
+        raise FileExistsError(f"replay trace output already exists: {path}") from error
 
 
 @dataclass(slots=True)

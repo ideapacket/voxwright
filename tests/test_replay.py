@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -86,6 +87,29 @@ def test_replay_trace_decoder_reapplies_event_and_sequence_invariants() -> None:
     value["events"][1]["session_id"] = "another-session"  # type: ignore[index]
     with pytest.raises(RecordingError, match="session identifier mismatch"):
         replaying.ReplayTrace.from_dict(value)
+
+
+def test_replay_trace_file_roundtrip_preserves_bytes_and_digest(tmp_path: Path) -> None:
+    trace = replaying.replay(replay_records(), 23)
+    path = tmp_path / "trace.json"
+    replaying.write_trace(path, trace)
+    assert path.read_text(encoding="utf-8") == replaying.encode_trace(trace)
+    restored = replaying.load_trace(path)
+    assert restored == trace
+    assert replaying.trace_digest(restored) == replaying.trace_digest(trace)
+
+
+def test_replay_trace_files_reject_clobbering_truncation_and_empty_input(tmp_path: Path) -> None:
+    path = tmp_path / "trace.json"
+    trace = replaying.replay(replay_records(), 0)
+    replaying.write_trace(path, trace)
+    with pytest.raises(FileExistsError, match="output already exists"):
+        replaying.write_trace(path, trace)
+    path.write_text(replaying.encode_trace(trace).rstrip("\n"), encoding="utf-8")
+    with pytest.raises(ValueError, match="missing terminal newline"):
+        replaying.load_trace(path)
+    with pytest.raises(ValueError, match="document is empty"):
+        replaying.decode_trace("\n")
 
 
 def test_replay_requires_records_to_infer_session() -> None:
