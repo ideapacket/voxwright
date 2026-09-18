@@ -42,6 +42,18 @@ def test_replay_seed_is_part_of_deterministic_artifact() -> None:
     )
 
 
+def test_replay_trace_decodes_its_public_object_without_byte_drift() -> None:
+    trace = replaying.replay(replay_records(), 17)
+    restored = replaying.ReplayTrace.from_dict(trace.to_dict())
+    assert restored == trace
+    assert restored.to_bytes() == trace.to_bytes()
+
+
+def test_empty_replay_trace_can_roundtrip_with_an_explicit_session() -> None:
+    trace = replaying.ReplayTrace(Identifier("empty-session"), 0, ())
+    assert replaying.ReplayTrace.from_dict(trace.to_dict()) == trace
+
+
 def test_replay_requires_records_to_infer_session() -> None:
     with pytest.raises(RecordingError, match="empty recording"):
         replaying.replay([], 0)

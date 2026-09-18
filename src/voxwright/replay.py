@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from voxwright.core import JSONValue, canonical_bytes
+from voxwright.core import JSONValue, canonical_bytes, ensure_json_value
 from voxwright.events import EventEnvelope
 from voxwright.identifiers import Identifier
 from voxwright.recording import RecordingError, SessionRecord
@@ -39,6 +39,28 @@ class ReplayTrace:
 
     def to_bytes(self) -> bytes:
         return canonical_bytes(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, value: object) -> ReplayTrace:
+        """Decode a trace while rejecting ambiguous or unknown fields."""
+        data = ensure_json_value(value)
+        fields = {"schema_version", "session_id", "seed", "events"}
+        if not isinstance(data, dict) or set(data) != fields:
+            raise ValueError("$: expected exact replay trace fields")
+        version = data["schema_version"]
+        seed = data["seed"]
+        session_id = data["session_id"]
+        events = data["events"]
+        if isinstance(version, bool) or not isinstance(version, int) or version != 1:
+            raise ValueError(f"$.schema_version: unsupported version {version!r}")
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            raise TypeError("$.seed: expected integer")
+        if not isinstance(session_id, str):
+            raise TypeError("$.session_id: expected string")
+        if not isinstance(events, list):
+            raise TypeError("$.events: expected array")
+        decoded = tuple(EventEnvelope.from_dict(event) for event in events)
+        return cls(Identifier(session_id), seed, decoded)
 
 
 def replay(records: list[SessionRecord], seed: int) -> ReplayTrace:
