@@ -54,6 +54,40 @@ def test_empty_replay_trace_can_roundtrip_with_an_explicit_session() -> None:
     assert replaying.ReplayTrace.from_dict(trace.to_dict()) == trace
 
 
+def test_replay_trace_decoder_rejects_shape_version_and_scalar_types() -> None:
+    value = replaying.replay(replay_records(), 1).to_dict()
+    value["extra"] = None
+    with pytest.raises(ValueError, match="exact replay trace fields"):
+        replaying.ReplayTrace.from_dict(value)
+    value = replaying.replay(replay_records(), 1).to_dict()
+    value["schema_version"] = True
+    with pytest.raises(ValueError, match="unsupported version True"):
+        replaying.ReplayTrace.from_dict(value)
+    value = replaying.replay(replay_records(), 1).to_dict()
+    value["seed"] = False
+    with pytest.raises(TypeError, match="seed: expected integer"):
+        replaying.ReplayTrace.from_dict(value)
+    value = replaying.replay(replay_records(), 1).to_dict()
+    value["events"] = {}
+    with pytest.raises(TypeError, match="events: expected array"):
+        replaying.ReplayTrace.from_dict(value)
+
+
+def test_replay_trace_decoder_reapplies_event_and_sequence_invariants() -> None:
+    value = replaying.replay(replay_records(), 1).to_dict()
+    value["events"][0]["kind"] = "invented"  # type: ignore[index]
+    with pytest.raises(ValueError, match="unknown event kind"):
+        replaying.ReplayTrace.from_dict(value)
+    value = replaying.replay(replay_records(), 1).to_dict()
+    value["events"][1]["sequence"] = 3  # type: ignore[index]
+    with pytest.raises(RecordingError, match="non-contiguous event sequence"):
+        replaying.ReplayTrace.from_dict(value)
+    value = replaying.replay(replay_records(), 1).to_dict()
+    value["events"][1]["session_id"] = "another-session"  # type: ignore[index]
+    with pytest.raises(RecordingError, match="session identifier mismatch"):
+        replaying.ReplayTrace.from_dict(value)
+
+
 def test_replay_requires_records_to_infer_session() -> None:
     with pytest.raises(RecordingError, match="empty recording"):
         replaying.replay([], 0)
