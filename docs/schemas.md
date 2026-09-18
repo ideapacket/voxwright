@@ -1,6 +1,6 @@
 # 制品与 schema
 
-`voxwright.schemas.ARTIFACT_SCHEMAS` 是公开 catalog，列出 12 种版本化制品的 envelope 字段、
+`voxwright.schemas.ARTIFACT_SCHEMAS` 是公开 catalog，列出 15 种版本化制品的 envelope 字段、
 media type 与完整性保护。当前版本均为 1；未知版本和多余字段会被拒绝，不做静默降级。
 
 JSONL 制品要求最后一行以换行结束，避免把中断写入误当成完整记录。scenario manifest、run
@@ -36,3 +36,7 @@ canonical digest 会随任一版本或内容变化。每次应用上下文变化
 runtime artifact 保存有序 stream block 及每个 perception、decision、tool、response logical interval。
 decoder 重新执行 stage order、非重叠时间和 block 字段校验；canonical digest 覆盖完整 turn 顺序。
 这些 interval 来自 deterministic fixture clock，不包含真实网络或模型服务的 wall-clock 测量。
+
+frame-stack artifact 保存从最早 parent 到当前 frame 的顺序。除 top 外的 frame 必须处于 suspended，
+top 只能是 active 或 closed；decoder 也会检查 frame identity 唯一、slot span 和 lifecycle state。
+恢复后得到可继续 push、pop、fill 与 confirm 的 `FrameStack`，而不是未经校验的普通映射。

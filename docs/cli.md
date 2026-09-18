@@ -12,6 +12,7 @@ voxwright validate audit sandbox-audit.json
 voxwright validate context context.json
 voxwright validate runtime runtime.json
 voxwright validate campaign campaign.json
+voxwright validate frames frames.json
 voxwright score runs.jsonl
 voxwright bench runs.jsonl --budgets 50 75 100 150
 voxwright report runs.jsonl report.html --format html
@@ -46,3 +47,6 @@ canonical digest；不读取 wall clock，也不把这些 synthetic duration 描
 
 `validate campaign` 校验 config digest 与完整 metric bundle，报告 campaign 名称、seed、run count 和
 task success。所有数字仍来自已执行的 synthetic runs 与 planted ground truth。
+
+`validate frames` 校验 frame stack 的 slot 字段和 nested task 拓扑，打印 stack 深度、当前 frame id 与
+canonical digest。空 stack 的 current 是 `null`，可以作为尚未打开任务的合法 checkpoint。
