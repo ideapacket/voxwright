@@ -266,6 +266,26 @@ def test_validate_reports_frame_stack_depth_current_and_digest(
     assert '"current":"schedule-cli"' in output and '"digest":"sha256:' in output
 
 
+def test_validate_frames_surfaces_version_topology_and_truncation_errors(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "frames.json"  # type: ignore[operator]
+    path.write_text('{"frames":[],"schema_version":2}\n', encoding="utf-8")
+    assert main(["validate", "frames", str(path)]) == 2
+    assert "unsupported version 2" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text(
+        '{"frames":[{"frame_id":"parent","intent":"notes.add","slots":{},'
+        '"state":"active"},{"frame_id":"child","intent":"music.play","slots":{},'
+        '"state":"active"}],"schema_version":1}\n',
+        encoding="utf-8",
+    )
+    assert main(["validate", "frames", str(path)]) == 2
+    assert "non-top frames must be suspended" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text("{}", encoding="utf-8")
+    assert main(["validate", "frames", str(path)]) == 2
+    assert "missing terminal newline" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
 def test_validate_registry_surfaces_type_version_and_truncation_errors(
     tmp_path: object, capsys: object
 ) -> None:
