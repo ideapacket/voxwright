@@ -10,6 +10,7 @@ from voxwright.context_artifacts import context_to_dict
 from voxwright.core import canonical_json
 from voxwright.frames import FrameStack
 from voxwright.identifiers import Identifier
+from voxwright.replay import ReplayTrace
 from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace, RuntimeTurn, StreamBlock
 from voxwright.runtime_artifacts import runtime_to_dict
 from voxwright.sandbox import SideEffectLedger
@@ -89,6 +90,13 @@ def test_runtime_schema_fields_match_the_logical_turn_codec() -> None:
     )
     schema = artifact_schema("runtime-turns")
     assert tuple(runtime_to_dict((turn,))) == schema.required_fields
+    assert schema.media_type == "application/json" and not schema.checksummed
+
+
+def test_replay_schema_fields_match_the_trace_envelope() -> None:
+    trace = ReplayTrace(Identifier("catalog-replay"), 0, ())
+    schema = artifact_schema("replay-trace")
+    assert tuple(trace.to_dict()) == schema.required_fields
     assert schema.media_type == "application/json" and not schema.checksummed
 
 
