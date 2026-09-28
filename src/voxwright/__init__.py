@@ -54,6 +54,14 @@ from voxwright.frame_artifacts import (
 )
 from voxwright.frames import ConfirmationPolicy, FrameStack, GroundedSlot, TaskFrame
 from voxwright.repair import RepairConfig, RepairOutcome, RepairStrategy, run_repair
+from voxwright.replay import (
+    ReplayTrace,
+    decode_trace,
+    encode_trace,
+    load_trace,
+    trace_digest,
+    write_trace,
+)
 from voxwright.runtime import LatencyBudget, LatencyTrace, RuntimeTurn
 from voxwright.runtime_artifacts import (
     decode_runtime,
@@ -127,6 +135,7 @@ __all__ = [
     "RepairConfig",
     "RepairOutcome",
     "RepairStrategy",
+    "ReplayTrace",
     "RuntimeTurn",
     "ScriptedAdapter",
     "SpokenAdapter",
@@ -156,6 +165,7 @@ __all__ = [
     "decode_frame_stack",
     "decode_registry",
     "decode_runtime",
+    "decode_trace",
     "decode_workflow",
     "encode_audit",
     "encode_campaign",
@@ -164,6 +174,7 @@ __all__ = [
     "encode_frame_stack",
     "encode_registry",
     "encode_runtime",
+    "encode_trace",
     "encode_workflow",
     "envelope_for",
     "frame_stack_digest",
@@ -173,6 +184,7 @@ __all__ = [
     "load_frame_stack",
     "load_registry",
     "load_runtime",
+    "load_trace",
     "load_workflow",
     "metric_bundle_from_dict",
     "parse_call",
@@ -183,6 +195,7 @@ __all__ = [
     "runtime_digest",
     "score_runs",
     "summarize_audit",
+    "trace_digest",
     "verify_checkpoint",
     "workflow_digest",
     "write_audit",
@@ -191,5 +204,6 @@ __all__ = [
     "write_frame_stack",
     "write_registry",
     "write_runtime",
+    "write_trace",
     "write_workflow",
 ]
