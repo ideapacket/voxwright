@@ -112,6 +112,27 @@ def test_replay_trace_files_reject_clobbering_truncation_and_empty_input(tmp_pat
         replaying.decode_trace("\n")
 
 
+def test_replay_trace_matches_reviewed_golden_bytes() -> None:
+    session = Identifier("golden-session")
+    trace = replaying.ReplayTrace(
+        session,
+        7,
+        (
+            EventEnvelope(
+                session,
+                0,
+                5,
+                EventKind.FINAL_TRANSCRIPT,
+                {"confidence": 0.875, "text": "set a timer"},
+            ),
+            EventEnvelope(session, 1, 12, EventKind.INTENT, {"name": "timers.create"}),
+        ),
+    )
+    golden = Path(__file__).parent / "golden" / "replay_trace.json"
+    assert replaying.encode_trace(trace).encode() == golden.read_bytes()
+    assert replaying.decode_trace(golden.read_text(encoding="utf-8")) == trace
+
+
 def test_replay_requires_records_to_infer_session() -> None:
     with pytest.raises(RecordingError, match="empty recording"):
         replaying.replay([], 0)

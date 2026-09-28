@@ -1,0 +1,1 @@
+{"events":[{"at_ms":5,"kind":"final-transcript","payload":{"confidence":0.875,"text":"set a timer"},"schema_version":1,"sequence":0,"session_id":"golden-session"},{"at_ms":12,"kind":"intent","payload":{"name":"timers.create"},"schema_version":1,"sequence":1,"session_id":"golden-session"}],"schema_version":1,"seed":7,"session_id":"golden-session"}
