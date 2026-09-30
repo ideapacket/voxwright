@@ -285,6 +285,29 @@ def test_validate_reports_replay_trace_identity_seed_and_event_count(
     assert '"digest":"sha256:' in output
 
 
+def test_validate_trace_contains_version_identity_and_truncation_failures(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "trace.json"  # type: ignore[operator]
+    path.write_text(
+        '{"events":[],"schema_version":2,"seed":0,"session_id":"session"}\n',
+        encoding="utf-8",
+    )
+    assert main(["validate", "trace", str(path)]) == 2
+    assert "unsupported version 2" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text(
+        '{"events":[{"at_ms":0,"kind":"handoff","payload":{},"schema_version":1,'
+        '"sequence":0,"session_id":"other"}],"schema_version":1,"seed":0,'
+        '"session_id":"session"}\n',
+        encoding="utf-8",
+    )
+    assert main(["validate", "trace", str(path)]) == 2
+    assert "session identifier mismatch" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text("{}", encoding="utf-8")
+    assert main(["validate", "trace", str(path)]) == 2
+    assert "missing terminal newline" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
 def test_validate_frames_surfaces_version_topology_and_truncation_errors(
     tmp_path: object, capsys: object
 ) -> None:
