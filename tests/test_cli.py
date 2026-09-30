@@ -17,6 +17,7 @@ from voxwright.frames import FrameStack, GroundedSlot, TaskFrame
 from voxwright.identifiers import Identifier
 from voxwright.manifests import read_manifest
 from voxwright.recording import SessionRecorder
+from voxwright.replay import ReplayTrace, write_trace
 from voxwright.run_artifacts import decode_runs
 from voxwright.runtime import (
     LatencySample,
@@ -264,6 +265,24 @@ def test_validate_reports_frame_stack_depth_current_and_digest(
     output = capsys.readouterr().out  # type: ignore[attr-defined]
     assert '"artifact":"frames"' in output and '"frames":1' in output
     assert '"current":"schedule-cli"' in output and '"digest":"sha256:' in output
+
+
+def test_validate_reports_replay_trace_identity_seed_and_event_count(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "trace.json"  # type: ignore[operator]
+    session = Identifier("trace-cli")
+    trace = ReplayTrace(
+        session,
+        19,
+        (EventEnvelope(session, 0, 4, EventKind.FINAL_TRANSCRIPT, {"text": "hello"}),),
+    )
+    write_trace(path, trace)
+    assert main(["validate", "trace", str(path)]) == 0
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"artifact":"trace"' in output and '"events":1' in output
+    assert '"seed":19' in output and '"session_id":"trace-cli"' in output
+    assert '"digest":"sha256:' in output
 
 
 def test_validate_frames_surfaces_version_topology_and_truncation_errors(

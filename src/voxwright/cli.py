@@ -17,7 +17,7 @@ from voxwright.frame_artifacts import frame_stack_digest, load_frame_stack
 from voxwright.latency import RunOutcome, latency_success_curve
 from voxwright.manifests import encode_manifest, read_manifest
 from voxwright.recording import load_session, summarize
-from voxwright.replay import replay
+from voxwright.replay import load_trace, replay, trace_digest
 from voxwright.reports import CoverageFacts, ReportSpec, render_html, render_markdown
 from voxwright.run_artifacts import decode_runs, encode_runs, scripted_run
 from voxwright.runtime_artifacts import load_runtime, runtime_digest
@@ -158,6 +158,16 @@ def _validate(args: argparse.Namespace) -> int:
             "run_count": campaign_artifact.metrics.run_count,
             "seed": campaign_artifact.seed,
             "task_success": campaign_artifact.metrics.task_success,
+            "valid": True,
+        }
+    elif args.artifact == "trace":
+        trace = load_trace(path)
+        result = {
+            "artifact": "trace",
+            "digest": trace_digest(trace),
+            "events": len(trace.events),
+            "seed": trace.seed,
+            "session_id": str(trace.session_id),
             "valid": True,
         }
     elif args.artifact == "registry":
@@ -361,6 +371,7 @@ def build_parser() -> argparse.ArgumentParser:
             "context",
             "runtime",
             "campaign",
+            "trace",
             "registry",
             "frames",
         ),
