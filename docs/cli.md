@@ -13,6 +13,7 @@ voxwright validate context context.json
 voxwright validate runtime runtime.json
 voxwright validate campaign campaign.json
 voxwright validate frames frames.json
+voxwright validate trace replay-trace.json
 voxwright score runs.jsonl
 voxwright bench runs.jsonl --budgets 50 75 100 150
 voxwright report runs.jsonl report.html --format html
@@ -50,3 +51,6 @@ task success。所有数字仍来自已执行的 synthetic runs 与 planted grou
 
 `validate frames` 校验 frame stack 的 slot 字段和 nested task 拓扑，打印 stack 深度、当前 frame id 与
 canonical digest。空 stack 的 current 是 `null`，可以作为尚未打开任务的合法 checkpoint。
+
+`validate trace` 校验 replay envelope 及全部嵌套 event，并重新执行 session identity、连续 sequence 和
+logical-time 单调约束。输出包含显式 seed、event 数量和覆盖规范文件字节的 digest。

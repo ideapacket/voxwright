@@ -40,3 +40,7 @@ decoder 重新执行 stage order、非重叠时间和 block 字段校验；canon
 frame-stack artifact 保存从最早 parent 到当前 frame 的顺序。除 top 外的 frame 必须处于 suspended，
 top 只能是 active 或 closed；decoder 也会检查 frame identity 唯一、slot span 和 lifecycle state。
 恢复后得到可继续 push、pop、fill 与 confirm 的 `FrameStack`，而不是未经校验的普通映射。
+
+replay-trace artifact 将明确的 session id、seed 与完整 event envelope 顺序保存为 canonical JSON。
+读取时会重建 typed event，拒绝跨 session、跳号 sequence 和倒退 logical time；因此 trace 可作为
+独立的确定性比较输入，而不必重新依赖原始 session record 文件。
