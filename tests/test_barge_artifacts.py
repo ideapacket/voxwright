@@ -2,7 +2,15 @@ from __future__ import annotations
 
 import pytest
 
-from voxwright.barge_artifacts import BargeCheckpoint, checkpoint_manager, resume_manager
+from voxwright.barge_artifacts import (
+    BargeCheckpoint,
+    checkpoint_from_dict,
+    checkpoint_manager,
+    checkpoint_to_dict,
+    decode_barge_checkpoint,
+    encode_barge_checkpoint,
+    resume_manager,
+)
 from voxwright.barge_in import (
     BargePolicy,
     InFlightOperation,
@@ -48,3 +56,19 @@ def test_checkpoint_rejects_nondeterministic_interrupt_order() -> None:
     earlier = Interrupt(3, 0, Identifier("interrupt-1"), "earlier")
     with pytest.raises(ValueError, match="deterministic order"):
         BargeCheckpoint(running_operation(), BargePolicy.QUEUE, (later, earlier))
+
+
+def test_barge_checkpoint_codec_restores_operation_policy_and_queue() -> None:
+    manager = InterruptManager(running_operation(), BargePolicy.QUEUE)
+    manager.interrupt(Interrupt(2, 0, Identifier("interrupt-1"), "pause"))
+    checkpoint = checkpoint_manager(manager)
+    restored = checkpoint_from_dict(checkpoint_to_dict(checkpoint))
+    assert restored == checkpoint
+    encoded = encode_barge_checkpoint(checkpoint)
+    assert decode_barge_checkpoint(encoded) == checkpoint
+    assert encode_barge_checkpoint(decode_barge_checkpoint(encoded)) == encoded
+
+
+def test_nonqueue_active_checkpoint_roundtrips_with_an_empty_queue() -> None:
+    checkpoint = BargeCheckpoint(running_operation(), BargePolicy.FINISH_IF_IDEMPOTENT)
+    assert decode_barge_checkpoint(encode_barge_checkpoint(checkpoint)) == checkpoint
