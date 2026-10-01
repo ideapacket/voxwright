@@ -47,6 +47,11 @@ def test_public_api_exports_real_application_mechanics() -> None:
         "ReplayTrace",
         "decode_trace",
         "trace_digest",
+        "BargeCheckpoint",
+        "BargePolicy",
+        "checkpoint_manager",
+        "decode_barge_checkpoint",
+        "resolve_interrupt",
         "encode_registry",
         "decode_registry",
     }
@@ -57,7 +62,7 @@ def test_public_api_exports_real_application_mechanics() -> None:
 
 def test_public_api_contract_is_sorted_and_exact() -> None:
     assert voxwright.__all__ == sorted(voxwright.__all__)
-    assert len(voxwright.__all__) == 100
+    assert len(voxwright.__all__) == 115
     assert voxwright.__all__[0] == "AdapterCapabilities"
     assert voxwright.__all__[-1] == "write_workflow"
 
