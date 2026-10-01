@@ -72,3 +72,38 @@ def test_barge_checkpoint_codec_restores_operation_policy_and_queue() -> None:
 def test_nonqueue_active_checkpoint_roundtrips_with_an_empty_queue() -> None:
     checkpoint = BargeCheckpoint(running_operation(), BargePolicy.FINISH_IF_IDEMPOTENT)
     assert decode_barge_checkpoint(encode_barge_checkpoint(checkpoint)) == checkpoint
+
+
+def test_barge_decoder_rejects_envelope_operation_and_scalar_drift() -> None:
+    value = checkpoint_to_dict(BargeCheckpoint(running_operation(), BargePolicy.QUEUE))
+    value["extra"] = None
+    with pytest.raises(ValueError, match="exact barge checkpoint fields"):
+        checkpoint_from_dict(value)
+    value = checkpoint_to_dict(BargeCheckpoint(running_operation(), BargePolicy.QUEUE))
+    value["schema_version"] = True
+    with pytest.raises(TypeError, match="schema_version: expected integer"):
+        checkpoint_from_dict(value)
+    value = checkpoint_to_dict(BargeCheckpoint(running_operation(), BargePolicy.QUEUE))
+    value["operation"]["idempotent"] = 1  # type: ignore[index]
+    with pytest.raises(TypeError, match="idempotent: expected boolean"):
+        checkpoint_from_dict(value)
+    value = checkpoint_to_dict(BargeCheckpoint(running_operation(), BargePolicy.QUEUE))
+    value["policy"] = "invented"
+    with pytest.raises(ValueError, match="unknown policy"):
+        checkpoint_from_dict(value)
+
+
+def test_barge_decoder_reapplies_active_queue_invariants() -> None:
+    value = checkpoint_to_dict(BargeCheckpoint(running_operation(), BargePolicy.QUEUE))
+    value["operation"]["state"] = "completed"  # type: ignore[index]
+    with pytest.raises(ValueError, match="operation must be running"):
+        checkpoint_from_dict(value)
+    later = Interrupt(9, 0, Identifier("interrupt-2"), "later")
+    earlier = Interrupt(3, 0, Identifier("interrupt-1"), "earlier")
+    checkpoint = BargeCheckpoint(running_operation(), BargePolicy.QUEUE, (earlier, later))
+    value = checkpoint_to_dict(checkpoint)
+    value["queued"].reverse()  # type: ignore[union-attr]
+    with pytest.raises(ValueError, match="deterministic order"):
+        checkpoint_from_dict(value)
+    with pytest.raises(ValueError, match="document is empty"):
+        decode_barge_checkpoint("\n")
