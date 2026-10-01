@@ -35,6 +35,13 @@ class ArtifactSchema:
 
 ARTIFACT_SCHEMAS = (
     ArtifactSchema(
+        "barge-checkpoint",
+        1,
+        "application/json",
+        ("schema_version", "operation", "policy", "queued"),
+        False,
+    ),
+    ArtifactSchema(
         "campaign",
         1,
         "application/json",

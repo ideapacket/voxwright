@@ -4,6 +4,13 @@ from pathlib import Path
 
 import pytest
 
+from voxwright.barge_artifacts import (
+    BargeCheckpoint,
+)
+from voxwright.barge_artifacts import (
+    checkpoint_to_dict as barge_checkpoint_to_dict,
+)
+from voxwright.barge_in import BargePolicy, InFlightOperation
 from voxwright.checkpoints import WorkflowCheckpoint, checkpoint_to_dict
 from voxwright.context import ContextManager
 from voxwright.context_artifacts import context_to_dict
@@ -23,7 +30,7 @@ from voxwright.workflow_codec import workflow_to_dict
 def test_schema_catalog_has_unique_sorted_public_names() -> None:
     names = [item.name for item in ARTIFACT_SCHEMAS]
     assert names == sorted(names)
-    assert len(names) == len(set(names)) == 15
+    assert len(names) == len(set(names)) == 16
     assert all(item.version == 1 for item in ARTIFACT_SCHEMAS)
     assert schema_catalog() == [item.to_dict() for item in ARTIFACT_SCHEMAS]
 
@@ -97,6 +104,16 @@ def test_replay_schema_fields_match_the_trace_envelope() -> None:
     trace = ReplayTrace(Identifier("catalog-replay"), 0, ())
     schema = artifact_schema("replay-trace")
     assert tuple(trace.to_dict()) == schema.required_fields
+    assert schema.media_type == "application/json" and not schema.checksummed
+
+
+def test_barge_checkpoint_schema_matches_the_resumable_envelope() -> None:
+    operation = InFlightOperation(
+        Identifier("catalog-operation"), Identifier("notes.add"), {}, True
+    ).start()
+    checkpoint = BargeCheckpoint(operation, BargePolicy.QUEUE)
+    schema = artifact_schema("barge-checkpoint")
+    assert tuple(barge_checkpoint_to_dict(checkpoint)) == schema.required_fields
     assert schema.media_type == "application/json" and not schema.checksummed
 
 
