@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from voxwright.barge_artifacts import (
     BargeCheckpoint,
+    barge_checkpoint_digest,
     checkpoint_from_dict,
     checkpoint_manager,
     checkpoint_to_dict,
     decode_barge_checkpoint,
     encode_barge_checkpoint,
+    load_barge_checkpoint,
     resume_manager,
+    write_barge_checkpoint,
 )
 from voxwright.barge_in import (
     BargePolicy,
@@ -107,3 +112,28 @@ def test_barge_decoder_reapplies_active_queue_invariants() -> None:
         checkpoint_from_dict(value)
     with pytest.raises(ValueError, match="document is empty"):
         decode_barge_checkpoint("\n")
+
+
+def test_barge_checkpoint_file_roundtrip_preserves_digest(tmp_path: Path) -> None:
+    checkpoint = BargeCheckpoint(
+        running_operation(),
+        BargePolicy.QUEUE,
+        (Interrupt(3, 0, Identifier("interrupt-1"), "pause"),),
+    )
+    path = tmp_path / "barge.json"
+    write_barge_checkpoint(path, checkpoint)
+    restored = load_barge_checkpoint(path)
+    assert restored == checkpoint
+    assert path.read_text(encoding="utf-8") == encode_barge_checkpoint(checkpoint)
+    assert barge_checkpoint_digest(restored) == barge_checkpoint_digest(checkpoint)
+
+
+def test_barge_checkpoint_files_never_clobber_or_accept_truncation(tmp_path: Path) -> None:
+    checkpoint = BargeCheckpoint(running_operation(), BargePolicy.QUEUE)
+    path = tmp_path / "barge.json"
+    write_barge_checkpoint(path, checkpoint)
+    with pytest.raises(FileExistsError, match="output already exists"):
+        write_barge_checkpoint(path, checkpoint)
+    path.write_text(encode_barge_checkpoint(checkpoint).rstrip("\n"), encoding="utf-8")
+    with pytest.raises(ValueError, match="missing terminal newline"):
+        load_barge_checkpoint(path)

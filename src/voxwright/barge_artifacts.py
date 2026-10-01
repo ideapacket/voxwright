@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from voxwright.barge_in import (
     BargePolicy,
@@ -13,6 +14,7 @@ from voxwright.barge_in import (
     order_interrupts,
 )
 from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
+from voxwright.hashing import content_digest
 from voxwright.identifiers import Identifier
 
 
@@ -135,6 +137,25 @@ def decode_barge_checkpoint(text: str) -> BargeCheckpoint:
     if not text.strip():
         raise ValueError("barge checkpoint document is empty")
     return checkpoint_from_dict(parse_json(text))
+
+
+def barge_checkpoint_digest(checkpoint: BargeCheckpoint) -> str:
+    return content_digest(encode_barge_checkpoint(checkpoint).encode("utf-8"))
+
+
+def load_barge_checkpoint(path: Path) -> BargeCheckpoint:
+    text = path.read_text(encoding="utf-8")
+    if text and not text.endswith("\n"):
+        raise ValueError(f"barge checkpoint is missing terminal newline: {path}")
+    return decode_barge_checkpoint(text)
+
+
+def write_barge_checkpoint(path: Path, checkpoint: BargeCheckpoint) -> None:
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_barge_checkpoint(checkpoint))
+    except FileExistsError as error:
+        raise FileExistsError(f"barge checkpoint output already exists: {path}") from error
 
 
 def checkpoint_manager(manager: InterruptManager) -> BargeCheckpoint:
