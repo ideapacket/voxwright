@@ -137,3 +137,20 @@ def test_barge_checkpoint_files_never_clobber_or_accept_truncation(tmp_path: Pat
     path.write_text(encode_barge_checkpoint(checkpoint).rstrip("\n"), encoding="utf-8")
     with pytest.raises(ValueError, match="missing terminal newline"):
         load_barge_checkpoint(path)
+
+
+def test_barge_checkpoint_matches_reviewed_golden_bytes() -> None:
+    operation = InFlightOperation(
+        Identifier("music-42"),
+        Identifier("music.play"),
+        {"track": "Synthetic Dawn"},
+        True,
+    ).start()
+    checkpoint = BargeCheckpoint(
+        operation,
+        BargePolicy.QUEUE,
+        (Interrupt(18, 2, Identifier("interrupt-7"), "play something else"),),
+    )
+    golden = Path(__file__).parent / "golden" / "barge_checkpoint.json"
+    assert encode_barge_checkpoint(checkpoint).encode() == golden.read_bytes()
+    assert decode_barge_checkpoint(golden.read_text(encoding="utf-8")) == checkpoint

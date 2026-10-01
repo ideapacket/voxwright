@@ -1,0 +1,1 @@
+{"operation":{"arguments":{"track":"Synthetic Dawn"},"idempotent":true,"operation_id":"music-42","state":"running","tool_name":"music.play"},"policy":"queue","queued":[{"at_ms":18,"interrupt_id":"interrupt-7","sequence":2,"transcript":"play something else"}],"schema_version":1}
