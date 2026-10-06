@@ -305,6 +305,32 @@ def test_validate_reports_active_barge_checkpoint_facts(tmp_path: object, capsys
     assert '"tool_name":"music.play"' in output and '"digest":"sha256:' in output
 
 
+def test_validate_barge_contains_terminal_policy_and_truncation_errors(
+    tmp_path: object, capsys: object
+) -> None:
+    path = tmp_path / "barge.json"  # type: ignore[operator]
+    operation = (
+        '{"arguments":{},"idempotent":true,"operation_id":"operation-cli",'
+        '"state":"completed","tool_name":"notes.add"}'
+    )
+    path.write_text(
+        f'{{"operation":{operation},"policy":"queue","queued":[],"schema_version":1}}\n',
+        encoding="utf-8",
+    )
+    assert main(["validate", "barge", str(path)]) == 2
+    assert "operation must be running" in capsys.readouterr().err  # type: ignore[attr-defined]
+    running = operation.replace('"completed"', '"running"')
+    path.write_text(
+        f'{{"operation":{running},"policy":"later","queued":[],"schema_version":1}}\n',
+        encoding="utf-8",
+    )
+    assert main(["validate", "barge", str(path)]) == 2
+    assert "unknown policy" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text("{}", encoding="utf-8")
+    assert main(["validate", "barge", str(path)]) == 2
+    assert "missing terminal newline" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
 def test_validate_trace_contains_version_identity_and_truncation_failures(
     tmp_path: object, capsys: object
 ) -> None:
