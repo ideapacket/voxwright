@@ -5,6 +5,8 @@ from __future__ import annotations
 import subprocess
 import sys
 
+from voxwright.barge_artifacts import BargeCheckpoint, write_barge_checkpoint
+from voxwright.barge_in import BargePolicy, InFlightOperation, Interrupt
 from voxwright.campaign import CampaignArtifact, write_campaign
 from voxwright.checkpoints import WorkflowCheckpoint, write_checkpoint
 from voxwright.cli import build_parser, main
@@ -283,6 +285,24 @@ def test_validate_reports_replay_trace_identity_seed_and_event_count(
     assert '"artifact":"trace"' in output and '"events":1' in output
     assert '"seed":19' in output and '"session_id":"trace-cli"' in output
     assert '"digest":"sha256:' in output
+
+
+def test_validate_reports_active_barge_checkpoint_facts(tmp_path: object, capsys: object) -> None:
+    path = tmp_path / "barge.json"  # type: ignore[operator]
+    operation = InFlightOperation(
+        Identifier("operation-cli"), Identifier("music.play"), {"track": "sample"}, True
+    ).start()
+    checkpoint = BargeCheckpoint(
+        operation,
+        BargePolicy.QUEUE,
+        (Interrupt(4, 0, Identifier("interrupt-cli"), "change track"),),
+    )
+    write_barge_checkpoint(path, checkpoint)
+    assert main(["validate", "barge", str(path)]) == 0
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"artifact":"barge"' in output and '"operation_id":"operation-cli"' in output
+    assert '"policy":"queue"' in output and '"queued":1' in output
+    assert '"tool_name":"music.play"' in output and '"digest":"sha256:' in output
 
 
 def test_validate_trace_contains_version_identity_and_truncation_failures(

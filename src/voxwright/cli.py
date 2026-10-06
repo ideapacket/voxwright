@@ -8,6 +8,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from voxwright import __version__
+from voxwright.barge_artifacts import barge_checkpoint_digest, load_barge_checkpoint
 from voxwright.campaign import CampaignArtifact, load_campaign
 from voxwright.checkpoints import load_checkpoint
 from voxwright.context_artifacts import context_digest, load_context
@@ -168,6 +169,17 @@ def _validate(args: argparse.Namespace) -> int:
             "events": len(trace.events),
             "seed": trace.seed,
             "session_id": str(trace.session_id),
+            "valid": True,
+        }
+    elif args.artifact == "barge":
+        checkpoint = load_barge_checkpoint(path)
+        result = {
+            "artifact": "barge",
+            "digest": barge_checkpoint_digest(checkpoint),
+            "operation_id": str(checkpoint.operation.operation_id),
+            "policy": checkpoint.policy.value,
+            "queued": len(checkpoint.queued),
+            "tool_name": str(checkpoint.operation.tool_name),
             "valid": True,
         }
     elif args.artifact == "registry":
@@ -372,6 +384,7 @@ def build_parser() -> argparse.ArgumentParser:
             "runtime",
             "campaign",
             "trace",
+            "barge",
             "registry",
             "frames",
         ),
