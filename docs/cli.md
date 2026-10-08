@@ -14,6 +14,7 @@ voxwright validate runtime runtime.json
 voxwright validate campaign campaign.json
 voxwright validate frames frames.json
 voxwright validate trace replay-trace.json
+voxwright validate barge barge-checkpoint.json
 voxwright score runs.jsonl
 voxwright bench runs.jsonl --budgets 50 75 100 150
 voxwright report runs.jsonl report.html --format html
@@ -54,3 +55,6 @@ canonical digest。空 stack 的 current 是 `null`，可以作为尚未打开�
 
 `validate trace` 校验 replay envelope 及全部嵌套 event，并重新执行 session identity、连续 sequence 和
 logical-time 单调约束。输出包含显式 seed、event 数量和覆盖规范文件字节的 digest。
+
+`validate barge` 校验 in-flight operation、policy 与 interrupt race order，并报告 operation identity、
+tool、queue 深度和 digest。该命令验证应用状态 checkpoint，不模拟音频 turn-taking。

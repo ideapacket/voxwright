@@ -1,6 +1,6 @@
 # 制品与 schema
 
-`voxwright.schemas.ARTIFACT_SCHEMAS` 是公开 catalog，列出 15 种版本化制品的 envelope 字段、
+`voxwright.schemas.ARTIFACT_SCHEMAS` 是公开 catalog，列出 16 种版本化制品的 envelope 字段、
 media type 与完整性保护。当前版本均为 1；未知版本和多余字段会被拒绝，不做静默降级。
 
 JSONL 制品要求最后一行以换行结束，避免把中断写入误当成完整记录。scenario manifest、run
@@ -44,3 +44,7 @@ top 只能是 active 或 closed；decoder 也会检查 frame identity 唯一、s
 replay-trace artifact 将明确的 session id、seed 与完整 event envelope 顺序保存为 canonical JSON。
 读取时会重建 typed event，拒绝跨 session、跳号 sequence 和倒退 logical time；因此 trace 可作为
 独立的确定性比较输入，而不必重新依赖原始 session record 文件。
+
+barge-checkpoint artifact 只表示仍在运行的 operation、明确 policy 与已按 logical time 排序的 interrupt
+queue。恢复后可以继续接收 interrupt，或原子完成 operation 后 drain queue；terminal operation、乱序
+queue 及非 queue policy 携带 pending interrupt 都会被拒绝。
