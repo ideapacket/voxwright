@@ -4,7 +4,13 @@ import pytest
 
 from voxwright.campaign import CampaignArtifact
 from voxwright.evaluation import EvaluationRun, score_runs
-from voxwright.report_artifacts import ReportBundle, ReportFormat, create_report_bundle
+from voxwright.report_artifacts import (
+    ReportBundle,
+    ReportFormat,
+    create_report_bundle,
+    decode_report_bundle,
+    encode_report_bundle,
+)
 from voxwright.reports import CoverageFacts, ReportSpec, bar_chart_svg, report_digest
 
 
@@ -54,3 +60,13 @@ def test_report_bundle_rejects_content_or_format_drift() -> None:
         create_report_bundle(
             sample_spec(), ReportFormat.MARKDOWN, charts=(bar_chart_svg("x", (("x", 1.0),)),)
         )
+
+
+def test_report_bundle_codec_restores_full_provenance_and_content() -> None:
+    chart = bar_chart_svg("Latency", (("tool", 5.0),))
+    bundle = create_report_bundle(sample_spec(), ReportFormat.HTML, charts=(chart,))
+    restored = ReportBundle.from_dict(bundle.to_dict())
+    assert restored == bundle
+    encoded = encode_report_bundle(bundle)
+    assert decode_report_bundle(encoded) == bundle
+    assert encode_report_bundle(decode_report_bundle(encoded)) == encoded
