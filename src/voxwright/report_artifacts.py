@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
 from voxwright.campaign import CampaignArtifact
 from voxwright.core import JSONValue, canonical_json, ensure_json_value, parse_json
+from voxwright.hashing import content_digest
 from voxwright.reports import (
     CoverageFacts,
     ReportSpec,
@@ -159,3 +161,22 @@ def decode_report_bundle(text: str) -> ReportBundle:
     if not text.strip():
         raise ValueError("report bundle document is empty")
     return ReportBundle.from_dict(parse_json(text))
+
+
+def report_bundle_digest(bundle: ReportBundle) -> str:
+    return content_digest(encode_report_bundle(bundle).encode("utf-8"))
+
+
+def load_report_bundle(path: Path) -> ReportBundle:
+    text = path.read_text(encoding="utf-8")
+    if text and not text.endswith("\n"):
+        raise ValueError(f"report bundle is missing terminal newline: {path}")
+    return decode_report_bundle(text)
+
+
+def write_report_bundle(path: Path, bundle: ReportBundle) -> None:
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(encode_report_bundle(bundle))
+    except FileExistsError as error:
+        raise FileExistsError(f"report bundle output already exists: {path}") from error

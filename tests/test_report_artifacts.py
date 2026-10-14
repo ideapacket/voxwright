@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from voxwright.campaign import CampaignArtifact
@@ -10,6 +12,9 @@ from voxwright.report_artifacts import (
     create_report_bundle,
     decode_report_bundle,
     encode_report_bundle,
+    load_report_bundle,
+    report_bundle_digest,
+    write_report_bundle,
 )
 from voxwright.reports import CoverageFacts, ReportSpec, bar_chart_svg, report_digest
 
@@ -107,3 +112,26 @@ def test_report_bundle_decoder_detects_digest_and_rendered_content_tampering() -
     value["coverage"]["scenario_count"] = 2  # type: ignore[index]
     with pytest.raises(ValueError, match="count must match"):
         ReportBundle.from_dict(value)
+
+
+def test_report_bundle_file_roundtrip_preserves_both_integrity_layers(tmp_path: Path) -> None:
+    bundle = create_report_bundle(sample_spec(), ReportFormat.HTML)
+    path = tmp_path / "report-bundle.json"
+    write_report_bundle(path, bundle)
+    restored = load_report_bundle(path)
+    assert restored == bundle
+    assert restored.digest == report_digest(restored.report)
+    assert report_bundle_digest(restored) == report_bundle_digest(bundle)
+
+
+def test_report_bundle_files_reject_clobbering_truncation_and_empty_input(tmp_path: Path) -> None:
+    bundle = create_report_bundle(sample_spec(), ReportFormat.MARKDOWN)
+    path = tmp_path / "report-bundle.json"
+    write_report_bundle(path, bundle)
+    with pytest.raises(FileExistsError, match="output already exists"):
+        write_report_bundle(path, bundle)
+    path.write_text(encode_report_bundle(bundle).rstrip("\n"), encoding="utf-8")
+    with pytest.raises(ValueError, match="missing terminal newline"):
+        load_report_bundle(path)
+    with pytest.raises(ValueError, match="document is empty"):
+        decode_report_bundle("\n")
