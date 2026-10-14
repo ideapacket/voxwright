@@ -135,3 +135,10 @@ def test_report_bundle_files_reject_clobbering_truncation_and_empty_input(tmp_pa
         load_report_bundle(path)
     with pytest.raises(ValueError, match="document is empty"):
         decode_report_bundle("\n")
+
+
+def test_report_bundle_matches_reviewed_golden_digest() -> None:
+    bundle = create_report_bundle(sample_spec(), ReportFormat.MARKDOWN)
+    golden = Path(__file__).parent / "golden" / "report_bundle.sha256"
+    assert report_bundle_digest(bundle) + "\n" == golden.read_text(encoding="utf-8")
+    assert decode_report_bundle(encode_report_bundle(bundle)) == bundle
