@@ -70,3 +70,40 @@ def test_report_bundle_codec_restores_full_provenance_and_content() -> None:
     encoded = encode_report_bundle(bundle)
     assert decode_report_bundle(encoded) == bundle
     assert encode_report_bundle(decode_report_bundle(encoded)) == encoded
+
+
+def test_report_bundle_decoder_rejects_shape_version_and_typed_metadata() -> None:
+    bundle = create_report_bundle(sample_spec(), ReportFormat.MARKDOWN)
+    value = bundle.to_dict()
+    value["extra"] = None
+    with pytest.raises(ValueError, match="exact report bundle fields"):
+        ReportBundle.from_dict(value)
+    value = bundle.to_dict()
+    value["schema_version"] = True
+    with pytest.raises(ValueError, match="unsupported version True"):
+        ReportBundle.from_dict(value)
+    value = bundle.to_dict()
+    value["format"] = "pdf"
+    with pytest.raises(ValueError, match="unknown report format"):
+        ReportBundle.from_dict(value)
+    value = bundle.to_dict()
+    value["coverage"]["scenario_count"] = False  # type: ignore[index]
+    with pytest.raises(TypeError, match="scenario_count: expected integer"):
+        ReportBundle.from_dict(value)
+
+
+def test_report_bundle_decoder_detects_digest_and_rendered_content_tampering() -> None:
+    bundle = create_report_bundle(sample_spec(), ReportFormat.MARKDOWN)
+    value = bundle.to_dict()
+    value["digest"] = "sha256:" + "0" * 64
+    with pytest.raises(ValueError, match="report checksum mismatch"):
+        ReportBundle.from_dict(value)
+    value = bundle.to_dict()
+    value["report"] = bundle.report.replace("1.000000", "0.000000", 1)
+    value["digest"] = report_digest(value["report"])  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="does not match its provenance"):
+        ReportBundle.from_dict(value)
+    value = bundle.to_dict()
+    value["coverage"]["scenario_count"] = 2  # type: ignore[index]
+    with pytest.raises(ValueError, match="count must match"):
+        ReportBundle.from_dict(value)
