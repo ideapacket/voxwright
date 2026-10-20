@@ -19,6 +19,7 @@ from voxwright.latency import RunOutcome, latency_success_curve
 from voxwright.manifests import encode_manifest, read_manifest
 from voxwright.recording import load_session, summarize
 from voxwright.replay import load_trace, replay, trace_digest
+from voxwright.report_artifacts import load_report_bundle, report_bundle_digest
 from voxwright.reports import CoverageFacts, ReportSpec, render_html, render_markdown
 from voxwright.run_artifacts import decode_runs, encode_runs, scripted_run
 from voxwright.runtime_artifacts import load_runtime, runtime_digest
@@ -180,6 +181,18 @@ def _validate(args: argparse.Namespace) -> int:
             "policy": checkpoint.policy.value,
             "queued": len(checkpoint.queued),
             "tool_name": str(checkpoint.operation.tool_name),
+            "valid": True,
+        }
+    elif args.artifact == "bundle":
+        bundle = load_report_bundle(path)
+        result = {
+            "artifact": "bundle",
+            "bundle_digest": report_bundle_digest(bundle),
+            "campaign": bundle.spec.campaign.name,
+            "format": bundle.format.value,
+            "report_digest": bundle.digest,
+            "runs": bundle.spec.campaign.metrics.run_count,
+            "title": bundle.spec.title,
             "valid": True,
         }
     elif args.artifact == "registry":
@@ -385,6 +398,7 @@ def build_parser() -> argparse.ArgumentParser:
             "campaign",
             "trace",
             "barge",
+            "bundle",
             "registry",
             "frames",
         ),

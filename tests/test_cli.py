@@ -20,6 +20,8 @@ from voxwright.identifiers import Identifier
 from voxwright.manifests import read_manifest
 from voxwright.recording import SessionRecorder
 from voxwright.replay import ReplayTrace, write_trace
+from voxwright.report_artifacts import ReportFormat, create_report_bundle, write_report_bundle
+from voxwright.reports import CoverageFacts, ReportSpec
 from voxwright.run_artifacts import decode_runs
 from voxwright.runtime import (
     LatencySample,
@@ -303,6 +305,26 @@ def test_validate_reports_active_barge_checkpoint_facts(tmp_path: object, capsys
     assert '"artifact":"barge"' in output and '"operation_id":"operation-cli"' in output
     assert '"policy":"queue"' in output and '"queued":1' in output
     assert '"tool_name":"music.play"' in output and '"digest":"sha256:' in output
+
+
+def test_validate_reports_bundle_provenance_and_both_digests(
+    tmp_path: object, capsys: object
+) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    runs_path = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    bundle_path = tmp_path / "bundle.json"  # type: ignore[operator]
+    assert main(["simulate", str(manifest), "--task", "notes"]) == 0
+    assert main(["run", str(manifest), str(runs_path)]) == 0
+    runs = decode_runs(runs_path.read_text(encoding="utf-8"))
+    campaign = CampaignArtifact("bundle-cli", 0, {"synthetic": True}, score_runs(runs))
+    spec = ReportSpec("CLI bundle", campaign, CoverageFacts(1, ("notes",), ("scripted",)))
+    write_report_bundle(bundle_path, create_report_bundle(spec, ReportFormat.HTML))
+    capsys.readouterr()  # type: ignore[attr-defined]
+    assert main(["validate", "bundle", str(bundle_path)]) == 0
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert '"artifact":"bundle"' in output and '"campaign":"bundle-cli"' in output
+    assert '"format":"html"' in output and '"runs":1' in output
+    assert '"bundle_digest":"sha256:' in output and '"report_digest":"sha256:' in output
 
 
 def test_validate_barge_contains_terminal_policy_and_truncation_errors(
