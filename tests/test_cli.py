@@ -20,7 +20,12 @@ from voxwright.identifiers import Identifier
 from voxwright.manifests import read_manifest
 from voxwright.recording import SessionRecorder
 from voxwright.replay import ReplayTrace, write_trace
-from voxwright.report_artifacts import ReportFormat, create_report_bundle, write_report_bundle
+from voxwright.report_artifacts import (
+    ReportFormat,
+    create_report_bundle,
+    load_report_bundle,
+    write_report_bundle,
+)
 from voxwright.reports import CoverageFacts, ReportSpec
 from voxwright.run_artifacts import decode_runs
 from voxwright.runtime import (
@@ -731,6 +736,23 @@ def test_report_supports_markdown_and_protects_existing_files(
     assert main(["report", str(runs), str(report), "--format", "markdown"]) == 2
     assert report.read_bytes() == original
     assert "already exists" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
+def test_report_can_emit_a_bundle_bound_to_the_same_rendered_bytes(
+    tmp_path: object, capsys: object
+) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    report = tmp_path / "report.html"  # type: ignore[operator]
+    bundle_path = tmp_path / "report-bundle.json"  # type: ignore[operator]
+    main(["simulate", str(manifest), "--task", "music"])
+    main(["run", str(manifest), str(runs)])
+    capsys.readouterr()  # type: ignore[attr-defined]
+    assert main(["report", str(runs), str(report), "--bundle", str(bundle_path)]) == 0
+    bundle = load_report_bundle(bundle_path)
+    assert bundle.report.encode() == report.read_bytes()
+    assert bundle.spec.coverage.task_types == ("music",)
+    assert f'"bundle":"{bundle_path}"' in capsys.readouterr().out  # type: ignore[attr-defined]
 
 
 def test_cli_file_commands_reject_existing_symlink_targets(

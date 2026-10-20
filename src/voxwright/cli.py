@@ -19,8 +19,14 @@ from voxwright.latency import RunOutcome, latency_success_curve
 from voxwright.manifests import encode_manifest, read_manifest
 from voxwright.recording import load_session, summarize
 from voxwright.replay import load_trace, replay, trace_digest
-from voxwright.report_artifacts import load_report_bundle, report_bundle_digest
-from voxwright.reports import CoverageFacts, ReportSpec, render_html, render_markdown
+from voxwright.report_artifacts import (
+    ReportFormat,
+    create_report_bundle,
+    load_report_bundle,
+    report_bundle_digest,
+    write_report_bundle,
+)
+from voxwright.reports import CoverageFacts, ReportSpec, render_html
 from voxwright.run_artifacts import decode_runs, encode_runs, scripted_run
 from voxwright.runtime_artifacts import load_runtime, runtime_digest
 from voxwright.sandbox_audit import load_audit, summarize_audit
@@ -271,13 +277,16 @@ def _report(args: argparse.Namespace) -> int:
         ("scripted",),
     )
     spec = ReportSpec(args.title, campaign, coverage)
-    content = render_html(spec) if args.format == "html" else render_markdown(spec)
-    _write_new_text(args.output, content)
-    print(
-        canonical_json(
-            {"artifact": f"{args.format}-report", "output": str(args.output), "runs": len(runs)}
-        )
-    )
+    bundle_path: Path | None = args.bundle
+    if bundle_path is not None and bundle_path.exists():
+        raise FileExistsError(f"output already exists: {bundle_path}")
+    bundle = create_report_bundle(spec, ReportFormat(args.format))
+    _write_new_text(args.output, bundle.report)
+    result = {"artifact": f"{args.format}-report", "output": str(args.output), "runs": len(runs)}
+    if bundle_path is not None:
+        write_report_bundle(bundle_path, bundle)
+        result["bundle"] = str(bundle_path)
+    print(canonical_json(result))
     return 0
 
 
@@ -429,6 +438,7 @@ def build_parser() -> argparse.ArgumentParser:
     report_command.add_argument("--title", default="voxwright 离线合成评估")
     report_command.add_argument("--name", default="offline-campaign")
     report_command.add_argument("--seed", type=int, default=0)
+    report_command.add_argument("--bundle", type=Path, help="可选的可验证 report bundle 输出")
     report_command.set_defaults(handler=_report)
     bench_command = commands["bench"]
     bench_command.add_argument("path", type=Path, help="校验过的运行 JSONL")
