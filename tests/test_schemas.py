@@ -11,13 +11,17 @@ from voxwright.barge_artifacts import (
     checkpoint_to_dict as barge_checkpoint_to_dict,
 )
 from voxwright.barge_in import BargePolicy, InFlightOperation
+from voxwright.campaign import CampaignArtifact
 from voxwright.checkpoints import WorkflowCheckpoint, checkpoint_to_dict
 from voxwright.context import ContextManager
 from voxwright.context_artifacts import context_to_dict
 from voxwright.core import canonical_json
+from voxwright.evaluation import EvaluationRun, score_runs
 from voxwright.frames import FrameStack
 from voxwright.identifiers import Identifier
 from voxwright.replay import ReplayTrace
+from voxwright.report_artifacts import ReportFormat, create_report_bundle
+from voxwright.reports import CoverageFacts, ReportSpec
 from voxwright.runtime import LatencySample, LatencyStage, LatencyTrace, RuntimeTurn, StreamBlock
 from voxwright.runtime_artifacts import runtime_to_dict
 from voxwright.sandbox import SideEffectLedger
@@ -30,7 +34,7 @@ from voxwright.workflow_codec import workflow_to_dict
 def test_schema_catalog_has_unique_sorted_public_names() -> None:
     names = [item.name for item in ARTIFACT_SCHEMAS]
     assert names == sorted(names)
-    assert len(names) == len(set(names)) == 16
+    assert len(names) == len(set(names)) == 17
     assert all(item.version == 1 for item in ARTIFACT_SCHEMAS)
     assert schema_catalog() == [item.to_dict() for item in ARTIFACT_SCHEMAS]
 
@@ -115,6 +119,16 @@ def test_barge_checkpoint_schema_matches_the_resumable_envelope() -> None:
     schema = artifact_schema("barge-checkpoint")
     assert tuple(barge_checkpoint_to_dict(checkpoint)) == schema.required_fields
     assert schema.media_type == "application/json" and not schema.checksummed
+
+
+def test_report_bundle_schema_matches_the_provenance_envelope() -> None:
+    run = EvaluationRun("catalog-run", "notes", "easy", 0.0, {}, {}, (), (), True, 1, 0, 0, 1, 2)
+    campaign = CampaignArtifact("catalog-report", 0, {}, score_runs((run,)))
+    spec = ReportSpec("Catalog", campaign, CoverageFacts(1, ("notes",), ("scripted",)))
+    bundle = create_report_bundle(spec, ReportFormat.MARKDOWN)
+    schema = artifact_schema("report-bundle")
+    assert tuple(bundle.to_dict()) == schema.required_fields
+    assert schema.media_type == "application/json" and schema.checksummed
 
 
 @pytest.mark.parametrize("schema", ARTIFACT_SCHEMAS, ids=lambda item: item.name)

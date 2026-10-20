@@ -91,6 +91,22 @@ ARTIFACT_SCHEMAS = (
         False,
     ),
     ArtifactSchema(
+        "report-bundle",
+        1,
+        "application/json",
+        (
+            "schema_version",
+            "format",
+            "title",
+            "campaign",
+            "coverage",
+            "charts",
+            "report",
+            "digest",
+        ),
+        True,
+    ),
+    ArtifactSchema(
         "run-stream",
         1,
         "application/x-ndjson",
