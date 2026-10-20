@@ -755,6 +755,22 @@ def test_report_can_emit_a_bundle_bound_to_the_same_rendered_bytes(
     assert f'"bundle":"{bundle_path}"' in capsys.readouterr().out  # type: ignore[attr-defined]
 
 
+def test_report_preflights_bundle_target_before_writing_report(
+    tmp_path: object, capsys: object
+) -> None:
+    manifest = tmp_path / "manifest.jsonl"  # type: ignore[operator]
+    runs = tmp_path / "runs.jsonl"  # type: ignore[operator]
+    report = tmp_path / "report.html"  # type: ignore[operator]
+    bundle_path = tmp_path / "existing-bundle.json"  # type: ignore[operator]
+    main(["simulate", str(manifest)])
+    main(["run", str(manifest), str(runs)])
+    bundle_path.write_text("keep", encoding="utf-8")
+    assert main(["report", str(runs), str(report), "--bundle", str(bundle_path)]) == 2
+    assert not report.exists()
+    assert bundle_path.read_text(encoding="utf-8") == "keep"
+    assert "already exists" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
 def test_cli_file_commands_reject_existing_symlink_targets(
     tmp_path: object, capsys: object
 ) -> None:
