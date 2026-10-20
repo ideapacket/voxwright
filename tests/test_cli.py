@@ -327,6 +327,26 @@ def test_validate_reports_bundle_provenance_and_both_digests(
     assert '"bundle_digest":"sha256:' in output and '"report_digest":"sha256:' in output
 
 
+def test_validate_bundle_contains_version_digest_and_truncation_failures(
+    tmp_path: object, capsys: object
+) -> None:
+    run = EvaluationRun("bundle-error", "notes", "easy", 0.0, {}, {}, (), (), True, 1, 0, 0, 1, 2)
+    campaign = CampaignArtifact("bundle-errors", 0, {}, score_runs((run,)))
+    spec = ReportSpec("Bundle errors", campaign, CoverageFacts(1, ("notes",), ("scripted",)))
+    path = tmp_path / "bundle.json"  # type: ignore[operator]
+    write_report_bundle(path, create_report_bundle(spec, ReportFormat.MARKDOWN))
+    content = path.read_text(encoding="utf-8")
+    path.write_text(content.replace('"schema_version":1', '"schema_version":2'), encoding="utf-8")
+    assert main(["validate", "bundle", str(path)]) == 2
+    assert "unsupported version 2" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text(content.replace('"digest":"sha256:', '"digest":"sha256:0'), encoding="utf-8")
+    assert main(["validate", "bundle", str(path)]) == 2
+    assert "report checksum mismatch" in capsys.readouterr().err  # type: ignore[attr-defined]
+    path.write_text("{}", encoding="utf-8")
+    assert main(["validate", "bundle", str(path)]) == 2
+    assert "missing terminal newline" in capsys.readouterr().err  # type: ignore[attr-defined]
+
+
 def test_validate_barge_contains_terminal_policy_and_truncation_errors(
     tmp_path: object, capsys: object
 ) -> None:
