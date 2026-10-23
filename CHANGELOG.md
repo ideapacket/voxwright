@@ -2,6 +2,19 @@
 
 All notable changes are documented here.
 
+## [0.1.2] - 2026-10-30
+
+### Added
+
+- Strict frame-stack and replay-trace restoration with schema and CLI validation.
+- Resumable barge-in checkpoints preserving deterministic interrupt ordering.
+- Self-verifying report bundles bound to campaign, coverage, charts, and rendered bytes.
+
+### Fixed
+
+- Reject malformed nested artifact metadata with precise typed paths.
+- Keep report and bundle output targets non-clobbering across CLI workflows.
+
 ## [0.1.1] - 2026-10-30
 
 ### Added
