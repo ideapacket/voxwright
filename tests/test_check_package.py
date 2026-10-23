@@ -5,8 +5,10 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
+import pytest
+
 import voxwright
-from scripts.check_package import contract_issues
+from scripts.check_package import contract_issues, find_built_wheel
 from voxwright.schemas import ARTIFACT_SCHEMAS
 
 ROOT = Path(__file__).parents[1]
@@ -66,3 +68,15 @@ def test_base_import_keeps_optional_model_runtime_lazy() -> None:
         text=True,
     )
     assert result.stdout.strip() == "False"
+
+
+def test_wheel_selector_requires_one_artifact_for_the_current_version(tmp_path: Path) -> None:
+    wheel = tmp_path / "voxwright-0.1.2-py3-none-any.whl"
+    wheel.write_bytes(b"wheel")
+    assert find_built_wheel(tmp_path, "0.1.2") == wheel
+    with pytest.raises(RuntimeError, match="found 0"):
+        find_built_wheel(tmp_path, "0.1.3")
+    duplicate = tmp_path / "voxwright-0.1.2-py3-none-linux.whl"
+    duplicate.write_bytes(b"wheel")
+    with pytest.raises(RuntimeError, match="found 2"):
+        find_built_wheel(tmp_path, "0.1.2")
