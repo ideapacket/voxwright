@@ -179,14 +179,14 @@ def _validate(args: argparse.Namespace) -> int:
             "valid": True,
         }
     elif args.artifact == "barge":
-        checkpoint = load_barge_checkpoint(path)
+        barge_checkpoint = load_barge_checkpoint(path)
         result = {
             "artifact": "barge",
-            "digest": barge_checkpoint_digest(checkpoint),
-            "operation_id": str(checkpoint.operation.operation_id),
-            "policy": checkpoint.policy.value,
-            "queued": len(checkpoint.queued),
-            "tool_name": str(checkpoint.operation.tool_name),
+            "digest": barge_checkpoint_digest(barge_checkpoint),
+            "operation_id": str(barge_checkpoint.operation.operation_id),
+            "policy": barge_checkpoint.policy.value,
+            "queued": len(barge_checkpoint.queued),
+            "tool_name": str(barge_checkpoint.operation.tool_name),
             "valid": True,
         }
     elif args.artifact == "bundle":
