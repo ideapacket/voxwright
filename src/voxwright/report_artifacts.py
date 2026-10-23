@@ -23,6 +23,21 @@ class ReportFormat(str, Enum):
     HTML = "html"
 
 
+def _text(value: JSONValue, path: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError(f"{path}: expected string")
+    return value
+
+
+def _string_array(value: JSONValue, path: str) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        raise TypeError(f"{path}: expected string array")
+    output: list[str] = []
+    for index, item in enumerate(value):
+        output.append(_text(item, f"{path}[{index}]"))
+    return tuple(output)
+
+
 def _render(spec: ReportSpec, format: ReportFormat, charts: tuple[str, ...]) -> str:
     if format is ReportFormat.HTML:
         return render_html(spec, charts=charts)
@@ -89,19 +104,15 @@ class ReportBundle:
         version = data["schema_version"]
         if isinstance(version, bool) or not isinstance(version, int) or version != 1:
             raise ValueError(f"$.schema_version: unsupported version {version!r}")
-        title = data["title"]
-        format_text = data["format"]
-        report = data["report"]
-        digest = data["digest"]
-        if not all(isinstance(item, str) for item in (title, format_text, report, digest)):
-            raise TypeError("report bundle title, format, report, and digest must be strings")
+        title = _text(data["title"], "$.title")
+        format_text = _text(data["format"], "$.format")
+        report = _text(data["report"], "$.report")
+        digest = _text(data["digest"], "$.digest")
         try:
             format = ReportFormat(format_text)
         except ValueError as error:
             raise ValueError(f"$.format: unknown report format {format_text!r}") from error
-        charts = data["charts"]
-        if not isinstance(charts, list) or any(not isinstance(item, str) for item in charts):
-            raise TypeError("$.charts: expected string array")
+        charts = _string_array(data["charts"], "$.charts")
         coverage = data["coverage"]
         coverage_fields = {
             "scenario_count",
@@ -113,20 +124,12 @@ class ReportBundle:
         if not isinstance(coverage, dict) or set(coverage) != coverage_fields:
             raise ValueError("$.coverage: expected exact coverage fields")
         scenario_count = coverage["scenario_count"]
-        task_types = coverage["task_types"]
-        adapter_names = coverage["adapter_names"]
+        task_types = _string_array(coverage["task_types"], "$.coverage.task_types")
+        adapter_names = _string_array(coverage["adapter_names"], "$.coverage.adapter_names")
         used_real_audio = coverage["used_real_audio"]
         used_model_endpoint = coverage["used_model_endpoint"]
         if isinstance(scenario_count, bool) or not isinstance(scenario_count, int):
             raise TypeError("$.coverage.scenario_count: expected integer")
-        if not isinstance(task_types, list) or any(
-            not isinstance(item, str) for item in task_types
-        ):
-            raise TypeError("$.coverage.task_types: expected string array")
-        if not isinstance(adapter_names, list) or any(
-            not isinstance(item, str) for item in adapter_names
-        ):
-            raise TypeError("$.coverage.adapter_names: expected string array")
         if not isinstance(used_real_audio, bool) or not isinstance(used_model_endpoint, bool):
             raise TypeError("$.coverage usage flags must be booleans")
         if not isinstance(data["campaign"], dict):
@@ -134,14 +137,14 @@ class ReportBundle:
         campaign = CampaignArtifact.from_dict(data["campaign"])
         facts = CoverageFacts(
             scenario_count,
-            tuple(task_types),
-            tuple(adapter_names),
+            task_types,
+            adapter_names,
             used_real_audio,
             used_model_endpoint,
         )
         if report_digest(report) != digest:
             raise ValueError("$.digest: report checksum mismatch")
-        return cls(ReportSpec(title, campaign, facts), format, tuple(charts), report, version)
+        return cls(ReportSpec(title, campaign, facts), format, charts, report, version)
 
 
 def create_report_bundle(

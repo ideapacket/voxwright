@@ -95,6 +95,14 @@ def test_report_bundle_decoder_rejects_shape_version_and_typed_metadata() -> Non
     value["coverage"]["scenario_count"] = False  # type: ignore[index]
     with pytest.raises(TypeError, match="scenario_count: expected integer"):
         ReportBundle.from_dict(value)
+    value = bundle.to_dict()
+    value["charts"] = [1]
+    with pytest.raises(TypeError, match=r"charts\[0\]: expected string"):
+        ReportBundle.from_dict(value)
+    value = bundle.to_dict()
+    value["coverage"]["used_real_audio"] = 0  # type: ignore[index]
+    with pytest.raises(TypeError, match="usage flags must be booleans"):
+        ReportBundle.from_dict(value)
 
 
 def test_report_bundle_decoder_detects_digest_and_rendered_content_tampering() -> None:
