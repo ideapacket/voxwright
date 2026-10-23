@@ -1,6 +1,6 @@
 # 制品与 schema
 
-`voxwright.schemas.ARTIFACT_SCHEMAS` 是公开 catalog，列出 16 种版本化制品的 envelope 字段、
+`voxwright.schemas.ARTIFACT_SCHEMAS` 是公开 catalog，列出 17 种版本化制品的 envelope 字段、
 media type 与完整性保护。当前版本均为 1；未知版本和多余字段会被拒绝，不做静默降级。
 
 JSONL 制品要求最后一行以换行结束，避免把中断写入误当成完整记录。scenario manifest、run
@@ -48,3 +48,7 @@ replay-trace artifact 将明确的 session id、seed 与完整 event envelope �
 barge-checkpoint artifact 只表示仍在运行的 operation、明确 policy 与已按 logical time 排序的 interrupt
 queue。恢复后可以继续接收 interrupt，或原子完成 operation 后 drain queue；terminal operation、乱序
 queue 及非 queue policy 携带 pending interrupt 都会被拒绝。
+
+report-bundle artifact 将 campaign、coverage facts、format、可选 SVG 和最终 report bytes 绑定在同一
+envelope。内层 digest 覆盖 report bytes，decoder 还会从 provenance 重新渲染并逐字节比较，因而只改
+指标、coverage、chart 或报告内容都会被拒绝。外层 `report_bundle_digest` 标识完整 canonical envelope。

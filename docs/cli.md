@@ -15,9 +15,10 @@ voxwright validate campaign campaign.json
 voxwright validate frames frames.json
 voxwright validate trace replay-trace.json
 voxwright validate barge barge-checkpoint.json
+voxwright validate bundle report-bundle.json
 voxwright score runs.jsonl
 voxwright bench runs.jsonl --budgets 50 75 100 150
-voxwright report runs.jsonl report.html --format html
+voxwright report runs.jsonl report.html --format html --bundle report-bundle.json
 ```
 
 `demo` 将 manifest、观测运行、指标摘要和自包含 HTML 报告写入一个新目录：
@@ -58,3 +59,7 @@ logical-time 单调约束。输出包含显式 seed、event 数量和覆盖规�
 
 `validate barge` 校验 in-flight operation、policy 与 interrupt race order，并报告 operation identity、
 tool、queue 深度和 digest。该命令验证应用状态 checkpoint，不模拟音频 turn-taking。
+
+`validate bundle` 同时校验 campaign config、metric bundle、coverage、report digest 和重新渲染结果，
+并打印 report 与完整 bundle 的两个 digest。`report --bundle` 可在生成 HTML 或 Markdown 时写出该
+provenance envelope；`demo` 默认同时保存 `report.html` 与 `report-bundle.json`。
