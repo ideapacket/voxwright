@@ -59,20 +59,24 @@ def smoke_built_wheel(wheel: Path, package_version: str) -> None:
         root = Path(temporary)
         target = root / "site"
         uv = shutil.which("uv")
-        if uv is None:
-            raise RuntimeError("uv is required for the built-wheel smoke check")
-        _checked(
-            [
-                uv,
+        installer: list[str]
+        if uv is not None:
+            installer = [uv, "pip", "install", "--no-deps", "--target", str(target), str(wheel)]
+        else:
+            # Minimal verification images may not ship uv; pip installs the
+            # wheel into the target directory with identical semantics.
+            installer = [
+                sys.executable,
+                "-m",
                 "pip",
                 "install",
+                "--quiet",
                 "--no-deps",
                 "--target",
                 str(target),
                 str(wheel),
-            ],
-            cwd=root,
-        )
+            ]
+        _checked(installer, cwd=root)
         environment = {
             "PATH": os.environ.get("PATH", ""),
             "PYTHONNOUSERSITE": "1",
