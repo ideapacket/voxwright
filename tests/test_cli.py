@@ -846,6 +846,7 @@ def test_demo_runs_the_complete_offline_artifact_loop(tmp_path: object, capsys: 
     output = tmp_path / "demo"  # type: ignore[operator]
     assert main(["demo", str(output), "--seed", "19", "--count", "4"]) == 0
     assert sorted(path.name for path in output.iterdir()) == [
+        "report-bundle.json",
         "report.html",
         "runs.jsonl",
         "scenarios.jsonl",
@@ -853,8 +854,11 @@ def test_demo_runs_the_complete_offline_artifact_loop(tmp_path: object, capsys: 
     ]
     assert len(read_manifest(output / "scenarios.jsonl")) == 4
     assert len(decode_runs((output / "runs.jsonl").read_text(encoding="utf-8"))) == 4
+    bundle = load_report_bundle(output / "report-bundle.json")
+    assert bundle.report.encode() == (output / "report.html").read_bytes()
     summary = (output / "summary.json").read_text(encoding="utf-8")
     assert '"task_success":1.0' in summary and '"seed":19' in summary
+    assert '"bundle_digest":"sha256:' in summary
     assert capsys.readouterr().out.endswith(summary)  # type: ignore[attr-defined]
 
 
@@ -866,7 +870,7 @@ def test_demo_artifacts_are_reproducible_for_the_same_seed(
     assert main(["demo", str(left), "--seed", "23", "--count", "3"]) == 0
     capsys.readouterr()  # type: ignore[attr-defined]
     assert main(["demo", str(right), "--seed", "23", "--count", "3"]) == 0
-    for name in ("scenarios.jsonl", "runs.jsonl", "report.html"):
+    for name in ("scenarios.jsonl", "runs.jsonl", "report.html", "report-bundle.json"):
         assert (left / name).read_bytes() == (right / name).read_bytes()
 
 

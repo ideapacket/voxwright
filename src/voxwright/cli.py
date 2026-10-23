@@ -26,7 +26,7 @@ from voxwright.report_artifacts import (
     report_bundle_digest,
     write_report_bundle,
 )
-from voxwright.reports import CoverageFacts, ReportSpec, render_html
+from voxwright.reports import CoverageFacts, ReportSpec
 from voxwright.run_artifacts import decode_runs, encode_runs, scripted_run
 from voxwright.runtime_artifacts import load_runtime, runtime_digest
 from voxwright.sandbox_audit import load_audit, summarize_audit
@@ -338,18 +338,23 @@ def _demo(args: argparse.Namespace) -> int:
     coverage = CoverageFacts(
         len(runs), tuple(sorted({run.task_type for run in runs})), ("scripted",)
     )
+    bundle = create_report_bundle(
+        ReportSpec("voxwright 离线演示", campaign, coverage), ReportFormat.HTML
+    )
     args.output.mkdir()
     (args.output / "scenarios.jsonl").write_text(
         encode_manifest(scenarios), encoding="utf-8", newline="\n"
     )
     (args.output / "runs.jsonl").write_text(encode_runs(runs), encoding="utf-8", newline="\n")
     (args.output / "report.html").write_text(
-        render_html(ReportSpec("voxwright 离线演示", campaign, coverage)),
+        bundle.report,
         encoding="utf-8",
         newline="\n",
     )
+    write_report_bundle(args.output / "report-bundle.json", bundle)
     summary = {
         "artifact": "offline-demo",
+        "bundle_digest": report_bundle_digest(bundle),
         "latency_adherence": metrics.efficiency.latency_adherence,
         "output": str(args.output),
         "run_count": metrics.run_count,
